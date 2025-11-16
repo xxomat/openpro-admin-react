@@ -152,6 +152,12 @@ Vue d’ensemble (frontend uniquement) :
   - `OpenPro:ApiKey` - Clé API Open Pro
   - `OpenPro:BaseUrl` - URL de base de l'API (par défaut: `https://api.open-pro.fr/tarif/multi/v1`)
 
+### 4.5 Données en environnement de développement
+
+- **Source des données (DEV) :** les écrans d’administration doivent consommer le **stub-server** fourni par le sous-module `openpro-api-react` (`openpro-api-react/stub-server/`) comme backend de développement.
+- **Objectif :** garantir un affichage fidèle (calendriers par hébergement et états de disponibilité) sans dépendre de l’API distante pendant le développement.
+- **Production :** en production, les données proviennent de l’API Open Pro (voir 2.2 et 4.2).
+
 ---
 
 ## 5. Cas d'usage principaux
@@ -192,6 +198,20 @@ Vue d’ensemble (frontend uniquement) :
 > **Note :** Cette section sera complétée avec les spécifications additionnelles fournies par le client.
 
 ### 6.1 Fonctionnalités futures
+
+#### Onglets par fournisseur — Exigences fonctionnelles
+
+1. **Navigation par onglets (fournisseurs)**
+	- Un **onglet par fournisseur** dans l’interface d’administration.
+	- Le **libellé** de l’onglet est le **nom du fournisseur** (ou son identifiant si le nom est indisponible).
+	- La **sélection d’un onglet** filtre l’affichage pour ne montrer que les données du **fournisseur courant**.
+
+2. **Calendriers par hébergement (du fournisseur sélectionné)**
+	- Pour **chaque hébergement** du fournisseur, afficher un **calendrier** (vue mensuelle par défaut).
+	- **Couleurs d’état** par jour:
+		- **Rouge**: jour **indisponible** (stock = 0 ou hébergement marqué indisponible).
+		- **Vert**: jour **disponible** (stock > 0 et hébergement disponible).
+	- Cette règle de couleur complète la section « Calendrier des hébergements — Exigences fonctionnelles » ci-dessous.
 
 #### Calendrier des hébergements — Exigences fonctionnelles
 
