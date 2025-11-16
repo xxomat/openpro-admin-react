@@ -217,7 +217,36 @@ Vue d’ensemble (frontend uniquement) :
 
 1. **Liste des hébergements en calendriers**
 	- Lister la collection d’hébergements liés à un `idFournisseur` (identifiant fourni en paramètre, valeur à préciser ultérieurement).
-	- Affichage sous forme de **calendriers** (un calendrier par hébergement).
+	- Affichage sous forme de **calendriers**
+		- Un calendrier par hébergement: vue **éclatée**
+		- Tous les hébergements regroupés dans un même calendrier: vue **compacte**
+		- la sélection vue **éclatée**/**compacte** se fait par une liste déroulante située au dessus du contrôle "Date de début"
+
+##### Vue compacte — Grille hebdomadaire
+
+- **Structure générale**
+	- La vue compacte affiche, pour un mois donné, une **grille hebdomadaire multi-lignes**.
+	- **Colonnes** (8 au total) :
+		- Colonne 1 : **nom de l’hébergement** (badge borduré, une ligne par hébergement).
+		- Colonnes 2 à 8 : les **7 jours de la semaine** (L, M, M, J, V, S, D).
+	- **Lignes** :
+		- **Une ligne = (une semaine, un hébergement)**.
+		- Pour un fournisseur ayant `N` hébergements et `S` semaines dans le mois, la grille contient `S × N` lignes.
+
+- **Colonne 1 — Badge des hébergements**
+	- Pour chaque ligne, la **première cellule** affiche le **nom de l’hébergement concerné** par la ligne.
+	- Le nom est présenté dans un **badge borduré**, avec :
+		- Alignement vertical centré.
+		- Gestion du dépassement via **ellipsis** et **tooltip** (nom complet en survol).
+
+- **Colonnes 2–8 — Prix par jour**
+	- Pour chaque ligne (hébergement, semaine), les cellules des colonnes 2 à 8 affichent les **prix de cet hébergement pour chaque jour de la semaine** :
+		- Une cellule par jour, **au plus un prix** par cellule (pas d’empilement dans une même cellule).
+		- Fond **vert** si l’hébergement est **disponible** ce jour-là.
+		- Fond **rouge** si l’hébergement est **indisponible** ce jour-là (stock = 0 / non disponible / réservé).
+		- Le prix affiché est le même que celui de la vue éclatée (tarif 2 personnes par défaut), au format entier en euros, centré dans la cellule.
+	- Les hauteurs de lignes sont **constantes**, garantissant un **alignement vertical parfait** entre la colonne des noms et les colonnes des jours pour un même hébergement.
+
 
 ##### Badge journalier — Spécifications UI
 
@@ -248,6 +277,20 @@ Vue d’ensemble (frontend uniquement) :
 - **Accessibilité/ergonomie**
 	- Le badge fournit un **title/tooltip** contenant la date et l’état (Disponible/Indisponible).
 	- L’interface évite les sélections de texte accidentelles lors des interactions utilisateur.
+
+##### Sélection des badges — Exigences d’interaction
+
+1. **Sélection par glisser-déposer (drag souris)**
+	- L’utilisateur peut effectuer un **drag** pour sélectionner plusieurs badges.
+	- Le **drag peut démarrer en dehors d’un badge**; la sélection prend en compte tous les badges intersectés par la zone de drag.
+2. **Clic gauche (ajout)**
+	- Un **clic gauche** sur un badge **non sélectionné** ajoute ce badge à la **sélection en cours** (si applicable).
+3. **Clic gauche (retrait)**
+	- Un **clic gauche** sur un badge **déjà sélectionné** retire ce badge de la **sélection en cours**.
+4. **Contrainte d’hébergement unique**
+	- Il **n’est pas possible** de sélectionner **simultanément** des badges appartenant à **plusieurs hébergements** en vue **éclatée**
+	- En vue **éclatée** si une sélection est active sur l’hébergement A et que l’utilisateur tente d’ajouter un badge de l’hébergement B, l’application doit **annuler la sélection en cours** et **démarrer une nouvelle sélection** sur l’hébergement B (à partir du badge ciblé ou de la zone de drag).
+5. Un appui sur la touche **Echap** annule toute sélection
 
 2. **Affichage et regroupement des calendriers**
 	- Les calendriers doivent être **groupables** en un seul affichage :
