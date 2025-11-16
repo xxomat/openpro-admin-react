@@ -87,6 +87,7 @@ export function ProviderCalendars(): JSX.Element {
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
   const [showRateTypes, setShowRateTypes] = React.useState<boolean>(true);
 
+
   const client = React.useMemo(
     () => createOpenProClient('admin', { baseUrl, apiKey }),
     []
@@ -400,7 +401,14 @@ export function ProviderCalendars(): JSX.Element {
                     {calendars.map((cal, i) => (
                       <div key={i} style={{ width: 640 }}>
                         <div style={{ marginBottom: 6, color: '#6b7280', fontSize: 13, textAlign: 'center' }}>{cal.label}</div>
-                        <CalendarGrid days={cal.days} stockMap={stockMap} priceMap={priceMap} promoMap={promoMap} rateTypesMap={rateTypesMap} showRateTypes={showRateTypes} />
+                        <CalendarGrid
+                          days={cal.days}
+                          stockMap={stockMap}
+                          priceMap={priceMap}
+                          promoMap={promoMap}
+                          rateTypesMap={rateTypesMap}
+                          showRateTypes={showRateTypes}
+                        />
                       </div>
                     ))}
                   </div>
@@ -502,8 +510,14 @@ function CalendarGrid({
                 fontSize: 12,
                 color: '#111827',
                 position: 'relative',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                userSelect: 'none', // prevent text selection while dragging
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none',
+                cursor: 'pointer'
               }}
+             
             >
               <div
                 style={{
