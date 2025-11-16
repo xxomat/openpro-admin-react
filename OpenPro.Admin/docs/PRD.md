@@ -219,6 +219,36 @@ Vue d’ensemble (frontend uniquement) :
 	- Lister la collection d’hébergements liés à un `idFournisseur` (identifiant fourni en paramètre, valeur à préciser ultérieurement).
 	- Affichage sous forme de **calendriers** (un calendrier par hébergement).
 
+##### Badge journalier — Spécifications UI
+
+- **Dimensions**
+	- **Largeur**: fixe, 88 px (identique pour tous les hébergements et tous les mois).
+	- **Hauteur**: adaptative au contenu avec un **minimum** défini (compact sans types: ~56 px; avec types: ~88 px). Aucun chevauchement visuel (overflow interdit).
+- **Contenu et positionnement**
+	- **Date**: affichée en haut-gauche du badge, en gris, typographie discrète.
+	- **Disponibilité (fond et bordure du badge)**:
+		- Fond vert translucide si disponible; fond rouge translucide si indisponible (stock = 0, non disponible ou déjà réservé).
+	- **Prix (par jour)**:
+		- Affiché au centre du badge dans un encart à largeur pleine.
+		- **Bordure du prix**: couleur selon l’état du jour:
+			- Vert si disponible sans promotion.
+			- Jaune si disponible avec promotion active.
+			- Rouge si indisponible.
+		- Format: entier en euros (arrondi, suffixe “€”).
+	- **Types de tarifs (optionnel)**:
+		- Libellés des types applicables au jour, **empilés verticalement** sous le prix (une ligne par type), largeur pleine.
+		- **Bordure des libellés**: même épaisseur que celle du prix pour cohérence visuelle.
+		- Le libellé affiché est le `libelle.texte` en langue `fr` lorsque disponible (sinon fallback raisonnable).
+- **Filtres d’affichage et adaptativité**
+	- Une option d’interface permet **d’afficher/masquer** les libellés de types de tarifs.
+	- Lorsque les libellés sont masqués, la **hauteur** du badge se **réduit automatiquement** pour améliorer la lisibilité (tout en respectant le minimum compact).
+- **Uniformité inter-hébergements**
+	- Les **largeurs** des badges sont **identiques** sur tous les hébergements et mois.
+	- Les **hauteurs** s’adaptent uniquement au contenu visible (prix, types, etc.) pour chaque jour, sans chevauchement et en conservant l’alignement de la grille.
+- **Accessibilité/ergonomie**
+	- Le badge fournit un **title/tooltip** contenant la date et l’état (Disponible/Indisponible).
+	- L’interface évite les sélections de texte accidentelles lors des interactions utilisateur.
+
 2. **Affichage et regroupement des calendriers**
 	- Les calendriers doivent être **groupables** en un seul affichage :
 		- **Vue éclatée** : un calendrier par hébergement.
