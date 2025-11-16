@@ -85,6 +85,7 @@ export function ProviderCalendars(): JSX.Element {
     return formatDate(today);
   });
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
+  const [showRateTypes, setShowRateTypes] = React.useState<boolean>(true);
 
   const client = React.useMemo(
     () => createOpenProClient('admin', { baseUrl, apiKey }),
@@ -311,28 +312,40 @@ export function ProviderCalendars(): JSX.Element {
 
   return (
     <div style={{ padding: '16px', fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>Date de début</span>
-          <input
-            type="date"
-            value={startInput}
-            onChange={e => setStartInput(e.currentTarget.value)}
-            style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-          />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>Durée</span>
-          <select
-            value={monthsCount}
-            onChange={e => setMonthsCount(Number(e.currentTarget.value))}
-            style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-          >
-            <option value={1}>1 mois</option>
-            <option value={2}>2 mois</option>
-            <option value={3}>3 mois</option>
-          </select>
-        </label>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 12, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Date de début</span>
+            <input
+              type="date"
+              value={startInput}
+              onChange={e => setStartInput(e.currentTarget.value)}
+              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
+            />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Durée</span>
+            <select
+              value={monthsCount}
+              onChange={e => setMonthsCount(Number(e.currentTarget.value))}
+              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
+            >
+              <option value={1}>1 mois</option>
+              <option value={2}>2 mois</option>
+              <option value={3}>3 mois</option>
+            </select>
+          </label>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={showRateTypes}
+              onChange={e => setShowRateTypes(e.currentTarget.checked)}
+            />
+            <span>Afficher les types de tarifs</span>
+          </label>
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
         {suppliers.map((s, idx) => {
@@ -387,7 +400,7 @@ export function ProviderCalendars(): JSX.Element {
                     {calendars.map((cal, i) => (
                       <div key={i} style={{ width: 640 }}>
                         <div style={{ marginBottom: 6, color: '#6b7280', fontSize: 13, textAlign: 'center' }}>{cal.label}</div>
-                        <CalendarGrid days={cal.days} stockMap={stockMap} priceMap={priceMap} promoMap={promoMap} rateTypesMap={rateTypesMap} />
+                        <CalendarGrid days={cal.days} stockMap={stockMap} priceMap={priceMap} promoMap={promoMap} rateTypesMap={rateTypesMap} showRateTypes={showRateTypes} />
                       </div>
                     ))}
                   </div>
@@ -406,13 +419,15 @@ function CalendarGrid({
   stockMap,
   priceMap,
   promoMap,
-  rateTypesMap
+  rateTypesMap,
+  showRateTypes
 }: {
   days: Date[];
   stockMap: Record<string, number>;
   priceMap?: Record<string, number>;
   promoMap?: Record<string, boolean>;
   rateTypesMap?: Record<string, string[]>;
+  showRateTypes?: boolean;
 }) {
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -450,7 +465,8 @@ function CalendarGrid({
       >
         {cells.map((cell, idx) => {
           if (!cell) {
-            return <div key={idx} style={{ height: 88, width: 88 }} />;
+            // empty day slot: compact baseline height
+            return <div key={idx} style={{ minHeight: 56, width: 88 }} />;
           }
           const dateStr = formatDate(cell);
           const dispo = stockMap[dateStr];
@@ -465,12 +481,14 @@ function CalendarGrid({
             ? 'rgba(234,179,8,0.9)' // amber/yellow
             : 'rgba(34,197,94,0.9)'; // green
           const dayRateTypes = rateTypesMap ? rateTypesMap[dateStr] : undefined;
+          const hasVisibleRateTypes = Boolean(showRateTypes && dayRateTypes && dayRateTypes.length > 0);
+          const minCellHeight = hasVisibleRateTypes ? 88 : 56;
           return (
             <div
               key={idx}
               title={`${dateStr} — ${isUnavailable ? 'Indisponible' : 'Disponible'}`}
               style={{
-                height: 88,
+                minHeight: minCellHeight,
                 width: 88,
                 borderRadius: 6,
                 background: bg,
@@ -484,8 +502,7 @@ function CalendarGrid({
                 fontSize: 12,
                 color: '#111827',
                 position: 'relative',
-                boxSizing: 'border-box',
-                overflow: 'hidden'
+                boxSizing: 'border-box'
               }}
             >
               <div
@@ -517,7 +534,7 @@ function CalendarGrid({
               >
                 {price != null ? `${Math.round(price)}€` : ''}
               </div>
-              {dayRateTypes && dayRateTypes.length > 0 ? (
+              {showRateTypes && dayRateTypes && dayRateTypes.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4, overflow: 'hidden' }}>
                   {dayRateTypes.map((rt, k) => (
                     <div
