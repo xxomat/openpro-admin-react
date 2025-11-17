@@ -112,10 +112,11 @@ export function ProviderCalendars(): JSX.Element {
   });
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
   const [selectedAccommodations, setSelectedAccommodations] = React.useState<Set<number>>(new Set());
-  const [selectedDates, setSelectedDates] = React.useState<Set<string>>(new Set());
-  // Suivi des modifications locales (format: "idHebergement-dateStr")
-  const [modifiedRates, setModifiedRates] = React.useState<Set<string>>(new Set());
-  const [modifiedDureeMin, setModifiedDureeMin] = React.useState<Set<string>>(new Set());
+  // Sélection de dates indexée par fournisseur pour que chaque onglet ait sa propre sélection
+  const [selectedDatesBySupplier, setSelectedDatesBySupplier] = React.useState<Record<number, Set<string>>>({});
+  // Suivi des modifications locales indexé par fournisseur (format: "idHebergement-dateStr")
+  const [modifiedRatesBySupplier, setModifiedRatesBySupplier] = React.useState<Record<number, Set<string>>>({});
+  const [modifiedDureeMinBySupplier, setModifiedDureeMinBySupplier] = React.useState<Record<number, Set<string>>>({});
 
 
   const client = React.useMemo(
@@ -123,8 +124,42 @@ export function ProviderCalendars(): JSX.Element {
     []
   );
 
+  const activeSupplier = suppliers[activeIdx];
+  const startDate = React.useMemo(() => {
+    const d = new Date(startInput);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }, [startInput]);
+
+  // Obtenir la sélection de dates pour le fournisseur actif
+  const selectedDates = React.useMemo(() => {
+    if (!activeSupplier) return new Set<string>();
+    return selectedDatesBySupplier[activeSupplier.idFournisseur] || new Set<string>();
+  }, [activeSupplier, selectedDatesBySupplier]);
+
+  // Fonction pour mettre à jour la sélection de dates du fournisseur actif
+  const setSelectedDates = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    if (!activeSupplier) return;
+    setSelectedDatesBySupplier(prev => {
+      const current = prev[activeSupplier.idFournisseur] || new Set<string>();
+      const newSet = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [activeSupplier.idFournisseur]: newSet };
+    });
+  }, [activeSupplier]);
+
+  // Obtenir les modifications pour le fournisseur actif
+  const modifiedRates = React.useMemo(() => {
+    if (!activeSupplier) return new Set<string>();
+    return modifiedRatesBySupplier[activeSupplier.idFournisseur] || new Set<string>();
+  }, [activeSupplier, modifiedRatesBySupplier]);
+
+  const modifiedDureeMin = React.useMemo(() => {
+    if (!activeSupplier) return new Set<string>();
+    return modifiedDureeMinBySupplier[activeSupplier.idFournisseur] || new Set<string>();
+  }, [activeSupplier, modifiedDureeMinBySupplier]);
+
   // Fonction pour mettre à jour les prix localement
   const handleRateUpdate = React.useCallback((newPrice: number) => {
+    if (!activeSupplier) return;
     const modifications = new Set<string>();
     setRatesByAccommodation(prev => {
       const updated = { ...prev };
@@ -140,18 +175,20 @@ export function ProviderCalendars(): JSX.Element {
       }
       return updated;
     });
-    // Marquer comme modifié après la mise à jour des prix
-    setModifiedRates(prevMod => {
-      const newMod = new Set(prevMod);
+    // Marquer comme modifié après la mise à jour des prix (pour le fournisseur actif)
+    setModifiedRatesBySupplier(prev => {
+      const current = prev[activeSupplier.idFournisseur] || new Set<string>();
+      const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
       }
-      return newMod;
+      return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedDates, selectedAccommodations]);
+  }, [selectedDates, selectedAccommodations, activeSupplier]);
 
   // Fonction pour mettre à jour la durée minimale localement
   const handleDureeMinUpdate = React.useCallback((newDureeMin: number | null) => {
+    if (!activeSupplier) return;
     const modifications = new Set<string>();
     setDureeMinByAccommodation(prev => {
       const updated = { ...prev };
@@ -167,18 +204,20 @@ export function ProviderCalendars(): JSX.Element {
       }
       return updated;
     });
-    // Marquer comme modifié après la mise à jour de la durée minimale
-    setModifiedDureeMin(prevMod => {
-      const newMod = new Set(prevMod);
+    // Marquer comme modifié après la mise à jour de la durée minimale (pour le fournisseur actif)
+    setModifiedDureeMinBySupplier(prev => {
+      const current = prev[activeSupplier.idFournisseur] || new Set<string>();
+      const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
       }
-      return newMod;
+      return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedDates, selectedAccommodations]);
+  }, [selectedDates, selectedAccommodations, activeSupplier]);
 
   // Fonction pour sauvegarder les modifications (pour l'instant juste log)
   const handleSave = React.useCallback(async () => {
+    if (!activeSupplier) return;
     if (modifiedRates.size === 0 && modifiedDureeMin.size === 0) return;
     
     // TODO: Implémenter l'appel API pour sauvegarder les tarifs et durées minimales
@@ -186,16 +225,10 @@ export function ProviderCalendars(): JSX.Element {
     console.log('Modifications de prix à sauvegarder:', Array.from(modifiedRates));
     console.log('Modifications de durée minimale à sauvegarder:', Array.from(modifiedDureeMin));
     
-    // Après sauvegarde réussie, vider les modifications
-    // setModifiedRates(new Set());
-    // setModifiedDureeMin(new Set());
-  }, [modifiedRates, modifiedDureeMin]);
-
-  const activeSupplier = suppliers[activeIdx];
-  const startDate = React.useMemo(() => {
-    const d = new Date(startInput);
-    return isNaN(d.getTime()) ? new Date() : d;
-  }, [startInput]);
+    // Après sauvegarde réussie, vider les modifications du fournisseur actif
+    // setModifiedRatesBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }));
+    // setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }));
+  }, [modifiedRates, modifiedDureeMin, activeSupplier]);
 
   // Load accommodations on supplier change
   React.useEffect(() => {

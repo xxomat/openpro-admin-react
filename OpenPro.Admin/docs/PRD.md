@@ -294,6 +294,7 @@ A définir
 	- L'état de sélection est stocké dans `selectedDays: Set<number>` (Set des indices de colonnes sélectionnées) ou `selectedDates: Set<string>` (Set des dates au format `"YYYY-MM-DD"`).
 	- Une colonne peut être dans l'état **sélectionnée** ou **non sélectionnée**.
 	- Par défaut, aucune colonne n'est sélectionnée au chargement.
+	- **Isolation par fournisseur** : Chaque fournisseur (onglet) possède sa **propre sélection de dates indépendante**. La sélection effectuée dans un onglet ne doit **pas** affecter la sélection dans un autre onglet. L'état de sélection doit être indexé par `idFournisseur` : `selectedDatesBySupplier: Record<number, Set<string>>`. Lors du changement d'onglet, seule la sélection du fournisseur actif est affichée et modifiable.
 
 3. **Mise en surbrillance visuelle**
 	- Lorsqu'une colonne est sélectionnée, **toutes les cellules de cette colonne** doivent être mises en surbrillance :
@@ -427,6 +428,7 @@ A définir
 	- **Suivi des modifications** : Un état local `modifiedRates: Set<string>` peut être utilisé pour suivre les combinaisons `idHebergement-dateStr` qui ont été modifiées localement.
 	- **Affichage conditionnel** : L'astérisque jaune est affichée uniquement si `modifiedRates.has(\`${idHebergement}-${dateStr}\`)` est `true`.
 	- **Persistance de l'indication** : L'astérisque reste visible tant que la modification n'a pas été sauvegardée vers le serveur (ou tant que les données ne sont pas rechargées depuis le serveur).
+	- **Isolation par fournisseur** : Chaque fournisseur (onglet) possède ses **propres modifications non sauvegardées indépendantes**. Les astérisques jaunes affichées dans un onglet ne doivent **pas** apparaître dans un autre onglet. L'état de suivi des modifications doit être indexé par `idFournisseur` : `modifiedRatesBySupplier: Record<number, Set<string>>`. Lors du changement d'onglet, seules les modifications du fournisseur actif sont affichées et peuvent être sauvegardées.
 
 7. **Gestion des valeurs invalides**
 	- Si l'utilisateur saisit une valeur non numérique ou vide :
@@ -495,6 +497,7 @@ A définir
 	- **Suivi des modifications** : Un état local `modifiedDureeMin: Set<string>` peut être utilisé pour suivre les combinaisons `idHebergement-dateStr` qui ont été modifiées localement pour la durée minimale.
 	- **Affichage conditionnel** : L'astérisque jaune est affichée uniquement si `modifiedDureeMin.has(\`${idHebergement}-${dateStr}\`)` est `true`.
 	- **Persistance de l'indication** : L'astérisque reste visible tant que la modification n'a pas été sauvegardée vers le serveur (ou tant que les données ne sont pas rechargées depuis le serveur).
+	- **Isolation par fournisseur** : Chaque fournisseur (onglet) possède ses **propres modifications non sauvegardées indépendantes**. Les astérisques jaunes affichées dans un onglet ne doivent **pas** apparaître dans un autre onglet. L'état de suivi des modifications doit être indexé par `idFournisseur` : `modifiedDureeMinBySupplier: Record<number, Set<string>>`. Lors du changement d'onglet, seules les modifications du fournisseur actif sont affichées et peuvent être sauvegardées.
 
 7. **Gestion des valeurs invalides**
 	- Si l'utilisateur saisit une valeur non numérique :
