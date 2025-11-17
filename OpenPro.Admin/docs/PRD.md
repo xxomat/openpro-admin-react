@@ -310,14 +310,57 @@ A définir
 	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible).
 	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
 
-5. **Implémentation technique**
-	- Chaque cellule d'en-tête doit avoir un gestionnaire d'événement `onClick` qui :
-		- Identifie l'index de la colonne (`columnIndex`) ou la date (`dateStr`) correspondante.
-		- Met à jour l'état `selectedDays` ou `selectedDates`.
-		- Applique conditionnellement une classe CSS ou un style inline pour la surbrillance.
-	- Toutes les cellules d'une même colonne (en-tête + données) doivent partager la même logique de style conditionnel basée sur l'état de sélection.
+5. **Sélection par drag de la souris**
+	- **Déclenchement du drag**
+		- Le drag peut être initié depuis **n'importe quelle cellule d'en-tête** (ligne 1) ou depuis **n'importe quelle cellule de données** (lignes 2 à N+1).
+		- Le drag commence lors d'un **mousedown** (clic maintenu) sur une cellule.
+		- La colonne de départ est identifiée par la date (`dateStr`) de la cellule où le drag commence.
+	- **Suivi du drag**
+		- Pendant le drag (`mousemove`), le système identifie la colonne actuellement survolée en fonction de la position de la souris.
+		- Toutes les colonnes entre la colonne de départ et la colonne actuelle sont considérées comme faisant partie de la sélection temporaire.
+		- La sélection temporaire inclut toujours la colonne de départ et la colonne actuelle, ainsi que toutes les colonnes intermédiaires (séquence continue).
+	- **Visualisation pendant le drag**
+		- Les colonnes faisant partie de la sélection temporaire doivent être **mises en surbrillance visuelle** pendant le drag.
+		- Le style de surbrillance peut être légèrement différent de la surbrillance de sélection finale (ex: opacité réduite, couleur légèrement différente) pour indiquer qu'il s'agit d'une sélection temporaire.
+		- Exemple : `background: rgba(59, 130, 246, 0.2)` avec bordure `2px solid #3b82f6` pour la sélection temporaire.
+		- La surbrillance temporaire doit être appliquée à **toutes les cellules** des colonnes concernées (en-têtes + données).
+	- **Finalisation de la sélection**
+		- Lors du **mouseup** (relâchement du bouton de la souris), la sélection temporaire devient la sélection définitive.
+		- Toutes les colonnes de la sélection temporaire sont ajoutées à `selectedDates` (ou sélectionnées si elles ne l'étaient pas déjà).
+		- Si le drag est très court (moins de 5 pixels de déplacement), il est considéré comme un clic simple et suit le comportement du clic (toggle de la colonne de départ).
+	- **Comportement avec sélection existante**
+		- **Mode "ajout"** (par défaut) : Le drag ajoute les colonnes à la sélection existante sans désélectionner les colonnes déjà sélectionnées.
+		- **Mode "remplacement"** (avec touche Ctrl/Cmd) : Si la touche Ctrl (Windows/Linux) ou Cmd (Mac) est maintenue pendant le drag, la sélection existante est remplacée par la nouvelle sélection du drag.
+	- **Gestion des cas limites**
+		- Si le drag sort de la zone de la grille, la sélection temporaire reste figée sur la dernière colonne valide survolée.
+		- Si le drag revient dans la grille après être sorti, la sélection temporaire reprend à partir de la colonne actuellement survolée.
+		- Si le drag commence sur une colonne déjà sélectionnée et se termine sur une colonne non sélectionnée, toutes les colonnes du drag sont sélectionnées (mode ajout).
+	- **Curseur pendant le drag**
+		- Le curseur doit changer en `cursor: grabbing` pendant le drag pour indiquer l'action en cours.
+		- Le curseur initial peut être `cursor: grab` au survol des cellules pour indiquer la possibilité de drag.
+	- **Compatibilité avec la sélection par clic**
+		- La sélection par clic simple reste fonctionnelle et indépendante du drag.
+		- Un clic simple sans mouvement de souris ne doit pas déclencher de drag.
+		- Le drag et le clic peuvent être combinés : l'utilisateur peut cliquer pour sélectionner des colonnes individuelles, puis utiliser le drag pour sélectionner une plage de colonnes supplémentaires.
 
-6. **Champ d'affichage du résumé de sélection (pour tests)**
+6. **Implémentation technique**
+	- **Sélection par clic** :
+		- Chaque cellule d'en-tête doit avoir un gestionnaire d'événement `onClick` qui :
+			- Identifie l'index de la colonne (`columnIndex`) ou la date (`dateStr`) correspondante.
+			- Met à jour l'état `selectedDays` ou `selectedDates`.
+			- Applique conditionnellement une classe CSS ou un style inline pour la surbrillance.
+		- Toutes les cellules d'une même colonne (en-tête + données) doivent partager la même logique de style conditionnel basée sur l'état de sélection.
+	- **Sélection par drag** :
+		- Chaque cellule (en-tête et données) doit avoir des gestionnaires d'événements `onMouseDown`, `onMouseMove`, et `onMouseUp`.
+		- Un état local `draggingState: { startDate: string, currentDate: string, isDragging: boolean } | null` peut être utilisé pour suivre l'état du drag.
+		- Lors du `mousedown`, initialiser `draggingState` avec la date de départ et `isDragging: false`.
+		- Lors du `mousemove` après un `mousedown`, si le déplacement dépasse un seuil (ex: 5 pixels), activer `isDragging: true` et mettre à jour `currentDate`.
+		- Calculer la plage de dates entre `startDate` et `currentDate` pour déterminer les colonnes à mettre en surbrillance temporaire.
+		- Lors du `mouseup`, finaliser la sélection en ajoutant toutes les dates de la plage à `selectedDates`.
+		- Vérifier la touche Ctrl/Cmd pendant le drag pour déterminer le mode (ajout ou remplacement).
+		- Appliquer un style conditionnel basé sur `draggingState` pour la surbrillance temporaire.
+
+7. **Champ d'affichage du résumé de sélection (pour tests)**
 	- Un **champ texte en lecture seule** (`textarea`) doit être affiché sous le calendrier pour afficher un résumé formaté de la sélection.
 	- **Format du résumé** : une ligne par date sélectionnée, au format `Date, H1 - T1, H2 - T2, H3 - T3, ...` où :
 		- `Date` : date au format `"YYYY-MM-DD"` (ex: "2024-03-15").

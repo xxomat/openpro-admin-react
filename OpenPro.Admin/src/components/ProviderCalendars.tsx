@@ -583,6 +583,17 @@ function CompactGrid({
   const [editingCell, setEditingCell] = React.useState<{ accId: number; dateStr: string } | null>(null);
   const [editingValue, setEditingValue] = React.useState<string>('');
 
+  // État pour suivre le drag
+  const [draggingState, setDraggingState] = React.useState<{
+    startDate: string;
+    currentDate: string;
+    isDragging: boolean;
+    startPosition: { x: number; y: number };
+  } | null>(null);
+  
+  // Ref pour suivre si un drag vient de se terminer (pour éviter le onClick)
+  const justFinishedDragRef = React.useRef(false);
+
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
   const handleHeaderClick = React.useCallback((dateStr: string) => {
     onSelectedDatesChange(prev => {
@@ -645,6 +656,170 @@ function CompactGrid({
     setEditingValue('');
   }, []);
 
+  // Fonction pour obtenir la date à partir d'un élément DOM
+  const getDateFromElement = React.useCallback((element: HTMLElement): string | null => {
+    // Chercher un attribut data-date ou remonter dans le DOM pour trouver la colonne
+    let current: HTMLElement | null = element;
+    while (current) {
+      const dateAttr = current.getAttribute('data-date');
+      if (dateAttr) return dateAttr;
+      current = current.parentElement;
+    }
+    return null;
+  }, []);
+
+  // Fonction pour calculer la plage de dates entre deux dates
+  const getDateRange = React.useCallback((startDateStr: string, endDateStr: string): string[] => {
+    const start = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    const dates: string[] = [];
+    
+    // Trier pour s'assurer que start <= end
+    const sortedStart = start <= end ? start : end;
+    const sortedEnd = start <= end ? end : start;
+    
+    const current = new Date(sortedStart);
+    while (current <= sortedEnd) {
+      dates.push(formatDate(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
+  }, []);
+
+  // Gestionnaire pour démarrer le drag
+  const handleMouseDown = React.useCallback((e: React.MouseEvent, dateStr: string) => {
+    // Ne pas démarrer le drag si on est en train d'éditer
+    if (editingCell) return;
+    
+    // Ne pas démarrer le drag si c'est un clic droit
+    if (e.button !== 0) return;
+    
+    setDraggingState({
+      startDate: dateStr,
+      currentDate: dateStr,
+      isDragging: false,
+      startPosition: { x: e.clientX, y: e.clientY }
+    });
+  }, [editingCell]);
+
+  // Gestionnaire pour le mouvement de la souris pendant le drag
+  const handleMouseMove = React.useCallback((e: MouseEvent) => {
+    setDraggingState(prev => {
+      if (!prev) return null;
+      
+      const deltaX = Math.abs(e.clientX - prev.startPosition.x);
+      const deltaY = Math.abs(e.clientY - prev.startPosition.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // Si le déplacement est suffisant, activer le drag
+      if (!prev.isDragging && distance > 5) {
+        return { ...prev, isDragging: true };
+      }
+      
+      if (!prev.isDragging) return prev;
+      
+      // Trouver l'élément sous le curseur
+      const elementUnderCursor = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement;
+      
+      // Si le drag sort de la zone de la grille, garder la dernière colonne valide
+      if (!elementUnderCursor) return prev;
+      
+      const dateStr = getDateFromElement(elementUnderCursor);
+      
+      // Si on trouve une date valide et qu'elle est différente de la date actuelle, mettre à jour
+      if (dateStr && dateStr !== prev.currentDate) {
+        return { ...prev, currentDate: dateStr };
+      }
+      
+      // Si on ne trouve pas de date valide mais qu'on était déjà en train de drag,
+      // garder la dernière colonne valide (retourner prev sans modification)
+      return prev;
+    });
+  }, [getDateFromElement]);
+
+  // Gestionnaire pour terminer le drag
+  const handleMouseUp = React.useCallback((e: MouseEvent) => {
+    setDraggingState(prev => {
+      if (!prev) return null;
+      
+      const deltaX = Math.abs(e.clientX - prev.startPosition.x);
+      const deltaY = Math.abs(e.clientY - prev.startPosition.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // Si le drag était très court, traiter comme un clic simple
+      if (!prev.isDragging || distance < 5) {
+        // Marquer qu'un drag vient de se terminer pour éviter le onClick
+        justFinishedDragRef.current = true;
+        
+        // Toggle de la colonne de départ (comportement du clic simple)
+        onSelectedDatesChange(prevSelected => {
+          const newSet = new Set(prevSelected);
+          if (newSet.has(prev.startDate)) {
+            newSet.delete(prev.startDate);
+          } else {
+            newSet.add(prev.startDate);
+          }
+          return newSet;
+        });
+        
+        // Réinitialiser le flag après un court délai
+        setTimeout(() => {
+          justFinishedDragRef.current = false;
+        }, 100);
+        return null;
+      }
+      
+      // Calculer la plage de dates
+      const dateRange = getDateRange(prev.startDate, prev.currentDate);
+      
+      // Vérifier si Ctrl/Cmd est pressé pour le mode remplacement
+      const isReplaceMode = e.ctrlKey || e.metaKey;
+      
+      // Appliquer la sélection
+      onSelectedDatesChange(prevSelected => {
+        if (isReplaceMode) {
+          // Mode remplacement : remplacer la sélection existante
+          return new Set(dateRange);
+        } else {
+          // Mode ajout : ajouter à la sélection existante
+          const newSet = new Set(prevSelected);
+          for (const dateStr of dateRange) {
+            newSet.add(dateStr);
+          }
+          return newSet;
+        }
+      });
+      
+      // Marquer qu'un drag vient de se terminer pour éviter le onClick
+      justFinishedDragRef.current = true;
+      setTimeout(() => {
+        justFinishedDragRef.current = false;
+      }, 100);
+      
+      return null;
+    });
+  }, [getDateRange, onSelectedDatesChange]);
+
+  // Effet pour gérer les événements globaux de souris pendant le drag
+  React.useEffect(() => {
+    if (!draggingState) return;
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingState, handleMouseMove, handleMouseUp]);
+
+  // Calculer les dates dans la plage de drag pour la surbrillance temporaire
+  const draggingDates = React.useMemo(() => {
+    if (!draggingState || !draggingState.isDragging) return new Set<string>();
+    return new Set(getDateRange(draggingState.startDate, draggingState.currentDate));
+  }, [draggingState, getDateRange]);
+
   return (
     <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
       <div
@@ -676,25 +851,43 @@ function CompactGrid({
           const dayOfWeek = (day.getDay() + 6) % 7; // 0 = Monday
           const dateStr = formatDate(day);
           const isSelected = selectedDates.has(dateStr);
+          const isDragging = draggingDates.has(dateStr);
           const isWeekend = day.getDay() === 0 || day.getDay() === 6; // Dimanche = 0, Samedi = 6
           return (
             <div
               key={idx}
-              onClick={() => handleHeaderClick(dateStr)}
+              data-date={dateStr}
+              onClick={(e) => {
+                // Ne pas traiter comme un clic si on vient de finir un drag
+                if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                  e.preventDefault();
+                  return;
+                }
+                handleHeaderClick(dateStr);
+              }}
+              onMouseDown={(e) => handleMouseDown(e, dateStr)}
               style={{
                 padding: '8px 4px',
-                background: isSelected 
-                  ? 'rgba(59, 130, 246, 0.15)' 
-                  : (isWeekend ? '#f9fafb' : '#f3f4f6'),
+                background: isDragging
+                  ? 'rgba(59, 130, 246, 0.2)'
+                  : (isSelected 
+                    ? 'rgba(59, 130, 246, 0.15)' 
+                    : (isWeekend ? '#f9fafb' : '#f3f4f6')),
                 borderBottom: '2px solid #e5e7eb',
-                borderLeft: isSelected ? '3px solid #3b82f6' : 'none',
-                borderRight: isSelected ? '3px solid #3b82f6' : 'none',
-                borderTop: isSelected ? '3px solid #3b82f6' : 'none',
+                borderLeft: isDragging 
+                  ? '2px solid #3b82f6' 
+                  : (isSelected ? '3px solid #3b82f6' : 'none'),
+                borderRight: isDragging 
+                  ? '2px solid #3b82f6' 
+                  : (isSelected ? '3px solid #3b82f6' : 'none'),
+                borderTop: isDragging 
+                  ? '2px solid #3b82f6' 
+                  : (isSelected ? '3px solid #3b82f6' : 'none'),
                 textAlign: 'center',
                 fontSize: 11,
                 color: '#6b7280',
                 fontWeight: isWeekend ? 700 : 500,
-                cursor: 'pointer',
+                cursor: draggingState?.isDragging ? 'grabbing' : 'grab',
                 userSelect: 'none',
                 opacity: isWeekend ? 1 : 0.8
               }}
@@ -737,13 +930,17 @@ function CompactGrid({
                 const isAvailable = stock > 0;
                 const price = priceMap[dateStr];
                 const isSelected = selectedDates.has(dateStr);
+                const isDragging = draggingDates.has(dateStr);
                 const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6; // Dimanche = 0, Samedi = 6
                 
-                // Couleur de fond : surbrillance si sélectionné, sinon couleur de disponibilité
+                // Couleur de fond : surbrillance si sélectionné ou en drag, sinon couleur de disponibilité
                 let bgColor: string;
-                if (isSelected) {
+                if (isDragging) {
+                  // Surbrillance temporaire pendant le drag
+                  bgColor = 'rgba(59, 130, 246, 0.2)';
+                } else if (isSelected) {
                   // Surbrillance bleue avec opacité, en combinaison avec la couleur de disponibilité
                   const baseColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
                   bgColor = isAvailable 
@@ -759,16 +956,25 @@ function CompactGrid({
                   }
                 }
                 
-                // Bordure : surbrillance bleue si sélectionné, sinon couleur de disponibilité
-                const borderColor = isSelected 
+                // Bordure : surbrillance bleue si sélectionné ou en drag, sinon couleur de disponibilité
+                const borderColor = (isSelected || isDragging)
                   ? '#3b82f6' 
                   : (isAvailable ? 'rgba(34, 197, 94, 0.4)' : 'rgba(220, 38, 38, 0.4)');
-                const borderWidth = isSelected ? '3px' : '1px';
+                const borderWidth = isDragging ? '2px' : (isSelected ? '3px' : '1px');
 
                 return (
                   <div
                     key={`${acc.idHebergement}-${idx}`}
-                    onClick={() => handleCellClick(acc.idHebergement, dateStr)}
+                    data-date={dateStr}
+                    onClick={(e) => {
+                      // Ne pas traiter comme un clic si on vient de finir un drag
+                      if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                        e.preventDefault();
+                        return;
+                      }
+                      handleCellClick(acc.idHebergement, dateStr);
+                    }}
+                    onMouseDown={(e) => handleMouseDown(e, dateStr)}
                     style={{
                       padding: '8px 4px',
                       background: bgColor,
@@ -782,8 +988,8 @@ function CompactGrid({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: isSelected ? 'pointer' : 'default',
-                      opacity: isWeekend || isSelected ? 1 : 0.7
+                      cursor: draggingState?.isDragging ? 'grabbing' : (isSelected ? 'pointer' : 'grab'),
+                      opacity: isWeekend || isSelected || isDragging ? 1 : 0.7
                     }}
                     title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
                   >
