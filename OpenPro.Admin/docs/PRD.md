@@ -331,6 +331,70 @@ A définir
 		- Les hébergements proviennent de `selectedAccommodations: Set<number>` filtrés et triés.
 		- Les tarifs proviennent de `ratesByAccommodation: Record<idHebergement, Record<dateStr, price>>`.
 
+##### Modification du prix — Exigences fonctionnelles
+
+1. **Condition d'autorisation**
+	- La modification du prix est **autorisée uniquement lorsqu'une sélection est active**.
+	- Une sélection est considérée comme active si `selectedDates.size > 0` (au moins une colonne/jour est sélectionnée).
+	- Si aucune sélection n'est active, les cellules de prix ne sont pas éditables.
+
+2. **Déclenchement de l'édition**
+	- L'utilisateur peut **cliquer sur une cellule de prix** (cellule contenant le prix affiché au format `${Math.round(price)}€`) pour entrer en mode édition.
+	- Le clic peut être effectué **uniquement sur une cellule de prix d'une colonne sélectionnée**.
+	- Les cellules de prix des colonnes non sélectionnées ne sont pas éditables et ne réagissent pas au clic.
+
+3. **Mode édition**
+	- Lors du clic sur une cellule de prix, la cellule passe en **mode édition** :
+		- La cellule devient un **champ de saisie** (`input` de type `number` ou `text`).
+		- La valeur actuelle du prix est pré-remplie dans le champ (sans le symbole "€").
+		- Le champ est automatiquement sélectionné (focus) pour permettre la saisie immédiate.
+		- Le champ accepte uniquement des valeurs numériques (entiers ou décimaux).
+	- Le mode édition peut être quitté de plusieurs façons :
+		- **Validation** : appui sur la touche **Entrée (Enter)** ou **Tab** → applique la modification (voir point 4).
+		- **Annulation** : appui sur la touche **Échap (Escape)** → annule la modification et restaure la valeur précédente.
+
+4. **Application du prix à la sélection**
+	- Lors de la validation de l'édition (Entrée ou Tab), le prix saisi est **appliqué à l'ensemble de la sélection en cours** :
+		- Pour chaque date dans `selectedDates` (Set des dates sélectionnées).
+		- Pour chaque hébergement dans `selectedAccommodations` (Set des hébergements sélectionnés et affichés).
+		- Le prix est mis à jour dans `ratesByAccommodation[acc.idHebergement][dateStr] = newPrice`.
+	- **Note importante** : La modification est appliquée **uniquement en mémoire locale** (état React). Aucun appel API vers le stub serveur ou l'API Open Pro n'est effectué à ce stade.
+	- Après l'application, la grille est **immédiatement mise à jour** pour refléter les nouveaux prix dans toutes les cellules concernées.
+
+5. **Comportement visuel pendant l'édition**
+	- Pendant le mode édition d'une cellule, les autres cellules de prix restent visibles et affichées normalement.
+	- Les colonnes sélectionnées conservent leur surbrillance visuelle pendant l'édition.
+	- Une fois le prix appliqué, toutes les cellules concernées affichent le nouveau prix avec le format `${Math.round(newPrice)}€`.
+
+6. **Indication visuelle des modifications non sauvegardées**
+	- Comme les modifications sont appliquées uniquement en mémoire locale (sans persistance vers le serveur), chaque cellule de prix modifiée doit afficher une **astérisque jaune** (`*`) après le symbole €.
+	- **Format d'affichage** : `${Math.round(newPrice)}€*` où l'astérisque est affichée en couleur jaune (`color: #eab308` ou équivalent).
+	- **Suivi des modifications** : Un état local `modifiedRates: Set<string>` peut être utilisé pour suivre les combinaisons `idHebergement-dateStr` qui ont été modifiées localement.
+	- **Affichage conditionnel** : L'astérisque jaune est affichée uniquement si `modifiedRates.has(\`${idHebergement}-${dateStr}\`)` est `true`.
+	- **Persistance de l'indication** : L'astérisque reste visible tant que la modification n'a pas été sauvegardée vers le serveur (ou tant que les données ne sont pas rechargées depuis le serveur).
+
+7. **Gestion des valeurs invalides**
+	- Si l'utilisateur saisit une valeur non numérique ou vide :
+		- La validation (Entrée/Tab) peut être refusée avec un message d'erreur ou une restauration de la valeur précédente.
+		- Ou la valeur peut être interprétée comme `0` ou `null` selon la logique métier.
+	- Les valeurs négatives peuvent être autorisées ou refusées selon les règles métier (à définir).
+
+8. **Implémentation technique**
+	- Chaque cellule de prix doit avoir un gestionnaire d'événement `onClick` qui :
+		- Vérifie que `selectedDates.size > 0` (sélection active).
+		- Vérifie que la date (`dateStr`) de la colonne correspondante fait partie de `selectedDates`.
+		- Si les deux conditions sont remplies, passe la cellule en mode édition.
+		- Sinon, le clic est ignoré et aucune action n'est effectuée.
+	- Un état local `editingCell: { rowIndex: number, columnIndex: number } | null` peut être utilisé pour suivre la cellule en cours d'édition.
+	- La fonction d'application du prix doit itérer sur `selectedDates` et `selectedAccommodations` pour mettre à jour `ratesByAccommodation`.
+	- Après la mise à jour, déclencher un re-render de la grille pour afficher les nouveaux prix.
+	- Lors de l'application d'un prix modifié, ajouter chaque combinaison `idHebergement-dateStr` concernée dans `modifiedRates` pour permettre l'affichage de l'astérisque jaune.
+
+9. **Limitations actuelles**
+	- **Pas de persistance** : Les modifications de prix ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
+	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
+	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder"
+
 ### 6.2 Exigences non-fonctionnelles
 
 - [ ] Performances (temps de réponse, débit)

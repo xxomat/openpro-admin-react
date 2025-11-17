@@ -110,12 +110,53 @@ export function ProviderCalendars(): JSX.Element {
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
   const [selectedAccommodations, setSelectedAccommodations] = React.useState<Set<number>>(new Set());
   const [selectedDates, setSelectedDates] = React.useState<Set<string>>(new Set());
+  // Suivi des modifications locales (format: "idHebergement-dateStr")
+  const [modifiedRates, setModifiedRates] = React.useState<Set<string>>(new Set());
 
 
   const client = React.useMemo(
     () => createOpenProClient('admin', { baseUrl, apiKey }),
     []
   );
+
+  // Fonction pour mettre à jour les prix localement
+  const handleRateUpdate = React.useCallback((newPrice: number) => {
+    const modifications = new Set<string>();
+    setRatesByAccommodation(prev => {
+      const updated = { ...prev };
+      // Appliquer le prix à toutes les combinaisons date-hébergement sélectionnées
+      for (const dateStr of selectedDates) {
+        for (const accId of selectedAccommodations) {
+          if (!updated[accId]) {
+            updated[accId] = {};
+          }
+          updated[accId][dateStr] = newPrice;
+          modifications.add(`${accId}-${dateStr}`);
+        }
+      }
+      return updated;
+    });
+    // Marquer comme modifié après la mise à jour des prix
+    setModifiedRates(prevMod => {
+      const newMod = new Set(prevMod);
+      for (const mod of modifications) {
+        newMod.add(mod);
+      }
+      return newMod;
+    });
+  }, [selectedDates, selectedAccommodations]);
+
+  // Fonction pour sauvegarder les modifications (pour l'instant juste log)
+  const handleSave = React.useCallback(async () => {
+    if (modifiedRates.size === 0) return;
+    
+    // TODO: Implémenter l'appel API pour sauvegarder les tarifs
+    // Pour l'instant, on log juste les modifications
+    console.log('Modifications à sauvegarder:', Array.from(modifiedRates));
+    
+    // Après sauvegarde réussie, vider modifiedRates
+    // setModifiedRates(new Set());
+  }, [modifiedRates]);
 
   const activeSupplier = suppliers[activeIdx];
   const startDate = React.useMemo(() => {
@@ -420,7 +461,37 @@ export function ProviderCalendars(): JSX.Element {
               ratesByAccommodation={ratesByAccommodation}
               selectedDates={selectedDates}
               onSelectedDatesChange={setSelectedDates}
+              modifiedRates={modifiedRates}
+              onRateUpdate={handleRateUpdate}
             />
+          )}
+          
+          {/* Bouton Sauvegarder */}
+          {modifiedRates.size > 0 && (
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleSave}
+                style={{
+                  padding: '10px 20px',
+                  background: '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#2563eb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#3b82f6';
+                }}
+              >
+                Sauvegarder ({modifiedRates.size} modification{modifiedRates.size > 1 ? 's' : ''})
+              </button>
+            </div>
           )}
           
           {/* Champ texte pour le résumé de sélection (pour tests) */}
@@ -447,7 +518,10 @@ export function ProviderCalendars(): JSX.Element {
                 for (const dateStr of sortedDates) {
                   const accommodationParts = filteredAccommodations.map(acc => {
                     const price = ratesByAccommodation[acc.idHebergement]?.[dateStr];
-                    const priceStr = price != null ? `${Math.round(price)}€` : 'N/A';
+                    const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
+                    const priceStr = price != null 
+                      ? `${Math.round(price)}€${isModified ? '*' : ''}` 
+                      : 'N/A';
                     return `${acc.nomHebergement} - ${priceStr}`;
                   });
                   const lineParts = [dateStr, ...accommodationParts];
@@ -485,7 +559,9 @@ function CompactGrid({
   stockByAccommodation,
   ratesByAccommodation,
   selectedDates,
-  onSelectedDatesChange
+  onSelectedDatesChange,
+  modifiedRates,
+  onRateUpdate
 }: {
   startDate: Date;
   monthsCount: number;
@@ -494,12 +570,18 @@ function CompactGrid({
   ratesByAccommodation: Record<number, Record<string, number>>;
   selectedDates: Set<string>;
   onSelectedDatesChange: (dates: Set<string>) => void;
+  modifiedRates: Set<string>;
+  onRateUpdate: (newPrice: number) => void;
 }) {
   const weeks = React.useMemo(() => getWeeksInRange(startDate, monthsCount), [startDate, monthsCount]);
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
   // Flatten all days from all weeks into a single array
   const allDays = weeks.flat();
+
+  // État pour suivre la cellule en cours d'édition
+  const [editingCell, setEditingCell] = React.useState<{ accId: number; dateStr: string } | null>(null);
+  const [editingValue, setEditingValue] = React.useState<string>('');
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
   const handleHeaderClick = React.useCallback((dateStr: string) => {
@@ -514,11 +596,18 @@ function CompactGrid({
     });
   }, [onSelectedDatesChange]);
 
-  // Gestionnaire pour la touche Échap : annule toute sélection
+  // Gestionnaire pour la touche Échap : annule toute sélection ou annule l'édition
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onSelectedDatesChange(new Set());
+        if (editingCell) {
+          // Annuler l'édition en cours
+          setEditingCell(null);
+          setEditingValue('');
+        } else {
+          // Annuler toute sélection
+          onSelectedDatesChange(new Set());
+        }
       }
     };
 
@@ -526,7 +615,35 @@ function CompactGrid({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onSelectedDatesChange]);
+  }, [editingCell, onSelectedDatesChange]);
+
+  // Gestionnaire pour démarrer l'édition d'une cellule
+  const handleCellClick = React.useCallback((accId: number, dateStr: string) => {
+    // Vérifier que la sélection est active et que cette colonne est sélectionnée
+    if (selectedDates.size === 0 || !selectedDates.has(dateStr)) {
+      return;
+    }
+    const currentPrice = ratesByAccommodation[accId]?.[dateStr];
+    setEditingCell({ accId, dateStr });
+    setEditingValue(currentPrice != null ? String(Math.round(currentPrice)) : '');
+  }, [selectedDates, ratesByAccommodation]);
+
+  // Gestionnaire pour valider l'édition
+  const handleEditSubmit = React.useCallback(() => {
+    if (!editingCell) return;
+    const numValue = parseFloat(editingValue);
+    if (!isNaN(numValue) && numValue >= 0) {
+      onRateUpdate(numValue);
+    }
+    setEditingCell(null);
+    setEditingValue('');
+  }, [editingCell, editingValue, onRateUpdate]);
+
+  // Gestionnaire pour annuler l'édition
+  const handleEditCancel = React.useCallback(() => {
+    setEditingCell(null);
+    setEditingValue('');
+  }, []);
 
   return (
     <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
@@ -616,6 +733,8 @@ function CompactGrid({
                 const isAvailable = stock > 0;
                 const price = priceMap[dateStr];
                 const isSelected = selectedDates.has(dateStr);
+                const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
+                const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
                 
                 // Couleur de fond : surbrillance si sélectionné, sinon couleur de disponibilité
                 let bgColor: string;
@@ -638,6 +757,7 @@ function CompactGrid({
                 return (
                   <div
                     key={`${acc.idHebergement}-${idx}`}
+                    onClick={() => handleCellClick(acc.idHebergement, dateStr)}
                     style={{
                       padding: '8px 4px',
                       background: bgColor,
@@ -650,11 +770,49 @@ function CompactGrid({
                       minHeight: 48,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      cursor: isSelected ? 'pointer' : 'default'
                     }}
                     title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
                   >
-                    {price != null ? `${Math.round(price)}€` : ''}
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === 'Tab') {
+                            e.preventDefault();
+                            handleEditSubmit();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            handleEditCancel();
+                          }
+                        }}
+                        onBlur={handleEditSubmit}
+                        autoFocus
+                        style={{
+                          width: '100%',
+                          textAlign: 'center',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          border: '2px solid #3b82f6',
+                          borderRadius: 4,
+                          padding: '4px',
+                          background: '#fff'
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                    ) : (
+                      <span>
+                        {price != null ? `${Math.round(price)}€` : ''}
+                        {isModified && price != null && (
+                          <span style={{ color: '#eab308', marginLeft: 2 }}>*</span>
+                        )}
+                      </span>
+                    )}
                   </div>
                 );
               })}
