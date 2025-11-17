@@ -267,6 +267,17 @@ Vue d’ensemble (frontend uniquement) :
 	- **Semaines suivantes** : commencent le lundi suivant la fin de la semaine précédente et contiennent 7 jours consécutifs.
 	- Toutes les semaines sont ensuite aplaties en un seul tableau : `allDays = weeks.flat()` pour créer les colonnes de la grille.
 
+5. **Style différencié des jours de semaine et weekends**
+	- **Détection des weekends** : Les jours de weekend sont identifiés par `day.getDay() === 0` (dimanche) ou `day.getDay() === 6` (samedi).
+	- **Jours de semaine (lundi à vendredi)** :
+		- **En-têtes** : fond grisé (`#f3f4f6` au lieu de `#f9fafb`), opacité réduite (`opacity: 0.8`).
+		- **Cellules de données** : fond avec opacité réduite (`rgba(34, 197, 94, 0.1)` pour disponible, `rgba(220, 38, 38, 0.1)` pour indisponible au lieu de `0.2`), opacité globale réduite (`opacity: 0.7`) quand non sélectionnées.
+		- **Texte** : style normal (`fontWeight: 500`).
+	- **Weekends (samedi et dimanche)** :
+		- **En-têtes** : fond normal (`#f9fafb`), opacité complète (`opacity: 1`), texte en **gras** (`fontWeight: 700`).
+		- **Cellules de données** : fond normal (`rgba(34, 197, 94, 0.2)` pour disponible, `rgba(220, 38, 38, 0.2)` pour indisponible), opacité complète (`opacity: 1`), texte en **gras** (`fontWeight: 700`).
+	- **Objectif** : Mettre visuellement en évidence les weekends par rapport aux jours de semaine pour faciliter la lecture du calendrier.
+
 
 ##### Badge journalier — Spécifications UI
 
