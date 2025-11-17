@@ -1,5 +1,6 @@
 import React from 'react';
 import { createOpenProClient } from '../../../openpro-api-react/src/client';
+import { OpenProCalendarView } from './OpenProCalendarView';
 
 type Supplier = { idFournisseur: number; nom: string };
 type Accommodation = { idHebergement: number; nomHebergement: string };
@@ -87,7 +88,6 @@ export function ProviderCalendars(): JSX.Element {
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
   const [showRateTypes, setShowRateTypes] = React.useState<boolean>(true);
 
-
   const client = React.useMemo(
     () => createOpenProClient('admin', { baseUrl, apiKey }),
     []
@@ -113,6 +113,41 @@ export function ProviderCalendars(): JSX.Element {
     }
     return items;
   }, [startDate, monthsCount]);
+
+  // Préparer les données des hébergements pour le calendrier avec ressources
+  const accommodationsData = React.useMemo(() => {
+    if (!activeSupplier) return [];
+    const accList = accommodations[activeSupplier.idFournisseur] || [];
+    return accList.map(acc => {
+      const stockMap = stockByAccommodation[acc.idHebergement] || {};
+      const priceMap = ratesByAccommodation[acc.idHebergement] || {};
+      const promoMap = promoByAccommodation[acc.idHebergement] || {};
+      const rateTypesMap = rateTypesByAccommodation[acc.idHebergement] || {};
+
+      // Transformer les données en format AccommodationData
+      const days: Record<string, { date: string; stock: number; price?: number; hasPromo?: boolean; rateTypes?: string[]; isReserved?: boolean }> = {};
+      const start = startOfMonth(startDate);
+      const end = endOfMonth(addMonths(startDate, monthsCount - 1));
+      const allDays = rangeDays(start, end);
+      
+      allDays.forEach(day => {
+        const dateStr = formatDate(day);
+        days[dateStr] = {
+          date: dateStr,
+          stock: stockMap[dateStr] ?? 0,
+          price: priceMap[dateStr],
+          hasPromo: promoMap[dateStr] ?? false,
+          rateTypes: rateTypesMap[dateStr] ?? [],
+        };
+      });
+      
+      return {
+        idHebergement: acc.idHebergement,
+        nomHebergement: acc.nomHebergement,
+        days,
+      };
+    });
+  }, [activeSupplier, accommodations, stockByAccommodation, ratesByAccommodation, promoByAccommodation, rateTypesByAccommodation, startDate, monthsCount]);
 
   // Load accommodations on supplier change
   React.useEffect(() => {
@@ -378,43 +413,16 @@ export function ProviderCalendars(): JSX.Element {
           <h3 style={{ marginBottom: 8 }}>
             Hébergements — {activeSupplier.nom}
           </h3>
-          <div style={{ display: 'grid', gap: 16 }}>
-            {(accommodations[activeSupplier.idFournisseur] || []).map(acc => {
-              const stockMap = stockByAccommodation[acc.idHebergement] || {};
-              const priceMap = ratesByAccommodation[acc.idHebergement] || {};
-              const promoMap = promoByAccommodation[acc.idHebergement] || {};
-              const rateTypesMap = rateTypesByAccommodation[acc.idHebergement] || {};
-              return (
-                <div
-                  key={acc.idHebergement}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    padding: 12,
-                    background: '#fff'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <strong>{acc.nomHebergement}</strong>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
-                    {calendars.map((cal, i) => (
-                      <div key={i} style={{ width: 640 }}>
-                        <div style={{ marginBottom: 6, color: '#6b7280', fontSize: 13, textAlign: 'center' }}>{cal.label}</div>
-                        <CalendarGrid
-                          days={cal.days}
-                          stockMap={stockMap}
-                          priceMap={priceMap}
-                          promoMap={promoMap}
-                          rateTypesMap={rateTypesMap}
-                          showRateTypes={showRateTypes}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          {/* Vue avec ressources : tous les hébergements dans un seul calendrier */}
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, background: '#fff' }}>
+            <div style={{ height: '800px' }}>
+              <OpenProCalendarView
+                accommodations={accommodationsData}
+                startDate={startDate}
+                monthsCount={monthsCount}
+                showRateTypes={showRateTypes}
+              />
+            </div>
           </div>
         </div>
       )}
