@@ -217,111 +217,39 @@ Vue d’ensemble (frontend uniquement) :
 
 1. **Liste des hébergements en calendriers**
 	- Lister la collection d’hébergements liés à un `idFournisseur` (identifiant fourni en paramètre, valeur à préciser ultérieurement).
-	- Affichage sous forme de **calendriers**
-		- Un calendrier par hébergement: vue **éclatée**
-		- Tous les hébergements regroupés dans un même calendrier: vue **compacte**
-		- la sélection vue **éclatée**/**compacte** se fait par une liste déroulante située au dessus du contrôle "Date de début"
+	- La collection d’hébergements affichée doit être filtrable par ensemble de checkbox (ou autre)
+	- La collection d'hébergements filtrée doit apparaître dans un seul calendrier
+	- le calendrier agit comme un timebase horizontale, dont la date de début __TimeBaseStartDate__ et la durée __TimebaseDuration__ (1 mois, 2 mois, 3 mois) doit être paramétrable
 
 ##### Vue compacte — Grille hebdomadaire
 
 - **Structure générale**
-	- La vue compacte affiche, pour un mois donné, une **grille hebdomadaire multi-lignes**.
+	- La vue affiche, pour la durée de la timebase, une **timebase multi-lignes** d'une ligne par hébergement dans la liste filtrée.
 	- **Colonnes** (8 au total) :
 		- Colonne 1 : **nom de l’hébergement** (badge borduré, une ligne par hébergement).
-		- Colonnes 2 à 8 : les **7 jours de la semaine** (L, M, M, J, V, S, D).
+		- Colonnes 2 à 8 : les **7 jours de la première semaine à partir de la date de début** (L, M, M, J, V, S, D).
+		- Colonnes 9 à 15 : les **7 jours de la deuxième semaine à partir de la date de début** (L, M, M, J, V, S, D).
 	- **Lignes** :
-		- **Une ligne = (une semaine, un hébergement)**.
-		- Pour un fournisseur ayant `N` hébergements et `S` semaines dans le mois, la grille contient `S × N` lignes.
+		- **Une ligne = (un hébergement)**.
+		- Pour un fournisseur ayant `N` hébergements et pour un nombre `D` de jours dans la durée d'affichage, la grille contient `1 + (S × D)` lignes.
 
 - **Colonne 1 — Badge des hébergements**
 	- Pour chaque ligne, la **première cellule** affiche le **nom de l’hébergement concerné** par la ligne.
-	- Le nom est présenté dans un **badge borduré**, avec :
-		- Alignement vertical centré.
-		- Gestion du dépassement via **ellipsis** et **tooltip** (nom complet en survol).
+	- Le nom est présenté comme du texte simple
 
 - **Colonnes 2–8 — Prix par jour**
-	- Pour chaque ligne (hébergement, semaine), les cellules des colonnes 2 à 8 affichent les **prix de cet hébergement pour chaque jour de la semaine** :
-		- Une cellule par jour, **au plus un prix** par cellule (pas d’empilement dans une même cellule).
-		- Fond **vert** si l’hébergement est **disponible** ce jour-là.
-		- Fond **rouge** si l’hébergement est **indisponible** ce jour-là (stock = 0 / non disponible / réservé).
-		- Le prix affiché est le même que celui de la vue éclatée (tarif 2 personnes par défaut), au format entier en euros, centré dans la cellule.
-	- Les hauteurs de lignes sont **constantes**, garantissant un **alignement vertical parfait** entre la colonne des noms et les colonnes des jours pour un même hébergement.
+	- Pour chaque ligne (hébergement), les cellules des colonnes 2 à 8 affichent les **prix de cet hébergement pour chaque jour de la semaine** (tarif 2 personnes par défaut), au format entier en euros, centré dans la cellule.:
+		- Cellule sur fond **vert** si l’hébergement est **disponible** ce jour-là.
+		- Cellule sur fond **rouge** si l’hébergement est **indisponible** ce jour-là (stock = 0 / non disponible / réservé).
 
 
 ##### Badge journalier — Spécifications UI
 
-- **Dimensions**
-	- **Largeur**: fixe, 88 px (identique pour tous les hébergements et tous les mois).
-	- **Hauteur**: adaptative au contenu avec un **minimum** défini (compact sans types: ~56 px; avec types: ~88 px). Aucun chevauchement visuel (overflow interdit).
-- **Contenu et positionnement**
-	- **Date**: affichée en haut-gauche du badge, en gris, typographie discrète.
-	- **Disponibilité (fond et bordure du badge)**:
-		- Fond vert translucide si disponible; fond rouge translucide si indisponible (stock = 0, non disponible ou déjà réservé).
-	- **Prix (par jour)**:
-		- Affiché au centre du badge dans un encart à largeur pleine.
-		- **Bordure du prix**: couleur selon l’état du jour:
-			- Vert si disponible sans promotion.
-			- Jaune si disponible avec promotion active.
-			- Rouge si indisponible.
-		- Format: entier en euros (arrondi, suffixe “€”).
-	- **Types de tarifs (optionnel)**:
-		- Libellés des types applicables au jour, **empilés verticalement** sous le prix (une ligne par type), largeur pleine.
-		- **Bordure des libellés**: même épaisseur que celle du prix pour cohérence visuelle.
-		- Le libellé affiché est le `libelle.texte` en langue `fr` lorsque disponible (sinon fallback raisonnable).
-- **Filtres d’affichage et adaptativité**
-	- Une option d’interface permet **d’afficher/masquer** les libellés de types de tarifs.
-	- Lorsque les libellés sont masqués, la **hauteur** du badge se **réduit automatiquement** pour améliorer la lisibilité (tout en respectant le minimum compact).
-- **Uniformité inter-hébergements**
-	- Les **largeurs** des badges sont **identiques** sur tous les hébergements et mois.
-	- Les **hauteurs** s’adaptent uniquement au contenu visible (prix, types, etc.) pour chaque jour, sans chevauchement et en conservant l’alignement de la grille.
-- **Accessibilité/ergonomie**
-	- Le badge fournit un **title/tooltip** contenant la date et l’état (Disponible/Indisponible).
-	- L’interface évite les sélections de texte accidentelles lors des interactions utilisateur.
+A définir
 
 ##### Sélection des badges — Exigences d’interaction
 
-1. **Sélection par glisser-déposer (drag souris)**
-	- L’utilisateur peut effectuer un **drag** pour sélectionner plusieurs badges.
-	- Le **drag peut démarrer en dehors d’un badge**; la sélection prend en compte tous les badges intersectés par la zone de drag.
-2. **Clic gauche (ajout)**
-	- Un **clic gauche** sur un badge **non sélectionné** ajoute ce badge à la **sélection en cours** (si applicable).
-3. **Clic gauche (retrait)**
-	- Un **clic gauche** sur un badge **déjà sélectionné** retire ce badge de la **sélection en cours**.
-4. **Contrainte d’hébergement unique**
-	- Il **n’est pas possible** de sélectionner **simultanément** des badges appartenant à **plusieurs hébergements** en vue **éclatée**
-	- En vue **éclatée** si une sélection est active sur l’hébergement A et que l’utilisateur tente d’ajouter un badge de l’hébergement B, l’application doit **annuler la sélection en cours** et **démarrer une nouvelle sélection** sur l’hébergement B (à partir du badge ciblé ou de la zone de drag).
-5. Un appui sur la touche **Echap** annule toute sélection
-
-2. **Affichage et regroupement des calendriers**
-	- Les calendriers doivent être **groupables** en un seul affichage :
-		- **Vue éclatée** : un calendrier par hébergement.
-		- **Vue compacte** : regroupement multi-hébergements dans un seul calendrier.
-	- Chaque calendrier (hébergement) doit être **affichable/masquable** via une **checkbox** indépendante.
-
-3. **Filtres d’informations par jour**
-	- **Tarifs 2 personnes** : affichés sous forme d’un **nombre entier** (sans décimales).
-	- **Restrictions** : afficher la **durée minimale de séjour**.
-	- **Promotions** : afficher une **astérisque** lorsqu’une promotion est applicable.
-	- **Stock disponible** : afficher la valeur (0 ou 1) ; si **stock = 0** :
-		- Afficher **"R"** si **une réservation est prévue** ce jour-là.
-		- Sinon afficher **"-"**.
-	- **Couleur d’affichage** :
-		- **Rouge** (avec légère transparence pour lisibilité) si **stock = 0**.
-		- **Vert** (avec légère transparence pour lisibilité) si **stock = 1**.
-
-4. **Édition sur le calendrier**
-	- Pour chaque jour où l’hébergement est **disponible** (**stock = 1** ET **sans réservation**) :
-		- Possibilité de **passer le stock à 0**.
-	- Pour chaque jour où l’hébergement est **indisponible** (**stock = 0** ET **sans réservation**) :
-		- Possibilité de **passer le stock à 1**.  
-		  > Le **stock ne doit jamais dépasser 1**.
-	- **Tarif** : modifiable **par jour**, saisi/affiché comme **entier** (pas de décimales).
-	- **Sélection multiple** : possibilité de **sélectionner plusieurs jours** et d’appliquer une modification **globale** (stock, tarif) à l’ensemble des jours sélectionnés.
-
-5. **Détails au survol (mouse-over) d’un jour**
-	- **Tarifs** : afficher **1p, 2p (3p, 4p si applicable)**.
-	- **Promotions** : afficher le **nom** et la **description** des promotions applicables.
-	- **Réservation** : afficher les **détails de la réservation** si l’hébergement est réservé ce jour-là.
+A définir
 
 ### 6.2 Exigences non-fonctionnelles
 
