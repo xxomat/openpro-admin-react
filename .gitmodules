@@ -1,3 +1,6 @@
 [submodule "openpro-api-react"]
 	path = openpro-api-react
 	url = https://github.com/xxomat/openpro-api-react.git
+[submodule "OpenPro.Admin/ilamy-calendar"]
+	path = OpenPro.Admin/ilamy-calendar
+	url = https://github.com/kcsujeet/ilamy-calendar.git
