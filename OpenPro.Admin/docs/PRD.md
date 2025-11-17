@@ -312,9 +312,9 @@ A définir
 
 5. **Sélection par drag de la souris**
 	- **Déclenchement du drag**
-		- Le drag peut être initié depuis **n'importe quelle cellule d'en-tête** (ligne 1) ou depuis **n'importe quelle cellule de données** (lignes 2 à N+1).
-		- Le drag commence lors d'un **mousedown** (clic maintenu) sur une cellule.
-		- La colonne de départ est identifiée par la date (`dateStr`) de la cellule où le drag commence.
+		- Le drag peut être initié **uniquement depuis les cellules d'en-tête** (ligne 1).
+		- Le drag commence lors d'un **mousedown** (clic maintenu) sur une cellule d'en-tête.
+		- La colonne de départ est identifiée par la date (`dateStr`) de la cellule d'en-tête où le drag commence.
 	- **Suivi du drag**
 		- Pendant le drag (`mousemove`), le système identifie la colonne actuellement survolée en fonction de la position de la souris.
 		- Toutes les colonnes entre la colonne de départ et la colonne actuelle sont considérées comme faisant partie de la sélection temporaire.
@@ -337,7 +337,8 @@ A définir
 		- Si le drag commence sur une colonne déjà sélectionnée et se termine sur une colonne non sélectionnée, toutes les colonnes du drag sont sélectionnées (mode ajout).
 	- **Curseur pendant le drag**
 		- Le curseur doit changer en `cursor: grabbing` pendant le drag pour indiquer l'action en cours.
-		- Le curseur initial peut être `cursor: grab` au survol des cellules pour indiquer la possibilité de drag.
+		- Le curseur initial peut être `cursor: grab` au survol des cellules d'en-tête pour indiquer la possibilité de drag.
+		- Les cellules de données ne doivent pas avoir le curseur `grab` car elles ne permettent pas d'initier un drag.
 	- **Compatibilité avec la sélection par clic**
 		- La sélection par clic simple reste fonctionnelle et indépendante du drag.
 		- Un clic simple sans mouvement de souris ne doit pas déclencher de drag.
@@ -351,7 +352,7 @@ A définir
 			- Applique conditionnellement une classe CSS ou un style inline pour la surbrillance.
 		- Toutes les cellules d'une même colonne (en-tête + données) doivent partager la même logique de style conditionnel basée sur l'état de sélection.
 	- **Sélection par drag** :
-		- Chaque cellule (en-tête et données) doit avoir des gestionnaires d'événements `onMouseDown`, `onMouseMove`, et `onMouseUp`.
+		- Chaque cellule d'en-tête doit avoir des gestionnaires d'événements `onMouseDown`, `onMouseMove`, et `onMouseUp`.
 		- Un état local `draggingState: { startDate: string, currentDate: string, isDragging: boolean } | null` peut être utilisé pour suivre l'état du drag.
 		- Lors du `mousedown`, initialiser `draggingState` avec la date de départ et `isDragging: false`.
 		- Lors du `mousemove` après un `mousedown`, si le déplacement dépasse un seuil (ex: 5 pixels), activer `isDragging: true` et mettre à jour `currentDate`.
@@ -448,6 +449,83 @@ A définir
 	- **Pas de persistance** : Les modifications de prix ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
 	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
 	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder"
+
+##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Afficher la durée minimale de séjour dans chaque cellule du calendrier, sous le prix affiché.
+	- La durée minimale provient de l'API via `client.getRates()` dans le champ `dureeMin` de chaque `TarifItem`.
+
+2. **Condition d'affichage**
+	- Afficher **toujours** la durée minimale dans toutes les cellules du calendrier, indépendamment de la présence d'un prix.
+	- Ne pas afficher si :
+		- La cellule est en mode édition (champ de saisie du prix).
+
+3. **Position et structure**
+	- Position : sous le prix (ou à la place du prix s'il n'y en a pas), sur une nouvelle ligne.
+	- Structure : empilement vertical (prix au-dessus si présent, durée minimale en dessous).
+	- Alignement : centré horizontalement, aligné verticalement au centre de la cellule.
+
+4. **Format du texte**
+	- Format : `"{dureeMin}+"`
+	- Exemples :
+		- `dureeMin = 1` → `"1+"`
+		- `dureeMin = 2` → `"2+"`
+		- `dureeMin = 7` → `"7+"`
+		- `dureeMin` absent/undefined/null/≤0 → `"-"`
+
+5. **Style visuel**
+	- **Taille de police** : plus petite que le prix.
+		- Prix : `fontSize: 13px`
+		- Durée minimale : `fontSize: 10px` ou `fontSize: 11px`
+	- **Couleur** : grisée.
+		- Prix : `color: '#111827'`
+		- Durée minimale : `color: '#6b7280'` ou `color: '#9ca3af'`
+	- **Poids de police** : `fontWeight: 400` (normal, plus léger que le prix).
+	- **Espacement** : `marginTop: 2px` ou `marginTop: 4px` entre le prix et la durée minimale.
+
+6. **Gestion des données**
+	- **Stockage** : Un état `dureeMinByAccommodation: Record<number, Record<string, number | null>>` stocke les durées minimales par hébergement et par date.
+	- **Récupération** : Lors du chargement des tarifs (`client.getRates()`), extraire `dureeMin` de chaque `TarifItem` et l'associer à chaque date de la période (`debut` à `fin`).
+	- **Gestion des chevauchements** : Si plusieurs périodes se chevauchent, utiliser la première période trouvée ou la valeur la plus restrictive (maximum).
+	- **Valeurs manquantes** : Si `dureeMin` est absent/undefined/null/≤0, stocker `null` pour cette date.
+
+7. **Cas limites**
+	- Si `dureeMin` est absent/undefined/null/≤0 : afficher `"-"` au lieu de ne rien afficher.
+	- Pendant l'édition du prix : masquer la durée minimale pour éviter la confusion.
+	- Si la cellule est trop petite : la durée minimale peut être tronquée ou masquée (à définir selon les tests UX).
+
+8. **Implémentation technique**
+	- Ajouter un état `dureeMinByAccommodation` dans le composant `ProviderCalendars`.
+	- Modifier la logique de chargement des tarifs pour extraire `dureeMin` de chaque période tarifaire.
+	- Passer `dureeMinByAccommodation` au composant `CompactGrid` via les props.
+	- Modifier l'affichage des cellules pour inclure la durée minimale avec les styles appropriés.
+	- Utiliser une structure flexbox verticale pour empiler le prix et la durée minimale.
+
+9. **Exemples visuels**
+	- **Cellule avec prix et durée minimale** :
+		```
+		   120€
+		   2+
+		```
+	- **Cellule avec prix modifié et durée minimale** :
+		```
+		   120€*
+		   2+
+		```
+	- **Cellule sans prix mais avec durée minimale** :
+		```
+		   7+
+		```
+	- **Cellule avec prix mais sans durée minimale valide** :
+		```
+		   120€
+		    -
+		```
+	- **Cellule sans prix ni durée minimale valide** :
+		```
+		    -
+		```
 
 ### 6.2 Exigences non-fonctionnelles
 

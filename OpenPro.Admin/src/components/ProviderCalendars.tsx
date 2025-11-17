@@ -98,6 +98,9 @@ export function ProviderCalendars(): JSX.Element {
   const [rateTypesByAccommodation, setRateTypesByAccommodation] = React.useState<
     Record<number, Record<string, string[]>>
   >({});
+  const [dureeMinByAccommodation, setDureeMinByAccommodation] = React.useState<
+    Record<number, Record<string, number | null>>
+  >({});
   const [rateTypeLabelsBySupplier, setRateTypeLabelsBySupplier] = React.useState<
     Record<number, Record<number, string>>
   >({});
@@ -211,6 +214,7 @@ export function ProviderCalendars(): JSX.Element {
         const nextRates: Record<number, Record<string, number>> = {};
         const nextPromo: Record<number, Record<string, boolean>> = {};
         const nextRateTypes: Record<number, Record<string, string[]>> = {};
+        const nextDureeMin: Record<number, Record<string, number | null>> = {};
         // Use actual start date (TimeBaseStartDate) and calculate end date by adding months
         const debut = formatDate(startDate);
         const endDate = addMonths(startDate, monthsCount);
@@ -271,6 +275,7 @@ export function ProviderCalendars(): JSX.Element {
             const mapRates: Record<string, number> = {};
             const mapPromo: Record<string, boolean> = {};
             const mapRateTypes: Record<string, string[]> = {};
+            const mapDureeMin: Record<string, number | null> = {};
             const tarifs = (rates as any).tarifs ?? (rates as any).periodes ?? [];
             for (const t of tarifs) {
               const deb = t.debut ?? t.dateDebut ?? debut;
@@ -318,6 +323,11 @@ export function ProviderCalendars(): JSX.Element {
               } else if (t.prix != null) {
                 price = Number(t.prix);
               }
+              // Extract dureeMin from tarif
+              const dureeMinValue = t.dureeMin != null && typeof t.dureeMin === 'number' && t.dureeMin > 0 
+                ? t.dureeMin 
+                : null;
+              
               if (price != null && !isNaN(price)) {
                 const cur = new Date(startD);
                 while (cur <= endD) {
@@ -336,6 +346,31 @@ export function ProviderCalendars(): JSX.Element {
                       mapRateTypes[key] = arr;
                     }
                   }
+                  // Store dureeMin for this date (use maximum if multiple periods overlap)
+                  if (dureeMinValue != null) {
+                    const existingDureeMin = mapDureeMin[key];
+                    if (existingDureeMin == null || dureeMinValue > existingDureeMin) {
+                      mapDureeMin[key] = dureeMinValue;
+                    }
+                  } else if (mapDureeMin[key] == null) {
+                    // Only set to null if not already set (to preserve existing value)
+                    mapDureeMin[key] = null;
+                  }
+                  cur.setDate(cur.getDate() + 1);
+                }
+              } else {
+                // Even if no price, we might have dureeMin
+                const cur = new Date(startD);
+                while (cur <= endD) {
+                  const key = formatDate(cur);
+                  if (dureeMinValue != null) {
+                    const existingDureeMin = mapDureeMin[key];
+                    if (existingDureeMin == null || dureeMinValue > existingDureeMin) {
+                      mapDureeMin[key] = dureeMinValue;
+                    }
+                  } else if (mapDureeMin[key] == null) {
+                    mapDureeMin[key] = null;
+                  }
                   cur.setDate(cur.getDate() + 1);
                 }
               }
@@ -343,6 +378,7 @@ export function ProviderCalendars(): JSX.Element {
             nextRates[acc.idHebergement] = mapRates;
             nextPromo[acc.idHebergement] = mapPromo;
             nextRateTypes[acc.idHebergement] = mapRateTypes;
+            nextDureeMin[acc.idHebergement] = mapDureeMin;
           } catch {
             // ignore rates errors for now
           }
@@ -352,6 +388,7 @@ export function ProviderCalendars(): JSX.Element {
           setRatesByAccommodation(nextRates);
           setPromoByAccommodation(nextPromo);
           setRateTypesByAccommodation(nextRateTypes);
+          setDureeMinByAccommodation(nextDureeMin);
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? 'Erreur lors du chargement du stock');
@@ -459,6 +496,7 @@ export function ProviderCalendars(): JSX.Element {
                 .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
               stockByAccommodation={stockByAccommodation}
               ratesByAccommodation={ratesByAccommodation}
+              dureeMinByAccommodation={dureeMinByAccommodation}
               selectedDates={selectedDates}
               onSelectedDatesChange={setSelectedDates}
               modifiedRates={modifiedRates}
@@ -558,6 +596,7 @@ function CompactGrid({
   accommodations,
   stockByAccommodation,
   ratesByAccommodation,
+  dureeMinByAccommodation,
   selectedDates,
   onSelectedDatesChange,
   modifiedRates,
@@ -568,6 +607,7 @@ function CompactGrid({
   accommodations: Accommodation[];
   stockByAccommodation: Record<number, Record<string, number>>;
   ratesByAccommodation: Record<number, Record<string, number>>;
+  dureeMinByAccommodation: Record<number, Record<string, number | null>>;
   selectedDates: Set<string>;
   onSelectedDatesChange: (dates: Set<string>) => void;
   modifiedRates: Set<string>;
@@ -902,6 +942,7 @@ function CompactGrid({
         {accommodations.map(acc => {
           const stockMap = stockByAccommodation[acc.idHebergement] || {};
           const priceMap = ratesByAccommodation[acc.idHebergement] || {};
+          const dureeMinMap = dureeMinByAccommodation[acc.idHebergement] || {};
 
           return (
             <React.Fragment key={acc.idHebergement}>
@@ -929,6 +970,7 @@ function CompactGrid({
                 const stock = stockMap[dateStr] ?? 0;
                 const isAvailable = stock > 0;
                 const price = priceMap[dateStr];
+                const dureeMin = dureeMinMap[dateStr] ?? null;
                 const isSelected = selectedDates.has(dateStr);
                 const isDragging = draggingDates.has(dateStr);
                 const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
@@ -974,7 +1016,6 @@ function CompactGrid({
                       }
                       handleCellClick(acc.idHebergement, dateStr);
                     }}
-                    onMouseDown={(e) => handleMouseDown(e, dateStr)}
                     style={{
                       padding: '8px 4px',
                       background: bgColor,
@@ -988,7 +1029,7 @@ function CompactGrid({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: draggingState?.isDragging ? 'grabbing' : (isSelected ? 'pointer' : 'grab'),
+                      cursor: isSelected ? 'pointer' : 'default',
                       opacity: isWeekend || isSelected || isDragging ? 1 : 0.7
                     }}
                     title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
@@ -1024,12 +1065,24 @@ function CompactGrid({
                         step="0.01"
                       />
                     ) : (
-                      <span>
-                        {price != null ? `${Math.round(price)}€` : ''}
-                        {isModified && price != null && (
-                          <span style={{ color: '#eab308', marginLeft: 2 }}>*</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        {price != null && (
+                          <span>
+                            {`${Math.round(price)}€`}
+                            {isModified && (
+                              <span style={{ color: '#eab308', marginLeft: 2 }}>*</span>
+                            )}
+                          </span>
                         )}
-                      </span>
+                        <span style={{ 
+                          fontSize: 10, 
+                          color: '#6b7280', 
+                          fontWeight: 400,
+                          marginTop: price != null ? 2 : 0
+                        }}>
+                          {dureeMin != null && dureeMin > 0 ? `${dureeMin}+` : '-'}
+                        </span>
+                      </div>
                     )}
                   </div>
                 );
