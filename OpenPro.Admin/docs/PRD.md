@@ -202,45 +202,70 @@ Vue d’ensemble (frontend uniquement) :
 #### Onglets par fournisseur — Exigences fonctionnelles
 
 1. **Navigation par onglets (fournisseurs)**
-	- Un **onglet par fournisseur** dans l’interface d’administration.
-	- Le **libellé** de l’onglet est le **nom du fournisseur** (ou son identifiant si le nom est indisponible).
-	- La **sélection d’un onglet** filtre l’affichage pour ne montrer que les données du **fournisseur courant**.
-
-2. **Calendriers par hébergement (du fournisseur sélectionné)**
-	- Pour **chaque hébergement** du fournisseur, afficher un **calendrier** (vue mensuelle par défaut).
-	- **Couleurs d’état** par jour:
-		- **Rouge**: jour **indisponible** (stock = 0 ou hébergement marqué indisponible).
-		- **Vert**: jour **disponible** (stock > 0 et hébergement disponible).
-	- Cette règle de couleur complète la section « Calendrier des hébergements — Exigences fonctionnelles » ci-dessous.
+	- L'interface affiche un **onglet par fournisseur** (`suppliers: Supplier[]`).
+	- Chaque onglet affiche le **nom du fournisseur** (`supplier.nom`) ou son identifiant (`supplier.idFournisseur`) si le nom est indisponible.
+	- La **sélection d'un onglet** définit le **fournisseur actif** (`activeSupplier: Supplier`) et filtre l'affichage pour ne montrer que les données de ce fournisseur.
+	- La liste des hébergements du fournisseur actif doit être **affichée par ordre alphabétique** des noms (`nomHebergement`).
 
 #### Calendrier des hébergements — Exigences fonctionnelles
 
-1. **Liste des hébergements en calendriers**
-	- Lister la collection d’hébergements liés à un `idFournisseur` (identifiant fourni en paramètre, valeur à préciser ultérieurement).
-	- La collection d’hébergements affichée doit être filtrable par ensemble de checkbox (ou autre)
-	- La collection d'hébergements filtrée doit apparaître dans un seul calendrier
-	- le calendrier agit comme un timebase horizontale, dont la date de début __TimeBaseStartDate__ et la durée __TimebaseDuration__ (1 mois, 2 mois, 3 mois) doit être paramétrable
+1. **Paramètres de la timebase**
+	- **Date de début** (`startDate: Date`, alias `TimeBaseStartDate`) : date sélectionnée par l'utilisateur à partir de laquelle commence l'affichage.
+	- **Durée** (`monthsCount: number`, alias `TimebaseDuration`) : nombre de mois à afficher (valeurs possibles : 1, 2 ou 3 mois).
+	- La **date de fin** (`endDate: Date`) est calculée automatiquement : `endDate = addMonths(startDate, monthsCount)`.
+
+2. **Chargement des hébergements**
+	- Pour le fournisseur actif (`activeSupplier.idFournisseur`), charger la liste complète des hébergements (`accommodations: Accommodation[]`).
+	- Chaque hébergement contient : `idHebergement: number` et `nomHebergement: string`.
+	- La liste des hébergements doit être **affichée par ordre alphabétique** des noms (`nomHebergement`).
+
+3. **Filtrage des hébergements**
+	- Afficher une liste de **checkboxes** permettant de sélectionner les hébergements à afficher.
+	- L'état de sélection est stocké dans `selectedAccommodations: Set<number>` (Set des IDs d'hébergements sélectionnés).
+	- Par défaut, tous les hébergements sont sélectionnés au chargement.
+	- Seuls les hébergements sélectionnés (`selectedAccommodations`) apparaissent dans la grille.
+
+4. **Chargement des données (stock et tarifs)**
+	- Pour chaque hébergement sélectionné, charger les données sur la période `[startDate, endDate)` :
+		- **Stock** (`stockByAccommodation: Record<idHebergement, Record<dateStr, stock>>`) : stock disponible par date (format `dateStr: "YYYY-MM-DD"`).
+		- **Tarifs** (`ratesByAccommodation: Record<idHebergement, Record<dateStr, price>>`) : prix par date pour 2 personnes (format entier en euros).
 
 ##### Vue compacte — Grille hebdomadaire
 
-- **Structure générale**
-	- La vue affiche, pour la durée de la timebase, une **timebase multi-lignes** d'une ligne par hébergement dans la liste filtrée.
-	- **Colonnes** (8 au total) :
-		- Colonne 1 : **nom de l’hébergement** (badge borduré, une ligne par hébergement).
-		- Colonnes 2 à 8 : les **7 jours de la première semaine à partir de la date de début** (L, M, M, J, V, S, D).
-		- Colonnes 9 à 15 : les **7 jours de la deuxième semaine à partir de la date de début** (L, M, M, J, V, S, D).
-	- **Lignes** :
-		- **Une ligne = (un hébergement)**.
-		- Pour un fournisseur ayant `N` hébergements et pour un nombre `D` de jours dans la durée d'affichage, la grille contient `1 + (S × D)` lignes.
+1. **Structure de la grille**
+	- La grille est une **table HTML avec CSS Grid** (`display: grid`).
+	- **Nombre de colonnes** : `1 + allDays.length` où `allDays` est le tableau aplati de tous les jours de la période.
+		- Colonne 1 (fixe, sticky) : nom de l'hébergement (`acc.nomHebergement`).
+		- Colonnes 2 à N : une colonne par jour de la période, dans l'ordre chronologique.
+	- **Nombre de lignes** : `1 + selectedAccommodations.size`
+		- Ligne 1 : en-tête (header).
+		- Lignes 2 à N+1 : une ligne par hébergement sélectionné.
 
-- **Colonne 1 — Badge des hébergements**
-	- Pour chaque ligne, la **première cellule** affiche le **nom de l’hébergement concerné** par la ligne.
-	- Le nom est présenté comme du texte simple
+2. **Ligne 1 — En-tête (header)**
+	- **Cellule 1** : texte "Hébergement" (style header, fond gris clair).
+	- **Cellules suivantes** : pour chaque jour dans `allDays`, afficher :
+		- Le jour de la semaine (L, M, M, J, V, S, D) calculé via `(day.getDay() + 6) % 7`.
+		- La date au format `jour/mois` (ex: "15/3").
 
-- **Colonnes 2–8 — Prix par jour**
-	- Pour chaque ligne (hébergement), les cellules des colonnes 2 à 8 affichent les **prix de cet hébergement pour chaque jour de la semaine** (tarif 2 personnes par défaut), au format entier en euros, centré dans la cellule.:
-		- Cellule sur fond **vert** si l’hébergement est **disponible** ce jour-là.
-		- Cellule sur fond **rouge** si l’hébergement est **indisponible** ce jour-là (stock = 0 / non disponible / réservé).
+3. **Lignes 2 à N+1 — Données par hébergement**
+	- Pour chaque hébergement dans la liste filtrée (`accommodations.filter(acc => selectedAccommodations.has(acc.idHebergement))`) :
+		- **Cellule 1** : nom de l'hébergement (`acc.nomHebergement`), texte simple, cellule sticky à gauche.
+		- **Cellules suivantes** : pour chaque jour dans `allDays` :
+			- Récupérer le stock : `stock = stockByAccommodation[acc.idHebergement][dateStr] ?? 0`.
+			- Récupérer le prix : `price = ratesByAccommodation[acc.idHebergement][dateStr]`.
+			- Calculer la disponibilité : `isAvailable = (stock > 0)`.
+			- **Couleur de fond** :
+				- Si `isAvailable === true` : fond vert (`rgba(34, 197, 94, 0.2)`).
+				- Si `isAvailable === false` : fond rouge (`rgba(220, 38, 38, 0.2)`).
+			- **Contenu de la cellule** : prix affiché au format `${Math.round(price)}€` si disponible, sinon chaîne vide.
+			- Le prix est centré dans la cellule.
+			- La cellule entière (pas seulement le prix) a le fond coloré.
+
+4. **Génération des semaines**
+	- La fonction `getWeeksInRange(startDate, monthsCount)` génère un tableau de semaines (`weeks: Date[][]`).
+	- **Première semaine** : commence exactement à `startDate` (pas de décalage au lundi précédent) et contient 7 jours consécutifs.
+	- **Semaines suivantes** : commencent le lundi suivant la fin de la semaine précédente et contiennent 7 jours consécutifs.
+	- Toutes les semaines sont ensuite aplaties en un seul tableau : `allDays = weeks.flat()` pour créer les colonnes de la grille.
 
 
 ##### Badge journalier — Spécifications UI

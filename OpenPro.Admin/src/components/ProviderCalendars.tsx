@@ -11,28 +11,51 @@ function formatDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
-function rangeDays(start: Date, end: Date): Date[] {
-  const days: Date[] = [];
-  const cur = new Date(start);
-  while (cur <= end) {
-    days.push(new Date(cur));
-    cur.setDate(cur.getDate() + 1);
-  }
-  return days;
-}
-
 function addMonths(date: Date, n: number): Date {
   const d = new Date(date);
   d.setMonth(d.getMonth() + n);
   return d;
+}
+
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function getWeeksInRange(startDate: Date, monthsCount: number): Date[][] {
+  const weeks: Date[][] = [];
+  const endDate = addMonths(startDate, monthsCount);
+  let currentDate = new Date(startDate);
+  
+  while (currentDate < endDate) {
+    const weekDays: Date[] = [];
+    // First week starts exactly at startDate
+    if (weeks.length === 0) {
+      // First week: start from startDate and add 6 more days (7 days total)
+      for (let i = 0; i < 7 && currentDate < endDate; i++) {
+        weekDays.push(new Date(currentDate));
+        currentDate = addDays(currentDate, 1);
+      }
+    } else {
+      // Subsequent weeks: start on Monday
+      // Find the Monday of the week containing currentDate
+      const dayOfWeek = (currentDate.getDay() + 6) % 7; // 0 = Monday
+      if (dayOfWeek !== 0) {
+        // Move to next Monday
+        currentDate = addDays(currentDate, 7 - dayOfWeek);
+      }
+      // Add 7 days for a complete week
+      for (let i = 0; i < 7 && currentDate < endDate; i++) {
+        weekDays.push(new Date(currentDate));
+        currentDate = addDays(currentDate, 1);
+      }
+    }
+    if (weekDays.length > 0) {
+      weeks.push(weekDays);
+    }
+  }
+  return weeks;
 }
 
 const baseUrl = import.meta.env.PUBLIC_OPENPRO_BASE_URL || 'http://localhost:3000';
@@ -85,7 +108,7 @@ export function ProviderCalendars(): JSX.Element {
     return formatDate(today);
   });
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
-  const [showRateTypes, setShowRateTypes] = React.useState<boolean>(true);
+  const [selectedAccommodations, setSelectedAccommodations] = React.useState<Set<number>>(new Set());
 
 
   const client = React.useMemo(
@@ -98,21 +121,6 @@ export function ProviderCalendars(): JSX.Element {
     const d = new Date(startInput);
     return isNaN(d.getTime()) ? new Date() : d;
   }, [startInput]);
-  const calendars = React.useMemo(() => {
-    const items: Array<{ start: Date; end: Date; label: string; days: Date[] }> = [];
-    for (let i = 0; i < monthsCount; i++) {
-      const ref = addMonths(startDate, i);
-      const ms = startOfMonth(ref);
-      const me = endOfMonth(ref);
-      items.push({
-        start: ms,
-        end: me,
-        label: ms.toLocaleString(undefined, { month: 'long', year: 'numeric' }),
-        days: rangeDays(ms, me)
-      });
-    }
-    return items;
-  }, [startDate, monthsCount]);
 
   // Load accommodations on supplier change
   React.useEffect(() => {
@@ -132,6 +140,8 @@ export function ProviderCalendars(): JSX.Element {
           return { idHebergement: Number(id), nomHebergement: String(name) };
         });
         setAccommodations(prev => ({ ...prev, [idFournisseur]: items }));
+        // Auto-select all accommodations when loaded
+        setSelectedAccommodations(new Set(items.map(acc => acc.idHebergement)));
       } catch (e: any) {
         if (cancelled) return;
         setError(e?.message ?? 'Erreur lors du chargement des hébergements');
@@ -159,9 +169,10 @@ export function ProviderCalendars(): JSX.Element {
         const nextRates: Record<number, Record<string, number>> = {};
         const nextPromo: Record<number, Record<string, boolean>> = {};
         const nextRateTypes: Record<number, Record<string, string[]>> = {};
-        const debut = formatDate(startOfMonth(startDate));
-        const lastMonthEnd = endOfMonth(addMonths(startDate, monthsCount - 1));
-        const fin = formatDate(lastMonthEnd);
+        // Use actual start date (TimeBaseStartDate) and calculate end date by adding months
+        const debut = formatDate(startDate);
+        const endDate = addMonths(startDate, monthsCount);
+        const fin = formatDate(endDate);
         // Ensure we have rate type labels for this supplier
         let rateTypeLabels = rateTypeLabelsBySupplier[idFournisseur];
         if (!rateTypeLabels) {
@@ -337,16 +348,6 @@ export function ProviderCalendars(): JSX.Element {
             </select>
           </label>
         </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={showRateTypes}
-              onChange={e => setShowRateTypes(e.currentTarget.checked)}
-            />
-            <span>Afficher les types de tarifs</span>
-          </label>
-        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
         {suppliers.map((s, idx) => {
@@ -375,47 +376,49 @@ export function ProviderCalendars(): JSX.Element {
 
       {activeSupplier && (
         <div>
-          <h3 style={{ marginBottom: 8 }}>
+          <h3 style={{ marginBottom: 16 }}>
             Hébergements — {activeSupplier.nom}
           </h3>
-          <div style={{ display: 'grid', gap: 16 }}>
-            {(accommodations[activeSupplier.idFournisseur] || []).map(acc => {
-              const stockMap = stockByAccommodation[acc.idHebergement] || {};
-              const priceMap = ratesByAccommodation[acc.idHebergement] || {};
-              const promoMap = promoByAccommodation[acc.idHebergement] || {};
-              const rateTypesMap = rateTypesByAccommodation[acc.idHebergement] || {};
-              return (
-                <div
+          
+          <div style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(accommodations[activeSupplier.idFournisseur] || [])
+                .slice()
+                .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))
+                .map(acc => (
+                <label
                   key={acc.idHebergement}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    padding: 12,
-                    background: '#fff'
-                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <strong>{acc.nomHebergement}</strong>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
-                    {calendars.map((cal, i) => (
-                      <div key={i} style={{ width: 640 }}>
-                        <div style={{ marginBottom: 6, color: '#6b7280', fontSize: 13, textAlign: 'center' }}>{cal.label}</div>
-                        <CalendarGrid
-                          days={cal.days}
-                          stockMap={stockMap}
-                          priceMap={priceMap}
-                          promoMap={promoMap}
-                          rateTypesMap={rateTypesMap}
-                          showRateTypes={showRateTypes}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+                  <input
+                    type="checkbox"
+                    checked={selectedAccommodations.has(acc.idHebergement)}
+                    onChange={e => {
+                      const newSet = new Set(selectedAccommodations);
+                      if (e.target.checked) {
+                        newSet.add(acc.idHebergement);
+                      } else {
+                        newSet.delete(acc.idHebergement);
+                      }
+                      setSelectedAccommodations(newSet);
+                    }}
+                  />
+                  <span>{acc.nomHebergement}</span>
+                </label>
+              ))}
+            </div>
           </div>
+          {selectedAccommodations.size > 0 && (
+            <CompactGrid
+              startDate={startDate}
+              monthsCount={monthsCount}
+              accommodations={(accommodations[activeSupplier.idFournisseur] || [])
+                .filter(acc => selectedAccommodations.has(acc.idHebergement))
+                .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
+              stockByAccommodation={stockByAccommodation}
+              ratesByAccommodation={ratesByAccommodation}
+            />
+          )}
         </div>
       )}
 
@@ -423,159 +426,131 @@ export function ProviderCalendars(): JSX.Element {
   );
 }
 
-function CalendarGrid({
-  days,
-  stockMap,
-  priceMap,
-  promoMap,
-  rateTypesMap,
-  showRateTypes
+function CompactGrid({
+  startDate,
+  monthsCount,
+  accommodations,
+  stockByAccommodation,
+  ratesByAccommodation
 }: {
-  days: Date[];
-  stockMap: Record<string, number>;
-  priceMap?: Record<string, number>;
-  promoMap?: Record<string, boolean>;
-  rateTypesMap?: Record<string, string[]>;
-  showRateTypes?: boolean;
+  startDate: Date;
+  monthsCount: number;
+  accommodations: Accommodation[];
+  stockByAccommodation: Record<number, Record<string, number>>;
+  ratesByAccommodation: Record<number, Record<string, number>>;
 }) {
+  const weeks = React.useMemo(() => getWeeksInRange(startDate, monthsCount), [startDate, monthsCount]);
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-  // Build grid with leading blanks so weeks start Monday
-  const first = days[0];
-  const firstWeekday = (first.getDay() + 6) % 7; // 0 = Monday
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(null);
-  for (const d of days) cells.push(d);
+  // Flatten all days from all weeks into a single array
+  const allDays = weeks.flat();
 
   return (
-    <div>
+    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 4,
-          marginBottom: 6,
-          color: '#6b7280',
-          fontSize: 12
+          gridTemplateColumns: `200px repeat(${allDays.length}, 80px)`,
+          gap: 2,
+          minWidth: 'fit-content'
         }}
       >
-        {weekDayHeaders.map((h, i) => (
-          <div key={i} style={{ textAlign: 'center' }}>
-            {h}
-          </div>
-        ))}
-      </div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 88px)',
-          gap: 4
-        }}
-      >
-        {cells.map((cell, idx) => {
-          if (!cell) {
-            // empty day slot: compact baseline height
-            return <div key={idx} style={{ minHeight: 56, width: 88 }} />;
-          }
-          const dateStr = formatDate(cell);
-          const dispo = stockMap[dateStr];
-          const isUnavailable = dispo === 0; // rouge si stock = 0
-          const bg = isUnavailable ? 'rgba(220, 38, 38, 0.15)' : 'rgba(34, 197, 94, 0.15)'; // rouge/vert translucide
-          const border = isUnavailable ? '1px solid rgba(220,38,38,0.35)' : '1px solid rgba(34,197,94,0.35)';
-          const price = priceMap ? priceMap[dateStr] : undefined;
-          const promo = promoMap ? promoMap[dateStr] : false;
-          const priceBorderColor = isUnavailable
-            ? 'rgba(220,38,38,0.8)' // red
-            : promo
-            ? 'rgba(234,179,8,0.9)' // amber/yellow
-            : 'rgba(34,197,94,0.9)'; // green
-          const dayRateTypes = rateTypesMap ? rateTypesMap[dateStr] : undefined;
-          const hasVisibleRateTypes = Boolean(showRateTypes && dayRateTypes && dayRateTypes.length > 0);
-          const minCellHeight = hasVisibleRateTypes ? 88 : 56;
+        {/* Ligne 1 - Header row */}
+        <div
+          style={{
+            padding: '8px 12px',
+            background: '#f9fafb',
+            borderBottom: '2px solid #e5e7eb',
+            fontWeight: 600,
+            fontSize: 13,
+            color: '#374151',
+            position: 'sticky',
+            left: 0,
+            zIndex: 10,
+            borderRight: '1px solid #e5e7eb'
+          }}
+        >
+          Hébergement
+        </div>
+        {allDays.map((day, idx) => {
+          const dayOfWeek = (day.getDay() + 6) % 7; // 0 = Monday
           return (
             <div
               key={idx}
-              title={`${dateStr} — ${isUnavailable ? 'Indisponible' : 'Disponible'}`}
               style={{
-                minHeight: minCellHeight,
-                width: 88,
-                borderRadius: 6,
-                background: bg,
-                border,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                justifyContent: 'flex-start',
-                padding: 8,
-                paddingTop: 18, // reserve space for the date chip
-                fontSize: 12,
-                color: '#111827',
-                position: 'relative',
-                boxSizing: 'border-box',
-                userSelect: 'none', // prevent text selection while dragging
-                WebkitUserSelect: 'none',
-                MozUserSelect: 'none',
-                msUserSelect: 'none',
-                cursor: 'pointer'
+                padding: '8px 4px',
+                background: '#f9fafb',
+                borderBottom: '2px solid #e5e7eb',
+                textAlign: 'center',
+                fontSize: 11,
+                color: '#6b7280',
+                fontWeight: 500
               }}
-             
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 4,
-                  left: 6,
-                  fontSize: 11,
-                  color: '#6b7280',
-                  lineHeight: 1
-                }}
-              >
-                {cell.getDate()}
-              </div>
-              <div
-                style={{
-                  lineHeight: 1.2,
-                  fontSize: 12,
-                  color: '#111827',
-                  padding: '4px 6px',
-                  borderRadius: 6,
-                  border: `2px solid ${priceBorderColor}`,
-                  background: 'rgba(255,255,255,0.85)',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  textAlign: 'center',
-                  minHeight: 24
-                }}
-              >
-                {price != null ? `${Math.round(price)}€` : ''}
-              </div>
-              {showRateTypes && dayRateTypes && dayRateTypes.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4, overflow: 'hidden' }}>
-                  {dayRateTypes.map((rt, k) => (
-                    <div
-                      key={k}
-                      style={{
-                        fontSize: 10,
-                        color: '#374151',
-                        background: 'rgba(255,255,255,0.9)',
-                        border: '2px solid #e5e7eb', // same width as price
-                        borderRadius: 6,
-                        padding: '2px 6px',
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        minHeight: 20
-                      }}
-                      title={rt}
-                    >
-                      {rt}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+              <div>{weekDayHeaders[dayOfWeek]}</div>
+              <div style={{ fontSize: 10, marginTop: 2 }}>{day.getDate()}/{day.getMonth() + 1}</div>
             </div>
+          );
+        })}
+
+        {/* Lignes suivantes - une ligne par hébergement */}
+        {accommodations.map(acc => {
+          const stockMap = stockByAccommodation[acc.idHebergement] || {};
+          const priceMap = ratesByAccommodation[acc.idHebergement] || {};
+
+          return (
+            <React.Fragment key={acc.idHebergement}>
+              {/* Cellule nom de l'hébergement */}
+              <div
+                style={{
+                  padding: '12px',
+                  background: '#fff',
+                  borderRight: '1px solid #e5e7eb',
+                  borderBottom: '1px solid #e5e7eb',
+                  position: 'sticky',
+                  left: 0,
+                  zIndex: 5,
+                  fontWeight: 500,
+                  fontSize: 13,
+                  color: '#111827'
+                }}
+              >
+                {acc.nomHebergement}
+              </div>
+
+              {/* Cellules de données pour chaque jour */}
+              {allDays.map((day, idx) => {
+                const dateStr = formatDate(day);
+                const stock = stockMap[dateStr] ?? 0;
+                const isAvailable = stock > 0;
+                const price = priceMap[dateStr];
+                const bgColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
+                const borderColor = isAvailable ? 'rgba(34, 197, 94, 0.4)' : 'rgba(220, 38, 38, 0.4)';
+
+                return (
+                  <div
+                    key={`${acc.idHebergement}-${idx}`}
+                    style={{
+                      padding: '8px 4px',
+                      background: bgColor,
+                      border: `1px solid ${borderColor}`,
+                      borderBottom: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: '#111827',
+                      minHeight: 48,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
+                  >
+                    {price != null ? `${Math.round(price)}€` : ''}
+                  </div>
+                );
+              })}
+            </React.Fragment>
           );
         })}
       </div>
