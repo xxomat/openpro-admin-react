@@ -115,6 +115,7 @@ export function ProviderCalendars(): JSX.Element {
   const [selectedDates, setSelectedDates] = React.useState<Set<string>>(new Set());
   // Suivi des modifications locales (format: "idHebergement-dateStr")
   const [modifiedRates, setModifiedRates] = React.useState<Set<string>>(new Set());
+  const [modifiedDureeMin, setModifiedDureeMin] = React.useState<Set<string>>(new Set());
 
 
   const client = React.useMemo(
@@ -149,17 +150,46 @@ export function ProviderCalendars(): JSX.Element {
     });
   }, [selectedDates, selectedAccommodations]);
 
+  // Fonction pour mettre à jour la durée minimale localement
+  const handleDureeMinUpdate = React.useCallback((newDureeMin: number | null) => {
+    const modifications = new Set<string>();
+    setDureeMinByAccommodation(prev => {
+      const updated = { ...prev };
+      // Appliquer la durée minimale à toutes les combinaisons date-hébergement sélectionnées
+      for (const dateStr of selectedDates) {
+        for (const accId of selectedAccommodations) {
+          if (!updated[accId]) {
+            updated[accId] = {};
+          }
+          updated[accId][dateStr] = newDureeMin;
+          modifications.add(`${accId}-${dateStr}`);
+        }
+      }
+      return updated;
+    });
+    // Marquer comme modifié après la mise à jour de la durée minimale
+    setModifiedDureeMin(prevMod => {
+      const newMod = new Set(prevMod);
+      for (const mod of modifications) {
+        newMod.add(mod);
+      }
+      return newMod;
+    });
+  }, [selectedDates, selectedAccommodations]);
+
   // Fonction pour sauvegarder les modifications (pour l'instant juste log)
   const handleSave = React.useCallback(async () => {
-    if (modifiedRates.size === 0) return;
+    if (modifiedRates.size === 0 && modifiedDureeMin.size === 0) return;
     
-    // TODO: Implémenter l'appel API pour sauvegarder les tarifs
+    // TODO: Implémenter l'appel API pour sauvegarder les tarifs et durées minimales
     // Pour l'instant, on log juste les modifications
-    console.log('Modifications à sauvegarder:', Array.from(modifiedRates));
+    console.log('Modifications de prix à sauvegarder:', Array.from(modifiedRates));
+    console.log('Modifications de durée minimale à sauvegarder:', Array.from(modifiedDureeMin));
     
-    // Après sauvegarde réussie, vider modifiedRates
+    // Après sauvegarde réussie, vider les modifications
     // setModifiedRates(new Set());
-  }, [modifiedRates]);
+    // setModifiedDureeMin(new Set());
+  }, [modifiedRates, modifiedDureeMin]);
 
   const activeSupplier = suppliers[activeIdx];
   const startDate = React.useMemo(() => {
@@ -500,12 +530,14 @@ export function ProviderCalendars(): JSX.Element {
               selectedDates={selectedDates}
               onSelectedDatesChange={setSelectedDates}
               modifiedRates={modifiedRates}
+              modifiedDureeMin={modifiedDureeMin}
               onRateUpdate={handleRateUpdate}
+              onDureeMinUpdate={handleDureeMinUpdate}
             />
           )}
           
           {/* Bouton Sauvegarder */}
-          {modifiedRates.size > 0 && (
+          {(modifiedRates.size > 0 || modifiedDureeMin.size > 0) && (
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={handleSave}
@@ -527,7 +559,7 @@ export function ProviderCalendars(): JSX.Element {
                   e.currentTarget.style.background = '#3b82f6';
                 }}
               >
-                Sauvegarder ({modifiedRates.size} modification{modifiedRates.size > 1 ? 's' : ''})
+                Sauvegarder ({modifiedRates.size + modifiedDureeMin.size} modification{(modifiedRates.size + modifiedDureeMin.size) > 1 ? 's' : ''})
               </button>
             </div>
           )}
@@ -600,7 +632,9 @@ function CompactGrid({
   selectedDates,
   onSelectedDatesChange,
   modifiedRates,
-  onRateUpdate
+  modifiedDureeMin,
+  onRateUpdate,
+  onDureeMinUpdate
 }: {
   startDate: Date;
   monthsCount: number;
@@ -611,7 +645,9 @@ function CompactGrid({
   selectedDates: Set<string>;
   onSelectedDatesChange: (dates: Set<string>) => void;
   modifiedRates: Set<string>;
+  modifiedDureeMin: Set<string>;
   onRateUpdate: (newPrice: number) => void;
+  onDureeMinUpdate: (newDureeMin: number | null) => void;
 }) {
   const weeks = React.useMemo(() => getWeeksInRange(startDate, monthsCount), [startDate, monthsCount]);
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -619,9 +655,13 @@ function CompactGrid({
   // Flatten all days from all weeks into a single array
   const allDays = weeks.flat();
 
-  // État pour suivre la cellule en cours d'édition
+  // État pour suivre la cellule en cours d'édition (prix)
   const [editingCell, setEditingCell] = React.useState<{ accId: number; dateStr: string } | null>(null);
   const [editingValue, setEditingValue] = React.useState<string>('');
+  
+  // État pour suivre la cellule en cours d'édition (durée minimale)
+  const [editingDureeMinCell, setEditingDureeMinCell] = React.useState<{ accId: number; dateStr: string } | null>(null);
+  const [editingDureeMinValue, setEditingDureeMinValue] = React.useState<string>('');
 
   // État pour suivre le drag
   const [draggingState, setDraggingState] = React.useState<{
@@ -652,9 +692,13 @@ function CompactGrid({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (editingCell) {
-          // Annuler l'édition en cours
+          // Annuler l'édition du prix en cours
           setEditingCell(null);
           setEditingValue('');
+        } else if (editingDureeMinCell) {
+          // Annuler l'édition de la durée minimale en cours
+          setEditingDureeMinCell(null);
+          setEditingDureeMinValue('');
         } else {
           // Annuler toute sélection
           onSelectedDatesChange(new Set());
@@ -666,20 +710,41 @@ function CompactGrid({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingCell, onSelectedDatesChange]);
+  }, [editingCell, editingDureeMinCell, onSelectedDatesChange]);
 
-  // Gestionnaire pour démarrer l'édition d'une cellule
+  // Gestionnaire pour démarrer l'édition d'une cellule (prix)
   const handleCellClick = React.useCallback((accId: number, dateStr: string) => {
     // Vérifier que la sélection est active et que cette colonne est sélectionnée
     if (selectedDates.size === 0 || !selectedDates.has(dateStr)) {
       return;
     }
+    // Annuler l'édition de la durée minimale si active
+    if (editingDureeMinCell) {
+      setEditingDureeMinCell(null);
+      setEditingDureeMinValue('');
+    }
     const currentPrice = ratesByAccommodation[accId]?.[dateStr];
     setEditingCell({ accId, dateStr });
     setEditingValue(currentPrice != null ? String(Math.round(currentPrice)) : '');
-  }, [selectedDates, ratesByAccommodation]);
+  }, [selectedDates, ratesByAccommodation, editingDureeMinCell]);
 
-  // Gestionnaire pour valider l'édition
+  // Gestionnaire pour démarrer l'édition d'une cellule (durée minimale)
+  const handleDureeMinClick = React.useCallback((accId: number, dateStr: string) => {
+    // Vérifier que la sélection est active et que cette colonne est sélectionnée
+    if (selectedDates.size === 0 || !selectedDates.has(dateStr)) {
+      return;
+    }
+    // Annuler l'édition du prix si active
+    if (editingCell) {
+      setEditingCell(null);
+      setEditingValue('');
+    }
+    const currentDureeMin = dureeMinByAccommodation[accId]?.[dateStr];
+    setEditingDureeMinCell({ accId, dateStr });
+    setEditingDureeMinValue(currentDureeMin != null && currentDureeMin > 0 ? String(currentDureeMin) : '');
+  }, [selectedDates, dureeMinByAccommodation, editingCell]);
+
+  // Gestionnaire pour valider l'édition (prix)
   const handleEditSubmit = React.useCallback(() => {
     if (!editingCell) return;
     const numValue = parseFloat(editingValue);
@@ -690,10 +755,34 @@ function CompactGrid({
     setEditingValue('');
   }, [editingCell, editingValue, onRateUpdate]);
 
-  // Gestionnaire pour annuler l'édition
+  // Gestionnaire pour valider l'édition (durée minimale)
+  const handleDureeMinSubmit = React.useCallback(() => {
+    if (!editingDureeMinCell) return;
+    const trimmedValue = editingDureeMinValue.trim();
+    if (trimmedValue === '') {
+      // Champ vide = null (absence de durée minimale)
+      onDureeMinUpdate(null);
+    } else {
+      const numValue = parseInt(trimmedValue, 10);
+      if (!isNaN(numValue) && numValue > 0) {
+        onDureeMinUpdate(numValue);
+      }
+      // Si la valeur est invalide, on ne fait rien (l'utilisateur peut corriger)
+    }
+    setEditingDureeMinCell(null);
+    setEditingDureeMinValue('');
+  }, [editingDureeMinCell, editingDureeMinValue, onDureeMinUpdate]);
+
+  // Gestionnaire pour annuler l'édition (prix)
   const handleEditCancel = React.useCallback(() => {
     setEditingCell(null);
     setEditingValue('');
+  }, []);
+
+  // Gestionnaire pour annuler l'édition (durée minimale)
+  const handleDureeMinCancel = React.useCallback(() => {
+    setEditingDureeMinCell(null);
+    setEditingDureeMinValue('');
   }, []);
 
   // Fonction pour obtenir la date à partir d'un élément DOM
@@ -974,7 +1063,9 @@ function CompactGrid({
                 const isSelected = selectedDates.has(dateStr);
                 const isDragging = draggingDates.has(dateStr);
                 const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
+                const isModifiedDureeMin = modifiedDureeMin.has(`${acc.idHebergement}-${dateStr}`);
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
+                const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6; // Dimanche = 0, Samedi = 6
                 
                 // Couleur de fond : surbrillance si sélectionné ou en drag, sinon couleur de disponibilité
@@ -1074,14 +1165,63 @@ function CompactGrid({
                             )}
                           </span>
                         )}
-                        <span style={{ 
-                          fontSize: 10, 
-                          color: '#6b7280', 
-                          fontWeight: 400,
-                          marginTop: price != null ? 2 : 0
-                        }}>
-                          {dureeMin != null && dureeMin > 0 ? `${dureeMin}+` : '-'}
-                        </span>
+                        {isEditingDureeMin ? (
+                          <input
+                            type="number"
+                            value={editingDureeMinValue}
+                            onChange={(e) => setEditingDureeMinValue(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === 'Tab') {
+                                e.preventDefault();
+                                handleDureeMinSubmit();
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                handleDureeMinCancel();
+                              }
+                            }}
+                            onBlur={handleDureeMinSubmit}
+                            autoFocus
+                            style={{
+                              width: '60px',
+                              textAlign: 'center',
+                              fontSize: 10,
+                              fontWeight: 400,
+                              border: '2px solid #3b82f6',
+                              borderRadius: 4,
+                              padding: '2px 4px',
+                              background: '#fff',
+                              color: '#111827'
+                            }}
+                            min="1"
+                            step="1"
+                            placeholder="-"
+                          />
+                        ) : (
+                          <span 
+                            onClick={(e) => {
+                              // Ne pas traiter comme un clic si on vient de finir un drag
+                              if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                                e.preventDefault();
+                                return;
+                              }
+                              e.stopPropagation(); // Empêcher le clic de remonter à la cellule parente
+                              handleDureeMinClick(acc.idHebergement, dateStr);
+                            }}
+                            style={{ 
+                              fontSize: 10, 
+                              color: '#6b7280', 
+                              fontWeight: 400,
+                              marginTop: price != null ? 2 : 0,
+                              cursor: isSelected ? 'pointer' : 'default'
+                            }}
+                          >
+                            {dureeMin != null && dureeMin > 0 ? `${dureeMin}+` : '-'}
+                            {isModifiedDureeMin && (
+                              <span style={{ color: '#eab308', marginLeft: 2 }}>*</span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

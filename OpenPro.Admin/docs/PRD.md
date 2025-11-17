@@ -450,6 +450,86 @@ A définir
 	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
 	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder"
 
+##### Modification de la durée minimale de séjour — Exigences fonctionnelles
+
+1. **Condition d'autorisation**
+	- La modification de la durée minimale de séjour est **autorisée uniquement lorsqu'une sélection est active**.
+	- Une sélection est considérée comme active si `selectedDates.size > 0` (au moins une colonne/jour est sélectionnée).
+	- Si aucune sélection n'est active, les cellules de durée minimale ne sont pas éditables.
+
+2. **Déclenchement de l'édition**
+	- L'utilisateur peut **cliquer sur une cellule de durée minimale** (cellule contenant la durée minimale affichée au format `{dureeMin}+` ou `-`) pour entrer en mode édition.
+	- Le clic peut être effectué **uniquement sur une cellule de durée minimale d'une colonne sélectionnée**.
+	- Les cellules de durée minimale des colonnes non sélectionnées ne sont pas éditables et ne réagissent pas au clic.
+	- Le clic peut être effectué même si la valeur affichée est `-` (durée minimale absente ou invalide).
+
+3. **Mode édition**
+	- Lors du clic sur une cellule de durée minimale, la cellule passe en **mode édition** :
+		- La cellule devient un **champ de saisie** (`input` de type `number`).
+		- La valeur actuelle de la durée minimale est pré-remplie dans le champ (sans le symbole "+").
+		- Si la valeur actuelle est `null` ou absente (affichée comme `-`), le champ est initialement vide.
+		- Le champ est automatiquement sélectionné (focus) pour permettre la saisie immédiate.
+		- Le champ accepte uniquement des valeurs numériques entières positives (≥ 1).
+	- Le mode édition peut être quitté de plusieurs façons :
+		- **Validation** : appui sur la touche **Entrée (Enter)** ou **Tab** → applique la modification (voir point 4).
+		- **Annulation** : appui sur la touche **Échap (Escape)** → annule la modification et restaure la valeur précédente.
+
+4. **Application de la durée minimale à la sélection**
+	- Lors de la validation de l'édition (Entrée ou Tab), la durée minimale saisie est **appliquée à l'ensemble de la sélection en cours** :
+		- Pour chaque date dans `selectedDates` (Set des dates sélectionnées).
+		- Pour chaque hébergement dans `selectedAccommodations` (Set des hébergements sélectionnés et affichés).
+		- La durée minimale est mise à jour dans `dureeMinByAccommodation[acc.idHebergement][dateStr] = newDureeMin`.
+	- **Gestion des valeurs vides ou nulles** :
+		- Si l'utilisateur vide le champ ou saisit une valeur invalide (voir point 7), la durée minimale peut être définie à `null` pour indiquer l'absence de durée minimale.
+	- **Note importante** : La modification est appliquée **uniquement en mémoire locale** (état React). Aucun appel API vers le stub serveur ou l'API Open Pro n'est effectué à ce stade.
+	- Après l'application, la grille est **immédiatement mise à jour** pour refléter les nouvelles durées minimales dans toutes les cellules concernées.
+
+5. **Comportement visuel pendant l'édition**
+	- Pendant le mode édition d'une cellule de durée minimale, les autres cellules de durée minimale restent visibles et affichées normalement.
+	- Les colonnes sélectionnées conservent leur surbrillance visuelle pendant l'édition.
+	- Une fois la durée minimale appliquée, toutes les cellules concernées affichent la nouvelle valeur avec le format `{newDureeMin}+` ou `-` si la valeur est `null` ou ≤ 0.
+
+6. **Indication visuelle des modifications non sauvegardées**
+	- Comme les modifications sont appliquées uniquement en mémoire locale (sans persistance vers le serveur), chaque cellule de durée minimale modifiée doit afficher une **astérisque jaune** (`*`) après la valeur.
+	- **Format d'affichage** : `{newDureeMin}+*` ou `-*` où l'astérisque est affichée en couleur jaune (`color: #eab308` ou équivalent).
+	- **Suivi des modifications** : Un état local `modifiedDureeMin: Set<string>` peut être utilisé pour suivre les combinaisons `idHebergement-dateStr` qui ont été modifiées localement pour la durée minimale.
+	- **Affichage conditionnel** : L'astérisque jaune est affichée uniquement si `modifiedDureeMin.has(\`${idHebergement}-${dateStr}\`)` est `true`.
+	- **Persistance de l'indication** : L'astérisque reste visible tant que la modification n'a pas été sauvegardée vers le serveur (ou tant que les données ne sont pas rechargées depuis le serveur).
+
+7. **Gestion des valeurs invalides**
+	- Si l'utilisateur saisit une valeur non numérique :
+		- La validation (Entrée/Tab) peut être refusée avec un message d'erreur ou une restauration de la valeur précédente.
+		- Ou la valeur peut être interprétée comme `null` (absence de durée minimale).
+	- Si l'utilisateur saisit une valeur négative ou zéro :
+		- La validation peut être refusée avec un message d'erreur.
+		- Ou la valeur peut être interprétée comme `null` (absence de durée minimale).
+	- Si l'utilisateur vide le champ :
+		- La validation peut définir la durée minimale à `null` (absence de durée minimale).
+	- Les valeurs décimales doivent être refusées (la durée minimale est exprimée en nombre entier de nuits).
+
+8. **Implémentation technique**
+	- Chaque cellule de durée minimale doit avoir un gestionnaire d'événement `onClick` qui :
+		- Vérifie que `selectedDates.size > 0` (sélection active).
+		- Vérifie que la date (`dateStr`) de la colonne correspondante fait partie de `selectedDates`.
+		- Si les deux conditions sont remplies, passe la cellule en mode édition.
+		- Sinon, le clic est ignoré et aucune action n'est effectuée.
+	- Un état local `editingDureeMinCell: { accId: number; dateStr: string } | null` peut être utilisé pour suivre la cellule de durée minimale en cours d'édition (distinct de `editingCell` utilisé pour l'édition du prix).
+	- La fonction d'application de la durée minimale doit itérer sur `selectedDates` et `selectedAccommodations` pour mettre à jour `dureeMinByAccommodation`.
+	- Après la mise à jour, déclencher un re-render de la grille pour afficher les nouvelles durées minimales.
+	- Lors de l'application d'une durée minimale modifiée, ajouter chaque combinaison `idHebergement-dateStr` concernée dans `modifiedDureeMin` pour permettre l'affichage de l'astérisque jaune.
+
+9. **Cohabitation avec l'édition du prix**
+	- L'édition de la durée minimale et l'édition du prix sont **indépendantes** :
+		- Une seule cellule peut être en mode édition à la fois (soit prix, soit durée minimale).
+		- Si une cellule de prix est en mode édition, les cellules de durée minimale ne peuvent pas être éditées et vice versa.
+		- Lorsqu'une cellule passe en mode édition (prix ou durée minimale), l'autre mode d'édition doit être annulé si actif.
+	- Les deux types de modifications peuvent être effectuées sur la même sélection, mais pas simultanément.
+
+10. **Limitations actuelles**
+	- **Pas de persistance** : Les modifications de durée minimale ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
+	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
+	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder" (probablement le même bouton que pour les prix, ou un bouton dédié).
+
 ##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
