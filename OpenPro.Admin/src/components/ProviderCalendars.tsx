@@ -950,13 +950,14 @@ function CompactGrid({
   }, [draggingState, getDateRange]);
 
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
+    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', userSelect: 'none' }}>
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: `200px repeat(${allDays.length}, 80px)`,
           gap: 2,
-          minWidth: 'fit-content'
+          minWidth: 'fit-content',
+          userSelect: 'none'
         }}
       >
         {/* Ligne 1 - Header row */}
@@ -1047,7 +1048,8 @@ function CompactGrid({
                   zIndex: 5,
                   fontWeight: 500,
                   fontSize: 13,
-                  color: '#111827'
+                  color: '#111827',
+                  userSelect: 'none'
                 }}
               >
                 {acc.nomHebergement}
@@ -1121,7 +1123,8 @@ function CompactGrid({
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: isSelected ? 'pointer' : 'default',
-                      opacity: isWeekend || isSelected || isDragging ? 1 : 0.7
+                      opacity: isWeekend || isSelected || isDragging ? 1 : 0.7,
+                      userSelect: 'none'
                     }}
                     title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
                   >
@@ -1156,12 +1159,12 @@ function CompactGrid({
                         step="0.01"
                       />
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
                         {price != null && (
-                          <span>
+                          <span style={{ userSelect: 'none' }}>
                             {`${Math.round(price)}€`}
                             {isModified && (
-                              <span style={{ color: '#eab308', marginLeft: 2 }}>*</span>
+                              <span style={{ color: '#eab308', marginLeft: 2, userSelect: 'none' }}>*</span>
                             )}
                           </span>
                         )}
@@ -1213,12 +1216,13 @@ function CompactGrid({
                               color: '#6b7280', 
                               fontWeight: 400,
                               marginTop: price != null ? 2 : 0,
-                              cursor: isSelected ? 'pointer' : 'default'
+                              cursor: isSelected ? 'pointer' : 'default',
+                              userSelect: 'none'
                             }}
                           >
                             {dureeMin != null && dureeMin > 0 ? `${dureeMin}+` : '-'}
                             {isModifiedDureeMin && (
-                              <span style={{ color: '#eab308', marginLeft: 2 }}>*</span>
+                              <span style={{ color: '#eab308', marginLeft: 2, userSelect: 'none' }}>*</span>
                             )}
                           </span>
                         )}
