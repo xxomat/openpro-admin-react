@@ -109,6 +109,7 @@ export function ProviderCalendars(): JSX.Element {
   });
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
   const [selectedAccommodations, setSelectedAccommodations] = React.useState<Set<number>>(new Set());
+  const [selectedDates, setSelectedDates] = React.useState<Set<string>>(new Set());
 
 
   const client = React.useMemo(
@@ -417,8 +418,59 @@ export function ProviderCalendars(): JSX.Element {
                 .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
               stockByAccommodation={stockByAccommodation}
               ratesByAccommodation={ratesByAccommodation}
+              selectedDates={selectedDates}
+              onSelectedDatesChange={setSelectedDates}
             />
           )}
+          
+          {/* Champ texte pour le résumé de sélection (pour tests) */}
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#374151' }}>
+              Résumé de sélection (pour tests)
+            </label>
+            <textarea
+              readOnly
+              value={(() => {
+                if (selectedDates.size === 0 || selectedAccommodations.size === 0) return '';
+                
+                const filteredAccommodations = (accommodations[activeSupplier.idFournisseur] || [])
+                  .filter(acc => selectedAccommodations.has(acc.idHebergement))
+                  .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement));
+                
+                // Trier les dates sélectionnées par ordre chronologique
+                const sortedDates = Array.from(selectedDates).sort();
+                
+                // Générer le résumé : un jour par ligne
+                // Format : Date1, H1 - T1, H2 - T2, H3 - T3
+                //          Date2, H1 - T1, H2 - T2, H3 - T3
+                const lines: string[] = [];
+                for (const dateStr of sortedDates) {
+                  const accommodationParts = filteredAccommodations.map(acc => {
+                    const price = ratesByAccommodation[acc.idHebergement]?.[dateStr];
+                    const priceStr = price != null ? `${Math.round(price)}€` : 'N/A';
+                    return `${acc.nomHebergement} - ${priceStr}`;
+                  });
+                  const lineParts = [dateStr, ...accommodationParts];
+                  lines.push(lineParts.join(', '));
+                }
+                
+                return lines.join('\n');
+              })()}
+              style={{
+                width: '100%',
+                minHeight: 80,
+                padding: '8px 12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+                fontSize: 13,
+                fontFamily: 'monospace',
+                background: '#f9fafb',
+                color: '#111827',
+                resize: 'vertical'
+              }}
+              placeholder="Aucune sélection"
+            />
+          </div>
         </div>
       )}
 
@@ -431,19 +483,50 @@ function CompactGrid({
   monthsCount,
   accommodations,
   stockByAccommodation,
-  ratesByAccommodation
+  ratesByAccommodation,
+  selectedDates,
+  onSelectedDatesChange
 }: {
   startDate: Date;
   monthsCount: number;
   accommodations: Accommodation[];
   stockByAccommodation: Record<number, Record<string, number>>;
   ratesByAccommodation: Record<number, Record<string, number>>;
+  selectedDates: Set<string>;
+  onSelectedDatesChange: (dates: Set<string>) => void;
 }) {
   const weeks = React.useMemo(() => getWeeksInRange(startDate, monthsCount), [startDate, monthsCount]);
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
   // Flatten all days from all weeks into a single array
   const allDays = weeks.flat();
+
+  // Gestionnaire de clic pour sélectionner/désélectionner une colonne
+  const handleHeaderClick = React.useCallback((dateStr: string) => {
+    onSelectedDatesChange(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dateStr)) {
+        newSet.delete(dateStr);
+      } else {
+        newSet.add(dateStr);
+      }
+      return newSet;
+    });
+  }, [onSelectedDatesChange]);
+
+  // Gestionnaire pour la touche Échap : annule toute sélection
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onSelectedDatesChange(new Set());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onSelectedDatesChange]);
 
   return (
     <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
@@ -474,17 +557,25 @@ function CompactGrid({
         </div>
         {allDays.map((day, idx) => {
           const dayOfWeek = (day.getDay() + 6) % 7; // 0 = Monday
+          const dateStr = formatDate(day);
+          const isSelected = selectedDates.has(dateStr);
           return (
             <div
               key={idx}
+              onClick={() => handleHeaderClick(dateStr)}
               style={{
                 padding: '8px 4px',
-                background: '#f9fafb',
+                background: isSelected ? 'rgba(59, 130, 246, 0.15)' : '#f9fafb',
                 borderBottom: '2px solid #e5e7eb',
+                borderLeft: isSelected ? '3px solid #3b82f6' : 'none',
+                borderRight: isSelected ? '3px solid #3b82f6' : 'none',
+                borderTop: isSelected ? '3px solid #3b82f6' : 'none',
                 textAlign: 'center',
                 fontSize: 11,
                 color: '#6b7280',
-                fontWeight: 500
+                fontWeight: 500,
+                cursor: 'pointer',
+                userSelect: 'none'
               }}
             >
               <div>{weekDayHeaders[dayOfWeek]}</div>
@@ -524,8 +615,25 @@ function CompactGrid({
                 const stock = stockMap[dateStr] ?? 0;
                 const isAvailable = stock > 0;
                 const price = priceMap[dateStr];
-                const bgColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
-                const borderColor = isAvailable ? 'rgba(34, 197, 94, 0.4)' : 'rgba(220, 38, 38, 0.4)';
+                const isSelected = selectedDates.has(dateStr);
+                
+                // Couleur de fond : surbrillance si sélectionné, sinon couleur de disponibilité
+                let bgColor: string;
+                if (isSelected) {
+                  // Surbrillance bleue avec opacité, en combinaison avec la couleur de disponibilité
+                  const baseColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
+                  bgColor = isAvailable 
+                    ? 'rgba(59, 130, 246, 0.15)' // Bleu pour disponible + sélectionné
+                    : 'rgba(59, 130, 246, 0.1)';  // Bleu plus clair pour indisponible + sélectionné
+                } else {
+                  bgColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
+                }
+                
+                // Bordure : surbrillance bleue si sélectionné, sinon couleur de disponibilité
+                const borderColor = isSelected 
+                  ? '#3b82f6' 
+                  : (isAvailable ? 'rgba(34, 197, 94, 0.4)' : 'rgba(220, 38, 38, 0.4)');
+                const borderWidth = isSelected ? '3px' : '1px';
 
                 return (
                   <div
@@ -533,7 +641,7 @@ function CompactGrid({
                     style={{
                       padding: '8px 4px',
                       background: bgColor,
-                      border: `1px solid ${borderColor}`,
+                      border: `${borderWidth} solid ${borderColor}`,
                       borderBottom: '1px solid #e5e7eb',
                       textAlign: 'center',
                       fontSize: 13,

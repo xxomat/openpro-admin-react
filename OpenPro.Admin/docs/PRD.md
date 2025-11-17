@@ -272,9 +272,64 @@ Vue d’ensemble (frontend uniquement) :
 
 A définir
 
-##### Sélection des badges — Exigences d’interaction
+##### Sélection des colonnes par jour — Exigences d'interaction
 
-A définir
+1. **Mécanisme de sélection**
+	- Le système permet de **sélectionner une colonne entière** (un jour) en cliquant sur la **cellule d'en-tête** correspondante dans la ligne 1 (header).
+	- La cellule d'en-tête contient le jour de la semaine (L, M, M, J, V, S, D) et la date (format `jour/mois`).
+	- Un clic sur une cellule d'en-tête sélectionne/désélectionne la colonne correspondante.
+
+2. **État de sélection**
+	- L'état de sélection est stocké dans `selectedDays: Set<number>` (Set des indices de colonnes sélectionnées) ou `selectedDates: Set<string>` (Set des dates au format `"YYYY-MM-DD"`).
+	- Une colonne peut être dans l'état **sélectionnée** ou **non sélectionnée**.
+	- Par défaut, aucune colonne n'est sélectionnée au chargement.
+
+3. **Mise en surbrillance visuelle**
+	- Lorsqu'une colonne est sélectionnée, **toutes les cellules de cette colonne** doivent être mises en surbrillance :
+		- **Cellule d'en-tête** (ligne 1) : appliquer un style de surbrillance (ex: fond coloré, bordure accentuée, ou opacité modifiée).
+		- **Cellules des hébergements** (lignes 2 à N+1) : appliquer le même style de surbrillance à toutes les cellules de la colonne pour tous les hébergements affichés.
+	- La surbrillance doit être **visuellement distincte** des couleurs de disponibilité (vert/rouge) tout en restant visible.
+	- Exemple de style de surbrillance : bordure plus épaisse (`border: 3px solid #3b82f6`), fond avec opacité (`background: rgba(59, 130, 246, 0.1)`), ou combinaison des deux.
+
+4. **Comportement interactif**
+	- Un **clic simple** sur une cellule d'en-tête :
+		- Si la colonne n'est pas sélectionnée → la sélectionne et applique la surbrillance.
+		- Si la colonne est déjà sélectionnée → la désélectionne et retire la surbrillance.
+	- Le curseur doit changer en `cursor: pointer` au survol des cellules d'en-tête pour indiquer l'interactivité.
+	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible).
+	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
+
+5. **Implémentation technique**
+	- Chaque cellule d'en-tête doit avoir un gestionnaire d'événement `onClick` qui :
+		- Identifie l'index de la colonne (`columnIndex`) ou la date (`dateStr`) correspondante.
+		- Met à jour l'état `selectedDays` ou `selectedDates`.
+		- Applique conditionnellement une classe CSS ou un style inline pour la surbrillance.
+	- Toutes les cellules d'une même colonne (en-tête + données) doivent partager la même logique de style conditionnel basée sur l'état de sélection.
+
+6. **Champ d'affichage du résumé de sélection (pour tests)**
+	- Un **champ texte en lecture seule** (`textarea`) doit être affiché sous le calendrier pour afficher un résumé formaté de la sélection.
+	- **Format du résumé** : une ligne par date sélectionnée, au format `Date, H1 - T1, H2 - T2, H3 - T3, ...` où :
+		- `Date` : date au format `"YYYY-MM-DD"` (ex: "2024-03-15").
+		- `H1, H2, H3, ...` : noms des hébergements (`nomHebergement`) affichés dans la grille, triés par ordre alphabétique.
+		- `T1, T2, T3, ...` : tarifs correspondants pour chaque hébergement à la date donnée, formatés en euros (ex: "120€").
+		- Si un tarif n'est pas disponible pour une date/hébergement donné, afficher `"N/A"` à la place.
+	- **Tri et ordre** :
+		- Les dates sont triées par ordre chronologique (ascendant).
+		- Les hébergements sont triés par ordre alphabétique de leur nom (`nomHebergement`).
+	- **Comportement** :
+		- Le champ est **en lecture seule** (`readOnly`).
+		- Le résumé se met à jour **automatiquement** lorsque la sélection change (ajout/suppression de dates).
+		- Si aucune date n'est sélectionnée ou aucun hébergement n'est affiché, le champ est vide.
+		- Le champ affiche le placeholder `"Aucune sélection"` lorsqu'il est vide.
+	- **Style** :
+		- Police monospace pour une meilleure lisibilité du formatage.
+		- Fond gris clair (`#f9fafb`) pour indiquer que le champ est en lecture seule.
+		- Redimensionnable verticalement (`resize: vertical`).
+		- Hauteur minimale de 80px.
+	- **Données sources** :
+		- Les dates proviennent de `selectedDates: Set<string>`.
+		- Les hébergements proviennent de `selectedAccommodations: Set<number>` filtrés et triés.
+		- Les tarifs proviennent de `ratesByAccommodation: Record<idHebergement, Record<dateStr, price>>`.
 
 ### 6.2 Exigences non-fonctionnelles
 
