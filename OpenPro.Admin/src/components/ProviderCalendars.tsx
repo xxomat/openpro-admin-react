@@ -676,13 +676,16 @@ function CompactGrid({
           const dayOfWeek = (day.getDay() + 6) % 7; // 0 = Monday
           const dateStr = formatDate(day);
           const isSelected = selectedDates.has(dateStr);
+          const isWeekend = day.getDay() === 0 || day.getDay() === 6; // Dimanche = 0, Samedi = 6
           return (
             <div
               key={idx}
               onClick={() => handleHeaderClick(dateStr)}
               style={{
                 padding: '8px 4px',
-                background: isSelected ? 'rgba(59, 130, 246, 0.15)' : '#f9fafb',
+                background: isSelected 
+                  ? 'rgba(59, 130, 246, 0.15)' 
+                  : (isWeekend ? '#f9fafb' : '#f3f4f6'),
                 borderBottom: '2px solid #e5e7eb',
                 borderLeft: isSelected ? '3px solid #3b82f6' : 'none',
                 borderRight: isSelected ? '3px solid #3b82f6' : 'none',
@@ -690,13 +693,14 @@ function CompactGrid({
                 textAlign: 'center',
                 fontSize: 11,
                 color: '#6b7280',
-                fontWeight: 500,
+                fontWeight: isWeekend ? 700 : 500,
                 cursor: 'pointer',
-                userSelect: 'none'
+                userSelect: 'none',
+                opacity: isWeekend ? 1 : 0.8
               }}
             >
-              <div>{weekDayHeaders[dayOfWeek]}</div>
-              <div style={{ fontSize: 10, marginTop: 2 }}>{day.getDate()}/{day.getMonth() + 1}</div>
+              <div style={{ fontWeight: isWeekend ? 700 : 500 }}>{weekDayHeaders[dayOfWeek]}</div>
+              <div style={{ fontSize: 10, marginTop: 2, fontWeight: isWeekend ? 700 : 500 }}>{day.getDate()}/{day.getMonth() + 1}</div>
             </div>
           );
         })}
@@ -735,6 +739,7 @@ function CompactGrid({
                 const isSelected = selectedDates.has(dateStr);
                 const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
+                const isWeekend = day.getDay() === 0 || day.getDay() === 6; // Dimanche = 0, Samedi = 6
                 
                 // Couleur de fond : surbrillance si sélectionné, sinon couleur de disponibilité
                 let bgColor: string;
@@ -745,7 +750,13 @@ function CompactGrid({
                     ? 'rgba(59, 130, 246, 0.15)' // Bleu pour disponible + sélectionné
                     : 'rgba(59, 130, 246, 0.1)';  // Bleu plus clair pour indisponible + sélectionné
                 } else {
-                  bgColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
+                  if (isWeekend) {
+                    // Weekend : style normal (opacité complète)
+                    bgColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
+                  } else {
+                    // Jours de semaine : fond grisé avec opacité réduite
+                    bgColor = isAvailable ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)';
+                  }
                 }
                 
                 // Bordure : surbrillance bleue si sélectionné, sinon couleur de disponibilité
@@ -765,13 +776,14 @@ function CompactGrid({
                       borderBottom: '1px solid #e5e7eb',
                       textAlign: 'center',
                       fontSize: 13,
-                      fontWeight: 500,
+                      fontWeight: isWeekend ? 700 : 500,
                       color: '#111827',
                       minHeight: 48,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: isSelected ? 'pointer' : 'default'
+                      cursor: isSelected ? 'pointer' : 'default',
+                      opacity: isWeekend || isSelected ? 1 : 0.7
                     }}
                     title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
                   >
