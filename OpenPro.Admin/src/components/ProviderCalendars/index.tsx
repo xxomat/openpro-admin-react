@@ -51,6 +51,16 @@ export function ProviderCalendars(): React.ReactElement {
     return isNaN(d.getTime()) ? addMonths(startDate, 1) : d;
   }, [endInput, startDate]);
 
+  // Dates pour le chargement initial des données (1 an)
+  // Les données sont chargées pour 1 an, mais l'affichage est limité à [startDate; endDate]
+  const loadStartDate = React.useMemo(() => {
+    const today = new Date();
+    return today;
+  }, []);
+  const loadEndDate = React.useMemo(() => {
+    return addMonths(loadStartDate, 12);
+  }, [loadStartDate]);
+
   // Obtenir la sélection de dates pour le fournisseur actif
   const selectedDates = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
@@ -199,8 +209,9 @@ export function ProviderCalendars(): React.ReactElement {
   }, [activeSupplier, startDate, endDate, supplierData]);
 
   // Chargement initial des données pour tous les fournisseurs au montage du composant
+  // Les données sont chargées pour 1 an, mais l'affichage est limité à [startDate; endDate]
   React.useEffect(() => {
-    supplierData.loadInitialData(suppliers, startDate, endDate);
+    supplierData.loadInitialData(suppliers, loadStartDate, loadEndDate);
   }, []); // Seulement au montage du composant
 
   // Callback pour mettre à jour le selectedRateTypeId
