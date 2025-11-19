@@ -7,6 +7,7 @@
 
 import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
 import type { Accommodation } from '../../types';
+import type { AccommodationListResponse, ApiAccommodation } from '../types/apiTypes';
 
 /**
  * Charge la liste des hébergements pour un fournisseur donné
@@ -29,10 +30,14 @@ export async function loadAccommodations(
 ): Promise<Accommodation[]> {
   const resp = await client.listAccommodations(idFournisseur);
   if (signal?.aborted) throw new Error('Cancelled');
+  
   // Normalize API/stub shapes to internal { idHebergement, nomHebergement }
-  const items: Accommodation[] = ((resp as any).hebergements ?? (resp as any).listeHebergement ?? []).map((x: any) => {
-    const id = x?.idHebergement ?? x?.cleHebergement?.idHebergement;
-    const name = x?.nomHebergement ?? x?.nom ?? '';
+  const apiResponse = resp as unknown as AccommodationListResponse;
+  const accommodationsList: ApiAccommodation[] = apiResponse.hebergements ?? apiResponse.listeHebergement ?? [];
+  
+  const items: Accommodation[] = accommodationsList.map((x: ApiAccommodation) => {
+    const id = x.idHebergement ?? x.cleHebergement?.idHebergement;
+    const name = x.nomHebergement ?? x.nom ?? '';
     return { idHebergement: Number(id), nomHebergement: String(name) };
   });
   return items;

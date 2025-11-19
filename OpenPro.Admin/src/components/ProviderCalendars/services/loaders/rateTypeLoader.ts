@@ -9,6 +9,7 @@ import type { ClientByRole } from '../../../../../../openpro-api-react/src/clien
 import type { Accommodation, RateType } from '../../types';
 import { extractFrenchText } from '../utils/rateUtils';
 import { getErrorMessage } from '../../utils/errorUtils';
+import type { RateTypeListResponse, ApiRateType, AccommodationRateTypeLinksResponse, AccommodationRateTypeLink, ApiTarif } from '../types/apiTypes';
 
 /**
  * Type interne pour représenter un type de tarif découvert lors du chargement
@@ -51,13 +52,15 @@ export async function loadRateTypes(
   try {
     const allRateTypesResponse = await client.listRateTypes(idFournisseur);
     if (signal?.aborted) throw new Error('Cancelled');
-    const allRateTypes = (allRateTypesResponse as any).typeTarifs ?? [];
+    const apiRateTypesResponse = allRateTypesResponse as unknown as RateTypeListResponse;
+    const allRateTypes: ApiRateType[] = apiRateTypesResponse.typeTarifs ?? [];
     
     const firstAcc = accommodationsList[0];
     const links = await client.listAccommodationRateTypeLinks(idFournisseur, firstAcc.idHebergement);
     if (signal?.aborted) throw new Error('Cancelled');
-    const liaisons = (links as any).liaisonHebergementTypeTarifs ?? (links as any).data?.liaisonHebergementTypeTarifs ?? [];
-    const linkedIds = new Set(liaisons.map((l: any) => Number(l.idTypeTarif)));
+    const apiLinksResponse = links as unknown as AccommodationRateTypeLinksResponse;
+    const liaisons: AccommodationRateTypeLink[] = apiLinksResponse.liaisonHebergementTypeTarifs ?? apiLinksResponse.data?.liaisonHebergementTypeTarifs ?? [];
+    const linkedIds = new Set(liaisons.map((l: AccommodationRateTypeLink) => Number(l.idTypeTarif)));
     
     for (const rateType of allRateTypes) {
       const id = Number(rateType.cleTypeTarif?.idTypeTarif ?? rateType.idTypeTarif);
@@ -99,7 +102,7 @@ export async function loadRateTypes(
  */
 export function updateDiscoveredRateTypes(
   discoveredRateTypes: Map<number, DiscoveredRateType>,
-  tarif: any,
+  tarif: ApiTarif,
   idType: number,
   rateLabel: string | undefined
 ): void {

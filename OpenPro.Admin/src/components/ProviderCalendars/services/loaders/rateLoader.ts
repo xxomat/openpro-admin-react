@@ -11,6 +11,7 @@ import type { DiscoveredRateType } from './rateTypeLoader';
 import { formatDate } from '../../utils/dateUtils';
 import { extractPriceFromTarif, extractRateLabel } from '../utils/rateUtils';
 import { updateDiscoveredRateTypes } from './rateTypeLoader';
+import type { ApiTarif, RatesResponse } from '../types/apiTypes';
 
 /**
  * Traite un tarif individuel et met à jour les maps de tarifs, promotions, types et durées minimales
@@ -30,7 +31,7 @@ import { updateDiscoveredRateTypes } from './rateTypeLoader';
  * @param discoveredRateTypes - Map des types de tarifs découverts (sera modifiée)
  */
 function processTarif(
-  tarif: any,
+  tarif: ApiTarif,
   debut: string,
   fin: string,
   mapRates: Record<string, Record<number, number>>,
@@ -164,7 +165,9 @@ export async function loadRatesForAccommodation(
   const mapPromo: Record<string, boolean> = {};
   const mapRateTypes: Record<string, string[]> = {};
   const mapDureeMin: Record<string, number | null> = {};
-  const tarifs = (rates as any).tarifs ?? (rates as any).periodes ?? [];
+  
+  const apiResponse = rates as unknown as RatesResponse;
+  const tarifs: ApiTarif[] = apiResponse.tarifs ?? apiResponse.periodes ?? [];
   
   for (const tarif of tarifs) {
     processTarif(tarif, debut, fin, mapRates, mapPromo, mapRateTypes, mapDureeMin, discoveredRateTypes);
