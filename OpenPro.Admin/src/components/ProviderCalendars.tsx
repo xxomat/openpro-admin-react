@@ -1506,7 +1506,9 @@ function CompactGrid({
                     style={{
                       padding: '8px 4px',
                       background: bgColor,
-                      border: `${borderWidth} solid ${borderColor}`,
+                      borderTop: `${borderWidth} solid ${borderColor}`,
+                      borderLeft: `${borderWidth} solid ${borderColor}`,
+                      borderRight: `${borderWidth} solid ${borderColor}`,
                       borderBottom: '1px solid #e5e7eb',
                       textAlign: 'center',
                       fontSize: 13,
