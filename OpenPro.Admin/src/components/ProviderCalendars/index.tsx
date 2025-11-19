@@ -46,20 +46,20 @@ export function ProviderCalendars(): React.ReactElement {
   // Obtenir la sélection de dates pour le fournisseur actif
   const selectedDates = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.selectedDatesBySupplier[activeSupplier.idFournisseur] || new Set<string>();
+    return supplierData.selectedDatesBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
   }, [activeSupplier, supplierData.selectedDatesBySupplier]);
 
   // Obtenir la sélection d'hébergements pour le fournisseur actif
   const selectedAccommodations = React.useMemo(() => {
     if (!activeSupplier) return new Set<number>();
-    return supplierData.selectedAccommodationsBySupplier[activeSupplier.idFournisseur] || new Set<number>();
+    return supplierData.selectedAccommodationsBySupplier[activeSupplier.idFournisseur] ?? new Set<number>();
   }, [activeSupplier, supplierData.selectedAccommodationsBySupplier]);
 
   // Fonction pour mettre à jour la sélection d'hébergements du fournisseur actif
   const setSelectedAccommodations = React.useCallback((updater: Set<number> | ((prev: Set<number>) => Set<number>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedAccommodationsBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] || new Set<number>();
+      const current = prev[activeSupplier.idFournisseur] ?? new Set<number>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
       return { ...prev, [activeSupplier.idFournisseur]: newSet };
     });
@@ -69,7 +69,7 @@ export function ProviderCalendars(): React.ReactElement {
   const setSelectedDates = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedDatesBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] || new Set<string>();
+      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
       return { ...prev, [activeSupplier.idFournisseur]: newSet };
     });
@@ -78,12 +78,12 @@ export function ProviderCalendars(): React.ReactElement {
   // Obtenir les modifications pour le fournisseur actif
   const modifiedRates = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.modifiedRatesBySupplier[activeSupplier.idFournisseur] || new Set<string>();
+    return supplierData.modifiedRatesBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
   }, [activeSupplier, supplierData.modifiedRatesBySupplier]);
 
   const modifiedDureeMin = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.modifiedDureeMinBySupplier[activeSupplier.idFournisseur] || new Set<string>();
+    return supplierData.modifiedDureeMinBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
   }, [activeSupplier, supplierData.modifiedDureeMinBySupplier]);
 
   // Obtenir le selectedRateTypeId pour le fournisseur actif
@@ -95,17 +95,17 @@ export function ProviderCalendars(): React.ReactElement {
   // Helper pour extraire les données du fournisseur actif
   const stockByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.stockBySupplierAndAccommodation[activeSupplier.idFournisseur] || {};
+    return supplierData.stockBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.stockBySupplierAndAccommodation]);
 
   const ratesByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.ratesBySupplierAndAccommodation[activeSupplier.idFournisseur] || {};
+    return supplierData.ratesBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.ratesBySupplierAndAccommodation]);
 
   const dureeMinByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] || {};
+    return supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.dureeMinBySupplierAndAccommodation]);
 
   // Fonction pour mettre à jour les prix localement
@@ -114,7 +114,7 @@ export function ProviderCalendars(): React.ReactElement {
     const modifications = new Set<string>();
     supplierData.setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
-      const supplierDataState = updated[activeSupplier.idFournisseur] || {};
+      const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
       
       // Appliquer le prix à toutes les combinaisons date-hébergement sélectionnées pour le type tarif sélectionné
       for (const dateStr of selectedDates) {
@@ -134,7 +134,7 @@ export function ProviderCalendars(): React.ReactElement {
     });
     // Marquer comme modifié après la mise à jour des prix (pour le fournisseur actif)
     supplierData.setModifiedRatesBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] || new Set<string>();
+      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
       const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
@@ -149,7 +149,7 @@ export function ProviderCalendars(): React.ReactElement {
     const modifications = new Set<string>();
     supplierData.setDureeMinByAccommodation(prev => {
       const updated = { ...prev };
-      const supplierDataState = updated[activeSupplier.idFournisseur] || {};
+      const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
       
       // Appliquer la durée minimale à toutes les combinaisons date-hébergement sélectionnées
       for (const dateStr of selectedDates) {
@@ -166,7 +166,7 @@ export function ProviderCalendars(): React.ReactElement {
     });
     // Marquer comme modifié après la mise à jour de la durée minimale (pour le fournisseur actif)
     supplierData.setModifiedDureeMinBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] || new Set<string>();
+      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
       const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
@@ -228,7 +228,7 @@ export function ProviderCalendars(): React.ReactElement {
           </h3>
           
           <AccommodationList
-            accommodations={supplierData.accommodations[activeSupplier.idFournisseur] || []}
+            accommodations={supplierData.accommodations[activeSupplier.idFournisseur] ?? []}
             selectedAccommodations={selectedAccommodations}
             onSelectedAccommodationsChange={setSelectedAccommodations}
           />
@@ -236,15 +236,15 @@ export function ProviderCalendars(): React.ReactElement {
           {selectedAccommodations.size > 0 && (
             <>
               <RateTypeSelector
-                rateTypes={supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] || []}
-                rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur] || {}}
+                rateTypes={supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] ?? []}
+                rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur] ?? {}}
                 selectedRateTypeId={selectedRateTypeId}
                 onSelectedRateTypeIdChange={handleSelectedRateTypeIdChange}
               />
               <CompactGrid
                 startDate={startDate}
                 monthsCount={monthsCount}
-                accommodations={(supplierData.accommodations[activeSupplier.idFournisseur] || [])
+                accommodations={(supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
                   .filter(acc => selectedAccommodations.has(acc.idHebergement))
                   .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
                 stockByAccommodation={stockByAccommodation}
@@ -271,7 +271,7 @@ export function ProviderCalendars(): React.ReactElement {
           
           <SelectionSummary
             selectedDates={selectedDates}
-            selectedAccommodations={(supplierData.accommodations[activeSupplier.idFournisseur] || [])
+            selectedAccommodations={(supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
               .filter(acc => selectedAccommodations.has(acc.idHebergement))}
             selectedRateTypeId={selectedRateTypeId}
             ratesByAccommodation={ratesByAccommodation}

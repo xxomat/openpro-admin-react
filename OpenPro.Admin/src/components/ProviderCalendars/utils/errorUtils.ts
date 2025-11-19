@@ -83,7 +83,7 @@ export function isOpenProApiError(error: unknown): error is OpenProApiErrorLike 
  */
 export function getErrorMessage(error: unknown, defaultMessage: string = 'Une erreur est survenue'): string {
   if (isError(error)) {
-    return error.message || defaultMessage;
+    return error.message ?? defaultMessage;
   }
   if (typeof error === 'string') {
     return error;
