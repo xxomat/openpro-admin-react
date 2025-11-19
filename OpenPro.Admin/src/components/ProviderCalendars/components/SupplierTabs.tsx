@@ -21,14 +21,37 @@ export function SupplierTabs({
   activeIdx,
   onActiveIdxChange
 }: SupplierTabsProps): React.ReactElement {
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onActiveIdxChange(idx);
+    } else if (e.key === 'ArrowLeft' && idx > 0) {
+      e.preventDefault();
+      onActiveIdxChange(idx - 1);
+    } else if (e.key === 'ArrowRight' && idx < suppliers.length - 1) {
+      e.preventDefault();
+      onActiveIdxChange(idx + 1);
+    }
+  }, [onActiveIdxChange, suppliers.length]);
+
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
+    <div 
+      role="tablist" 
+      aria-label="Sélection du fournisseur"
+      style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}
+    >
       {suppliers.map((s, idx) => {
         const isActive = idx === activeIdx;
         return (
           <button
             key={s.idFournisseur}
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`supplier-panel-${s.idFournisseur}`}
+            id={`supplier-tab-${s.idFournisseur}`}
             onClick={() => onActiveIdxChange(idx)}
+            onKeyDown={e => handleKeyDown(e, idx)}
+            aria-label={`Sélectionner le fournisseur ${s.nom}`}
             style={{
               padding: '8px 12px',
               border: 'none',

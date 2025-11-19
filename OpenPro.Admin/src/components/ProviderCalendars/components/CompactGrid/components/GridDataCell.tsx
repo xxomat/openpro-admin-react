@@ -132,6 +132,7 @@ export function GridDataCell({
               onEditSubmit();
             } else if (e.key === 'Escape') {
               e.preventDefault();
+              e.stopPropagation();
               onEditCancel();
             }
           }}
@@ -176,6 +177,7 @@ export function GridDataCell({
                   onEditDureeMinSubmit();
                 } else if (e.key === 'Escape') {
                   e.preventDefault();
+                  e.stopPropagation();
                   onEditDureeMinCancel();
                 }
               }}
