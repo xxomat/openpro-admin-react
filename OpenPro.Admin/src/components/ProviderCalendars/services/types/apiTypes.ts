@@ -20,6 +20,15 @@ export interface MultilingualText {
   Texte?: string;
 }
 
+/**
+ * Type pour un champ multilingue
+ * 
+ * Représente un champ qui peut contenir du texte dans différentes langues.
+ * Peut être :
+ * - Un string simple (texte déjà en français ou langue par défaut)
+ * - Un array d'objets MultilingualText avec les traductions
+ * - undefined si le champ n'est pas défini
+ */
 export type MultilingualField = string | MultilingualText[] | undefined;
 
 /**

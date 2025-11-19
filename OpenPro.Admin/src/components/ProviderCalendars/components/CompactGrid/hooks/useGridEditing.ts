@@ -7,8 +7,16 @@
 
 import React from 'react';
 
+/**
+ * Représente une cellule en cours d'édition
+ * 
+ * Identifie une cellule de la grille qui est actuellement en mode édition,
+ * soit pour le prix, soit pour la durée minimale.
+ */
 export interface EditingCell {
+  /** Identifiant de l'hébergement */
   accId: number;
+  /** Date de la cellule au format YYYY-MM-DD */
   dateStr: string;
 }
 

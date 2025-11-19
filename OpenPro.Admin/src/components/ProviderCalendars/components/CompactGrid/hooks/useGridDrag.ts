@@ -9,10 +9,20 @@
 import React from 'react';
 import { formatDate } from '../../../utils/dateUtils';
 
+/**
+ * État du drag de sélection de dates
+ * 
+ * Représente l'état actuel d'une opération de drag pour sélectionner
+ * une plage de dates dans la grille.
+ */
 export interface DraggingState {
+  /** Date de début du drag au format YYYY-MM-DD */
   startDate: string;
+  /** Date actuelle sous le curseur au format YYYY-MM-DD */
   currentDate: string;
+  /** Indique si le drag est actif (après un mouvement de plus de 5px) */
   isDragging: boolean;
+  /** Position de départ du drag en pixels */
   startPosition: { x: number; y: number };
 }
 

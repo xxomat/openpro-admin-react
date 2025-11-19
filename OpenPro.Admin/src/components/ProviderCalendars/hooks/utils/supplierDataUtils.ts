@@ -9,6 +9,12 @@ import React from 'react';
 import type { SupplierData } from '../../types';
 import type { RateType } from '../../types';
 
+/**
+ * Paramètres pour la fonction updateSupplierDataStates
+ * 
+ * Contient tous les setters nécessaires pour mettre à jour les états
+ * après le chargement des données d'un fournisseur.
+ */
 export interface UpdateSupplierDataParams {
   idFournisseur: number;
   data: SupplierData;

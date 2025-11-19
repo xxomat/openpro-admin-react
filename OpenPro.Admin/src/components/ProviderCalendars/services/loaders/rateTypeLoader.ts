@@ -13,12 +13,20 @@ import type { RateTypeListResponse, ApiRateType, AccommodationRateTypeLinksRespo
 
 /**
  * Type interne pour représenter un type de tarif découvert lors du chargement
+ * 
+ * Ce type est utilisé pour accumuler les informations sur les types de tarifs
+ * trouvés dans les réponses API, avant de les convertir en format interne RateType.
  */
 export type DiscoveredRateType = {
+  /** Identifiant unique du type de tarif */
   idTypeTarif: number;
+  /** Libellé brut de l'API (peut être multilingue) */
   libelle?: unknown;
+  /** Libellé français extrait et normalisé */
   label?: string;
+  /** Description française extraite et normalisée */
   descriptionFr?: string;
+  /** Ordre d'affichage du type de tarif */
   ordre?: number;
 };
 
