@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { formatDate } from '../../../utils/dateUtils';
+import { darkTheme } from '../../../utils/theme';
 
 /**
  * Props du composant GridHeaderCell
@@ -61,23 +62,23 @@ export function GridHeaderCell({
       style={{
         padding: '8px 4px',
         background: isDragging
-          ? 'rgba(59, 130, 246, 0.2)'
+          ? darkTheme.selectionDraggingBg
           : (isSelected 
-            ? 'rgba(59, 130, 246, 0.15)' 
-            : (isWeekend ? '#f9fafb' : '#f3f4f6')),
-        borderBottom: '2px solid #e5e7eb',
+            ? darkTheme.selectionBg
+            : (isWeekend ? darkTheme.gridCellWeekendBg : darkTheme.gridHeaderBg)),
+        borderBottom: `2px solid ${darkTheme.borderColor}`,
         borderLeft: isDragging 
-          ? '2px solid #3b82f6' 
-          : (isSelected ? '3px solid #3b82f6' : 'none'),
+          ? `2px solid ${darkTheme.selectionBorder}` 
+          : (isSelected ? `3px solid ${darkTheme.selectionBorder}` : 'none'),
         borderRight: isDragging 
-          ? '2px solid #3b82f6' 
-          : (isSelected ? '3px solid #3b82f6' : 'none'),
+          ? `2px solid ${darkTheme.selectionBorder}` 
+          : (isSelected ? `3px solid ${darkTheme.selectionBorder}` : 'none'),
         borderTop: isDragging 
-          ? '2px solid #3b82f6' 
-          : (isSelected ? '3px solid #3b82f6' : 'none'),
+          ? `2px solid ${darkTheme.selectionBorder}` 
+          : (isSelected ? `3px solid ${darkTheme.selectionBorder}` : 'none'),
         textAlign: 'center',
         fontSize: 11,
-        color: '#6b7280',
+        color: darkTheme.textSecondary,
         fontWeight: isWeekend ? 700 : 500,
         cursor: draggingState?.isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',

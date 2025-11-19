@@ -20,6 +20,7 @@ import { SupplierTabs } from './components/SupplierTabs';
 import { defaultSuppliers, baseUrl, apiKey } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { formatDate, addMonths } from './utils/dateUtils';
+import { darkTheme } from './utils/theme';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
@@ -224,7 +225,12 @@ export function ProviderCalendars(): React.ReactElement {
   }, [activeSupplier, supplierData]);
 
   return (
-    <div style={{ padding: '16px', fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif' }}>
+    <div style={{ 
+      padding: '16px', 
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+      backgroundColor: darkTheme.bgPrimary,
+      color: darkTheme.textPrimary
+    }}>
       <DateRangeControls
         startInput={startInput}
         onStartInputChange={setStartInput}
@@ -237,12 +243,12 @@ export function ProviderCalendars(): React.ReactElement {
         onActiveIdxChange={setActiveIdx}
       />
 
-      {supplierData.loading && <div>Chargement…</div>}
-      {supplierData.error && <div style={{ color: '#b91c1c' }}>Erreur: {supplierData.error}</div>}
+      {supplierData.loading && <div style={{ color: darkTheme.textSecondary }}>Chargement…</div>}
+      {supplierData.error && <div style={{ color: darkTheme.error }}>Erreur: {supplierData.error}</div>}
 
       {activeSupplier && (
         <div>
-          <h3 style={{ marginBottom: 16 }}>
+          <h3 style={{ marginBottom: 16, color: darkTheme.textPrimary }}>
             Hébergements — {activeSupplier.nom}
           </h3>
           

@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { addDays, formatDate } from '../utils/dateUtils';
+import { darkTheme } from '../utils/theme';
 
 /**
  * Props du composant DateRangeControls
@@ -83,44 +84,66 @@ export function DateRangeControls({
   }, [startInput, endInput, onStartInputChange, onEndInputChange]);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 12, justifyContent: 'space-between' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <label htmlFor={startDateId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>Date de début</span>
-          <input
-            id={startDateId}
-            type="date"
-            value={startInput}
-            onChange={e => onStartInputChange(e.currentTarget.value)}
-            onWheel={handleStartDateWheel}
-            aria-label="Date de début de la période à afficher"
-            style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-          />
-        </label>
-        <label htmlFor={endDateId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>Date de fin</span>
-          <input
-            id={endDateId}
-            type="date"
-            value={endInput}
-            onChange={e => onEndInputChange(e.currentTarget.value)}
-            onWheel={handleEndDateWheel}
-            min={startInput}
-            aria-label="Date de fin de la période à afficher"
-            style={{ 
-              padding: '6px 8px', 
-              border: `1px solid ${isValidRange ? '#e5e7eb' : '#dc2626'}`, 
-              borderRadius: 6 
-            }}
-          />
-        </label>
+    <>
+      <style>{`
+        .date-input-dark::-webkit-calendar-picker-indicator {
+          filter: invert(1);
+          cursor: pointer;
+        }
+        .date-input-dark::-moz-calendar-picker-indicator {
+          filter: invert(1);
+          cursor: pointer;
+        }
+      `}</style>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 12, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <label htmlFor={startDateId} style={{ display: 'flex', alignItems: 'center', gap: 8, color: darkTheme.textPrimary }}>
+            <span>Date de début</span>
+            <input
+              id={startDateId}
+              type="date"
+              value={startInput}
+              onChange={e => onStartInputChange(e.currentTarget.value)}
+              onWheel={handleStartDateWheel}
+              aria-label="Date de début de la période à afficher"
+              style={{ 
+                padding: '6px 8px', 
+                border: `1px solid ${darkTheme.inputBorder}`, 
+                borderRadius: 6,
+                background: darkTheme.inputBg,
+                color: darkTheme.inputText
+              }}
+              className="date-input-dark"
+            />
+          </label>
+          <label htmlFor={endDateId} style={{ display: 'flex', alignItems: 'center', gap: 8, color: darkTheme.textPrimary }}>
+            <span>Date de fin</span>
+            <input
+              id={endDateId}
+              type="date"
+              value={endInput}
+              onChange={e => onEndInputChange(e.currentTarget.value)}
+              onWheel={handleEndDateWheel}
+              min={startInput}
+              aria-label="Date de fin de la période à afficher"
+              style={{ 
+                padding: '6px 8px', 
+                border: `1px solid ${isValidRange ? darkTheme.inputBorder : darkTheme.error}`, 
+                borderRadius: 6,
+                background: darkTheme.inputBg,
+                color: darkTheme.inputText
+              }}
+              className="date-input-dark"
+            />
+          </label>
         {!isValidRange && (
-          <span style={{ color: '#dc2626', fontSize: '14px' }}>
+          <span style={{ color: darkTheme.error, fontSize: '14px' }}>
             La date de fin doit être postérieure ou égale à la date de début
           </span>
         )}
       </div>
     </div>
+    </>
   );
 }
 

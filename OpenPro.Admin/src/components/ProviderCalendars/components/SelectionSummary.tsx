@@ -7,6 +7,7 @@
 
 import React from 'react';
 import type { Accommodation } from '../types';
+import { darkTheme } from '../utils/theme';
 
 /**
  * Props du composant SelectionSummary
@@ -63,7 +64,7 @@ export function SelectionSummary({
 
   return (
     <div style={{ marginTop: 16 }}>
-      <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#374151' }}>
+      <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: darkTheme.textSecondary }}>
         Résumé de sélection (pour tests)
       </label>
       <textarea
@@ -73,12 +74,12 @@ export function SelectionSummary({
           width: '100%',
           minHeight: 80,
           padding: '8px 12px',
-          border: '1px solid #e5e7eb',
+          border: `1px solid ${darkTheme.borderColor}`,
           borderRadius: 6,
           fontSize: 13,
           fontFamily: 'monospace',
-          background: '#f9fafb',
-          color: '#111827',
+          background: darkTheme.bgSecondary,
+          color: darkTheme.textPrimary,
           resize: 'vertical'
         }}
         placeholder="Aucune sélection"

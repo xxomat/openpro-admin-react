@@ -7,6 +7,7 @@
 
 import React from 'react';
 import type { EditingCell } from '../hooks/useGridEditing';
+import { darkTheme } from '../../../utils/theme';
 
 /**
  * Props du composant GridDataCell
@@ -98,22 +99,22 @@ export function GridDataCell({
   
   let bgColor: string;
   if (isDragging) {
-    bgColor = 'rgba(59, 130, 246, 0.2)';
+    bgColor = darkTheme.selectionDraggingBg;
   } else if (isSelected) {
     bgColor = isAvailable 
-      ? 'rgba(59, 130, 246, 0.15)'
-      : 'rgba(59, 130, 246, 0.1)';
+      ? darkTheme.selectionBg
+      : darkTheme.infoBg;
   } else {
     if (isWeekend) {
-      bgColor = isAvailable ? 'rgba(34, 197, 94, 0.2)' : 'rgba(220, 38, 38, 0.2)';
+      bgColor = isAvailable ? darkTheme.successBgStrong : darkTheme.errorBgStrong;
     } else {
-      bgColor = isAvailable ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)';
+      bgColor = isAvailable ? darkTheme.successBg : darkTheme.errorBg;
     }
   }
   
   const borderColor = (isSelected || isDragging)
-    ? '#3b82f6' 
-    : (isAvailable ? 'rgba(34, 197, 94, 0.4)' : 'rgba(220, 38, 38, 0.4)');
+    ? darkTheme.selectionBorder
+    : (isAvailable ? darkTheme.success : darkTheme.error);
   const borderWidth = isDragging ? '2px' : (isSelected ? '3px' : '1px');
 
   return (
@@ -133,11 +134,11 @@ export function GridDataCell({
         borderTop: `${borderWidth} solid ${borderColor}`,
         borderLeft: `${borderWidth} solid ${borderColor}`,
         borderRight: `${borderWidth} solid ${borderColor}`,
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: `1px solid ${darkTheme.borderColor}`,
         textAlign: 'center',
         fontSize: 13,
         fontWeight: isWeekend ? 700 : 500,
-        color: '#111827',
+        color: darkTheme.textPrimary,
         minHeight: 48,
         display: 'flex',
         alignItems: 'center',
@@ -171,10 +172,11 @@ export function GridDataCell({
             textAlign: 'center',
             fontSize: 13,
             fontWeight: 500,
-            border: '2px solid #3b82f6',
+            border: `2px solid ${darkTheme.inputFocusBorder}`,
             borderRadius: 4,
             padding: '4px',
-            background: '#fff'
+            background: darkTheme.inputBg,
+            color: darkTheme.inputText
           }}
           min="0"
           step="0.01"
@@ -186,11 +188,11 @@ export function GridDataCell({
               <span style={{ userSelect: 'none' }}>
                 {`${Math.round(price)}€`}
                 {isModified && (
-                  <span style={{ color: '#eab308', marginLeft: 2, userSelect: 'none' }}>*</span>
+                  <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
                 )}
               </span>
             ) : (
-              <span style={{ userSelect: 'none', color: '#9ca3af' }}>-</span>
+              <span style={{ userSelect: 'none', color: darkTheme.textTertiary }}>-</span>
             )
           ) : null}
           {isEditingDureeMin ? (
@@ -216,11 +218,11 @@ export function GridDataCell({
                 textAlign: 'center',
                 fontSize: 10,
                 fontWeight: 400,
-                border: '2px solid #3b82f6',
+                border: `2px solid ${darkTheme.inputFocusBorder}`,
                 borderRadius: 4,
                 padding: '2px 4px',
-                background: '#fff',
-                color: '#111827'
+                background: darkTheme.inputBg,
+                color: darkTheme.inputText
               }}
               min="1"
               step="1"
@@ -238,7 +240,7 @@ export function GridDataCell({
               }}
               style={{ 
                 fontSize: 10, 
-                color: '#6b7280', 
+                color: darkTheme.textMuted, 
                 fontWeight: 400,
                 marginTop: price != null ? 2 : 0,
                 cursor: isSelected ? 'pointer' : 'default',
@@ -247,7 +249,7 @@ export function GridDataCell({
             >
               {dureeMin != null && dureeMin > 0 ? `${dureeMin}+` : '-'}
               {isModifiedDureeMin && (
-                <span style={{ color: '#eab308', marginLeft: 2, userSelect: 'none' }}>*</span>
+                <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
               )}
             </span>
           )}

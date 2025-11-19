@@ -15,6 +15,7 @@ import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
 import { useGridDrag } from './CompactGrid/hooks/useGridDrag';
 import { useGridEditing } from './CompactGrid/hooks/useGridEditing';
 import { getDateFromElement, getDateRange } from './CompactGrid/utils/gridUtils';
+import { darkTheme } from '../utils/theme';
 
 /**
  * Props du composant CompactGrid
@@ -135,7 +136,13 @@ export function CompactGrid({
   }, [editingCell, editingDureeMinCell, onSelectedDatesChange, handleEditCancel, handleDureeMinCancel]);
 
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', userSelect: 'none' }}>
+    <div style={{ 
+      overflowX: 'auto', 
+      border: `1px solid ${darkTheme.borderColor}`, 
+      borderRadius: 8, 
+      background: darkTheme.bgSecondary, 
+      userSelect: 'none' 
+    }}>
       <div
         style={{
           display: 'grid',
@@ -149,15 +156,15 @@ export function CompactGrid({
         <div
           style={{
             padding: '8px 12px',
-            background: '#f9fafb',
-            borderBottom: '2px solid #e5e7eb',
+            background: darkTheme.gridHeaderBg,
+            borderBottom: `2px solid ${darkTheme.borderColor}`,
             fontWeight: 600,
             fontSize: 13,
-            color: '#374151',
+            color: darkTheme.textPrimary,
             position: 'sticky',
             left: 0,
             zIndex: 10,
-            borderRight: '1px solid #e5e7eb'
+            borderRight: `1px solid ${darkTheme.borderColor}`
           }}
         >
           Hébergement
@@ -194,15 +201,15 @@ export function CompactGrid({
               <div
                 style={{
                   padding: '12px',
-                  background: '#fff',
-                  borderRight: '1px solid #e5e7eb',
-                  borderBottom: '1px solid #e5e7eb',
+                  background: darkTheme.bgSecondary,
+                  borderRight: `1px solid ${darkTheme.borderColor}`,
+                  borderBottom: `1px solid ${darkTheme.borderColor}`,
                   position: 'sticky',
                   left: 0,
                   zIndex: 5,
                   fontWeight: 500,
                   fontSize: 13,
-                  color: '#111827',
+                  color: darkTheme.textPrimary,
                   userSelect: 'none'
                 }}
               >

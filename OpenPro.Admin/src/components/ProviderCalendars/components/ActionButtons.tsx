@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { darkTheme } from '../utils/theme';
 
 /**
  * Props du composant ActionButtons
@@ -41,24 +42,24 @@ export function ActionButtons({
         disabled={loading}
         style={{
           padding: '10px 20px',
-          background: loading ? '#9ca3af' : '#6b7280',
-          color: '#fff',
+          background: loading ? darkTheme.buttonDisabledBg : darkTheme.buttonSecondaryBg,
+          color: darkTheme.buttonText,
           border: 'none',
           borderRadius: 6,
           fontSize: 14,
           fontWeight: 500,
           cursor: loading ? 'not-allowed' : 'pointer',
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          boxShadow: darkTheme.shadowSm,
           opacity: loading ? 0.6 : 1
         }}
         onMouseEnter={(e) => {
           if (!loading) {
-            e.currentTarget.style.background = '#4b5563';
+            e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
           }
         }}
         onMouseLeave={(e) => {
           if (!loading) {
-            e.currentTarget.style.background = '#6b7280';
+            e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
           }
         }}
       >
@@ -69,20 +70,20 @@ export function ActionButtons({
           onClick={onSave}
           style={{
             padding: '10px 20px',
-            background: '#3b82f6',
-            color: '#fff',
+            background: darkTheme.buttonPrimaryBg,
+            color: darkTheme.buttonText,
             border: 'none',
             borderRadius: 6,
             fontSize: 14,
             fontWeight: 500,
             cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+            boxShadow: darkTheme.shadowSm
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#2563eb';
+            e.currentTarget.style.background = darkTheme.buttonPrimaryHover;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#3b82f6';
+            e.currentTarget.style.background = darkTheme.buttonPrimaryBg;
           }}
         >
           Sauvegarder ({totalModifications} modification{totalModifications > 1 ? 's' : ''})

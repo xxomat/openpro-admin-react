@@ -6,6 +6,7 @@
 
 import React from 'react';
 import type { Supplier } from '../types';
+import { darkTheme } from '../utils/theme';
 
 /**
  * Props du composant SupplierTabs
@@ -44,7 +45,7 @@ export function SupplierTabs({
     <div 
       role="tablist" 
       aria-label="Sélection du fournisseur"
-      style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}
+      style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: `1px solid ${darkTheme.borderColor}` }}
     >
       {suppliers.map((s, idx) => {
         const isActive = idx === activeIdx;
@@ -61,8 +62,8 @@ export function SupplierTabs({
             style={{
               padding: '8px 12px',
               border: 'none',
-              background: isActive ? '#111827' : 'transparent',
-              color: isActive ? '#fff' : '#111827',
+              background: isActive ? darkTheme.bgTertiary : 'transparent',
+              color: isActive ? darkTheme.textPrimary : darkTheme.textSecondary,
               borderRadius: '8px 8px 0 0',
               cursor: 'pointer'
             }}

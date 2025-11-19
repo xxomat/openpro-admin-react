@@ -7,6 +7,7 @@
 
 import React from 'react';
 import type { RateType } from '../types';
+import { darkTheme } from '../utils/theme';
 
 /**
  * Props du composant RateTypeSelector
@@ -33,7 +34,7 @@ export function RateTypeSelector({
 }: RateTypeSelectorProps): React.ReactElement {
   return (
     <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: darkTheme.textPrimary }}>
         <span style={{ fontWeight: 500, fontSize: 14 }}>Type de tarif :</span>
         <select
           value={selectedRateTypeId ?? ''}
@@ -43,12 +44,12 @@ export function RateTypeSelector({
           }}
           style={{
             padding: '6px 12px',
-            border: '1px solid #e5e7eb',
+            border: `1px solid ${darkTheme.inputBorder}`,
             borderRadius: 6,
             fontSize: 14,
             minWidth: 200,
-            background: '#fff',
-            color: '#111827'
+            background: darkTheme.inputBg,
+            color: darkTheme.inputText
           }}
         >
           {rateTypes.length === 0 ? (
