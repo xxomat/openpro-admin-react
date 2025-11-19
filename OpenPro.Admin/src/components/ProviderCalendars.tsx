@@ -82,7 +82,7 @@ const defaultSuppliers: Supplier[] =
     { idFournisseur: 55123, nom: 'Gîte en Cotentin' }
   ];
 
-export function ProviderCalendars(): JSX.Element {
+export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
   const [activeIdx, setActiveIdx] = React.useState(0);
   const [accommodations, setAccommodations] = React.useState<Record<number, Accommodation[]>>({});
@@ -1027,7 +1027,7 @@ function CompactGrid({
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
   selectedDates: Set<string>;
-  onSelectedDatesChange: (dates: Set<string>) => void;
+  onSelectedDatesChange: (dates: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   modifiedRates: Set<string>;
   modifiedDureeMin: Set<string>;
   onRateUpdate: (newPrice: number) => void;
@@ -1061,7 +1061,7 @@ function CompactGrid({
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
   const handleHeaderClick = React.useCallback((dateStr: string) => {
-    onSelectedDatesChange(prev => {
+    onSelectedDatesChange((prev: Set<string>) => {
       const newSet = new Set(prev);
       if (newSet.has(dateStr)) {
         newSet.delete(dateStr);
@@ -1270,7 +1270,7 @@ function CompactGrid({
         justFinishedDragRef.current = true;
         
         // Toggle de la colonne de départ (comportement du clic simple)
-        onSelectedDatesChange(prevSelected => {
+        onSelectedDatesChange((prevSelected: Set<string>) => {
           const newSet = new Set(prevSelected);
           if (newSet.has(prev.startDate)) {
             newSet.delete(prev.startDate);
@@ -1294,7 +1294,7 @@ function CompactGrid({
       const isReplaceMode = e.ctrlKey || e.metaKey;
       
       // Appliquer la sélection
-      onSelectedDatesChange(prevSelected => {
+      onSelectedDatesChange((prevSelected: Set<string>) => {
         if (isReplaceMode) {
           // Mode remplacement : remplacer la sélection existante
           return new Set(dateRange);
