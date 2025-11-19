@@ -90,7 +90,7 @@ export function ProviderCalendars(): JSX.Element {
     Record<number, Record<string, number>>
   >({});
   const [ratesByAccommodation, setRatesByAccommodation] = React.useState<
-    Record<number, Record<string, number>>
+    Record<number, Record<string, Record<number, number>>>
   >({});
   const [promoByAccommodation, setPromoByAccommodation] = React.useState<
     Record<number, Record<string, boolean>>
@@ -104,6 +104,10 @@ export function ProviderCalendars(): JSX.Element {
   const [rateTypeLabelsBySupplier, setRateTypeLabelsBySupplier] = React.useState<
     Record<number, Record<number, string>>
   >({});
+  const [rateTypesBySupplier, setRateTypesBySupplier] = React.useState<
+    Record<number, Array<{ idTypeTarif: number; libelle?: unknown; descriptionFr?: string; ordre?: number }>>
+  >({});
+  const [selectedRateTypeId, setSelectedRateTypeId] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [startInput, setStartInput] = React.useState<string>(() => {
@@ -159,18 +163,21 @@ export function ProviderCalendars(): JSX.Element {
 
   // Fonction pour mettre à jour les prix localement
   const handleRateUpdate = React.useCallback((newPrice: number) => {
-    if (!activeSupplier) return;
+    if (!activeSupplier || selectedRateTypeId === null) return;
     const modifications = new Set<string>();
     setRatesByAccommodation(prev => {
       const updated = { ...prev };
-      // Appliquer le prix à toutes les combinaisons date-hébergement sélectionnées
+      // Appliquer le prix à toutes les combinaisons date-hébergement sélectionnées pour le type tarif sélectionné
       for (const dateStr of selectedDates) {
         for (const accId of selectedAccommodations) {
           if (!updated[accId]) {
             updated[accId] = {};
           }
-          updated[accId][dateStr] = newPrice;
-          modifications.add(`${accId}-${dateStr}`);
+          if (!updated[accId][dateStr]) {
+            updated[accId][dateStr] = {};
+          }
+          updated[accId][dateStr][selectedRateTypeId] = newPrice;
+          modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
         }
       }
       return updated;
@@ -184,7 +191,7 @@ export function ProviderCalendars(): JSX.Element {
       }
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedDates, selectedAccommodations, activeSupplier]);
+  }, [selectedDates, selectedAccommodations, activeSupplier, selectedRateTypeId]);
 
   // Fonction pour mettre à jour la durée minimale localement
   const handleDureeMinUpdate = React.useCallback((newDureeMin: number | null) => {
@@ -274,7 +281,7 @@ export function ProviderCalendars(): JSX.Element {
         setLoading(true);
         setError(null);
         const nextStock: Record<number, Record<string, number>> = {};
-        const nextRates: Record<number, Record<string, number>> = {};
+        const nextRates: Record<number, Record<string, Record<number, number>>> = {};
         const nextPromo: Record<number, Record<string, boolean>> = {};
         const nextRateTypes: Record<number, Record<string, string[]>> = {};
         const nextDureeMin: Record<number, Record<string, number | null>> = {};
@@ -282,36 +289,69 @@ export function ProviderCalendars(): JSX.Element {
         const debut = formatDate(startDate);
         const endDate = addMonths(startDate, monthsCount);
         const fin = formatDate(endDate);
-        // Ensure we have rate type labels for this supplier
-        let rateTypeLabels = rateTypeLabelsBySupplier[idFournisseur];
-        if (!rateTypeLabels) {
+        
+        // Map pour collecter les types de tarif trouvés dans les tarifs récupérés
+        const discoveredRateTypes = new Map<number, { idTypeTarif: number; libelle?: unknown; label?: string; descriptionFr?: string; ordre?: number }>();
+        
+        // Obtenir les détails complets des types de tarif via listRateTypes
+        // puis filtrer selon les IDs retournés par listAccommodationRateTypeLinks pour le premier hébergement
+        // (les types de tarif sont généralement les mêmes pour tous les hébergements d'un fournisseur)
+        if (list.length > 0) {
           try {
-            const rt = await client.listRateTypes(idFournisseur);
-            const mapLabels: Record<number, string> = {};
-            const list = (rt as any).typeTarifs ?? (rt as any).typeTarif ?? [];
-            for (const item of list) {
-              const id = Number(item?.idTypeTarif);
-              let label: string | undefined;
-              const rawLibelle = item?.libelle ?? item?.Libelle;
-              if (typeof rawLibelle === 'string') {
-                label = rawLibelle;
-              } else if (Array.isArray(rawLibelle)) {
-                const fr = rawLibelle.find((l: any) => (l?.langue ?? l?.Langue) === 'fr');
-                label = (fr?.texte ?? fr?.Texte) ?? (rawLibelle[0]?.texte ?? rawLibelle[0]?.Texte);
-              } else if (rawLibelle && typeof rawLibelle === 'object') {
-                label = rawLibelle?.fr ?? rawLibelle?.FR ?? rawLibelle?.default;
-              }
-              if (id && label) {
-                mapLabels[id] = String(label);
+            // Obtenir tous les types de tarif avec leurs détails complets
+            const allRateTypesResponse = await client.listRateTypes(idFournisseur);
+            const allRateTypes = (allRateTypesResponse as any).typeTarifs ?? [];
+            
+            // Obtenir les IDs des types de tarif liés au premier hébergement
+            const firstAcc = list[0];
+            const links = await client.listAccommodationRateTypeLinks(idFournisseur, firstAcc.idHebergement);
+            const liaisons = (links as any).liaisonHebergementTypeTarifs ?? (links as any).data?.liaisonHebergementTypeTarifs ?? [];
+            const linkedIds = new Set(liaisons.map((l: any) => Number(l.idTypeTarif)));
+            
+            // Combiner les deux pour obtenir les détails complets des types de tarif liés
+            for (const rateType of allRateTypes) {
+              // Extraire l'ID depuis cleTypeTarif ou directement depuis idTypeTarif
+              const id = Number(rateType.cleTypeTarif?.idTypeTarif ?? rateType.idTypeTarif);
+              
+              // Ne garder que les types de tarif liés à l'hébergement
+              if (id && linkedIds.has(id)) {
+                // Extraire la description en français
+                let descriptionFr: string | undefined = undefined;
+                const description = rateType.description;
+                if (Array.isArray(description)) {
+                  const frEntry = description.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
+                  descriptionFr = frEntry?.texte ?? frEntry?.Texte;
+                } else if (typeof description === 'string') {
+                  descriptionFr = description;
+                }
+                
+                // Extraire le libelle en français comme fallback
+                let libelleFr: string | undefined = undefined;
+                const libelle = rateType.libelle;
+                if (Array.isArray(libelle)) {
+                  const frEntry = libelle.find((l: any) => (l?.langue ?? l?.Langue) === 'fr');
+                  libelleFr = frEntry?.texte ?? frEntry?.Texte;
+                } else if (typeof libelle === 'string') {
+                  libelleFr = libelle;
+                }
+                
+                if (!discoveredRateTypes.has(id)) {
+                  discoveredRateTypes.set(id, {
+                    idTypeTarif: id,
+                    libelle: libelle,
+                    label: libelleFr,
+                    descriptionFr: descriptionFr ?? libelleFr,
+                    ordre: rateType.ordre
+                  });
+                }
               }
             }
-            rateTypeLabels = mapLabels;
-            setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: mapLabels }));
-          } catch {
-            // ignore, fallback to inline labels
-            rateTypeLabels = {};
+          } catch (error) {
+            console.error('Error fetching rate types:', error);
+            // Si l'endpoint n'est pas disponible, on continuera avec l'extraction depuis les tarifs
           }
         }
+        
         for (const acc of list) {
           const stock = await client.getStock(idFournisseur, acc.idHebergement, {
             debut,
@@ -335,16 +375,31 @@ export function ProviderCalendars(): JSX.Element {
           // Fetch rates for the same period, if available
           try {
             const rates = await client.getRates(idFournisseur, acc.idHebergement, { debut, fin });
-            const mapRates: Record<string, number> = {};
+            const mapRates: Record<string, Record<number, number>> = {};
             const mapPromo: Record<string, boolean> = {};
             const mapRateTypes: Record<string, string[]> = {};
             const mapDureeMin: Record<string, number | null> = {};
             const tarifs = (rates as any).tarifs ?? (rates as any).periodes ?? [];
+            // Convertir les dates de la plage demandée en Date pour comparaison (format ISO pour éviter les problèmes de fuseau horaire)
+            const requestedStart = new Date(debut + 'T00:00:00');
+            const requestedEnd = new Date(fin + 'T23:59:59');
+            
             for (const t of tarifs) {
               const deb = t.debut ?? t.dateDebut ?? debut;
               const fe = t.fin ?? t.dateFin ?? fin;
-              const startD = new Date(deb);
-              const endD = new Date(fe);
+              // Utiliser le format ISO pour éviter les problèmes de fuseau horaire
+              const startD = new Date(deb + 'T00:00:00');
+              const endD = new Date(fe + 'T23:59:59');
+              
+              // Vérifier si la période chevauche la plage demandée
+              if (endD < requestedStart || startD > requestedEnd) {
+                continue; // Skip cette période si elle ne chevauche pas la plage demandée
+              }
+              
+              // Calculer l'intersection de la période avec la plage demandée
+              const actualStart = startD > requestedStart ? startD : requestedStart;
+              const actualEnd = endD < requestedEnd ? endD : requestedEnd;
+              
               // find price for 2 persons if present, otherwise any/default
               let price: number | undefined = undefined;
               const pax = t.tarifPax ?? t.prixPax ?? {};
@@ -355,12 +410,9 @@ export function ProviderCalendars(): JSX.Element {
                 Boolean((t as any)?.promo) ||
                 Boolean((t as any)?.promotionActive) ||
                 Boolean((t as any)?.hasPromo);
-              // Determine rate type label, prefer supplier list mapping
+              // Determine rate type label and collect rate type info
               const idType = Number(t.idTypeTarif ?? t?.typeTarif?.idTypeTarif);
               let rateLabel: string | undefined = undefined;
-              if (idType && rateTypeLabels && rateTypeLabels[idType]) {
-                rateLabel = rateTypeLabels[idType];
-              }
               const labelCandidate = (t?.typeTarif?.libelle ?? t?.typeTarif?.Libelle ?? t?.libelle ?? t?.Libelle) as unknown;
               if (typeof labelCandidate === 'string') {
                 rateLabel = labelCandidate;
@@ -371,6 +423,43 @@ export function ProviderCalendars(): JSX.Element {
                 if (anyText) rateLabel = String(anyText);
               }
               if (!rateLabel && idType) rateLabel = `Type ${idType}`;
+              
+              // Collecter les informations sur le type de tarif pour la liste globale
+              if (idType && !discoveredRateTypes.has(idType)) {
+                // Essayer d'extraire la description depuis la période de tarif
+                let descriptionFr: string | undefined = undefined;
+                const descriptionCandidate = (t?.typeTarif?.description ?? t?.description) as unknown;
+                if (Array.isArray(descriptionCandidate)) {
+                  const frEntry = descriptionCandidate.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
+                  descriptionFr = frEntry?.texte ?? frEntry?.Texte;
+                } else if (typeof descriptionCandidate === 'string') {
+                  descriptionFr = descriptionCandidate;
+                }
+                
+                const ordre = t?.typeTarif?.ordre ?? t?.ordre;
+                discoveredRateTypes.set(idType, {
+                  idTypeTarif: idType,
+                  libelle: labelCandidate,
+                  label: rateLabel,
+                  descriptionFr: descriptionFr ?? rateLabel ?? `Type ${idType}`,
+                  ordre: ordre != null ? Number(ordre) : undefined
+                });
+              } else if (idType && discoveredRateTypes.has(idType)) {
+                // Si le type existe déjà mais n'a pas de description, essayer de l'ajouter
+                const existing = discoveredRateTypes.get(idType)!;
+                if (!existing.descriptionFr || existing.descriptionFr.startsWith('Type ')) {
+                  const descriptionCandidate = (t?.typeTarif?.description ?? t?.description) as unknown;
+                  if (Array.isArray(descriptionCandidate)) {
+                    const frEntry = descriptionCandidate.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
+                    const descFr = frEntry?.texte ?? frEntry?.Texte;
+                    if (descFr) {
+                      existing.descriptionFr = descFr;
+                    }
+                  } else if (typeof descriptionCandidate === 'string') {
+                    existing.descriptionFr = descriptionCandidate;
+                  }
+                }
+              }
               if (Array.isArray(occs)) {
                 const two = occs.find((o: any) => Number(o.nbPers) === 2 && o.prix != null);
                 const anyOcc = two ?? occs.find((o: any) => o.prix != null);
@@ -391,11 +480,15 @@ export function ProviderCalendars(): JSX.Element {
                 ? t.dureeMin 
                 : null;
               
-              if (price != null && !isNaN(price)) {
-                const cur = new Date(startD);
-                while (cur <= endD) {
+              // Store rates by rate type
+              if (idType && price != null && !isNaN(price)) {
+                const cur = new Date(actualStart);
+                while (cur <= actualEnd) {
                   const key = formatDate(cur);
-                  mapRates[key] = price;
+                  if (!mapRates[key]) {
+                    mapRates[key] = {};
+                  }
+                  mapRates[key][idType] = price;
                   if (tHasPromo) {
                     mapPromo[key] = true;
                   }
@@ -422,9 +515,9 @@ export function ProviderCalendars(): JSX.Element {
                   cur.setDate(cur.getDate() + 1);
                 }
               } else {
-                // Even if no price, we might have dureeMin
-                const cur = new Date(startD);
-                while (cur <= endD) {
+                // Even if no price or no idType, we might have dureeMin
+                const cur = new Date(actualStart);
+                while (cur <= actualEnd) {
                   const key = formatDate(cur);
                   if (dureeMinValue != null) {
                     const existingDureeMin = mapDureeMin[key];
@@ -446,7 +539,51 @@ export function ProviderCalendars(): JSX.Element {
             // ignore rates errors for now
           }
         }
+        
+        // Construire la liste des types de tarif depuis les données extraites
+        const rateTypeLabels: Record<number, string> = {};
+        const rateTypesList: Array<{ idTypeTarif: number; libelle?: unknown; descriptionFr?: string; ordre?: number }> = [];
+        
+        for (const [id, info] of discoveredRateTypes) {
+          // Utiliser la description en français pour le label, avec fallback sur le libelle
+          const displayLabel = info.descriptionFr ?? info.label ?? `Type ${id}`;
+          rateTypeLabels[id] = displayLabel;
+          rateTypesList.push({
+            idTypeTarif: info.idTypeTarif,
+            libelle: info.libelle,
+            descriptionFr: info.descriptionFr,
+            ordre: info.ordre
+          });
+        }
+        
+        // Trier par ordre si disponible
+        rateTypesList.sort((a, b) => {
+          const ordreA = a.ordre ?? 999;
+          const ordreB = b.ordre ?? 999;
+          return ordreA - ordreB;
+        });
+        
+        // Mettre à jour les états avec les types de tarif découverts
         if (!cancelled) {
+          setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: rateTypeLabels }));
+          setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: rateTypesList }));
+          
+          // Initialiser selectedRateTypeId au premier type disponible si pas encore sélectionné
+          // ou si le type sélectionné n'existe pas dans ce fournisseur
+          if (rateTypesList.length > 0) {
+            setSelectedRateTypeId(prev => {
+              if (prev === null) {
+                return rateTypesList[0].idTypeTarif;
+              }
+              // Vérifier si le type sélectionné existe dans ce fournisseur
+              const exists = rateTypesList.some(t => t.idTypeTarif === prev);
+              if (!exists) {
+                return rateTypesList[0].idTypeTarif;
+              }
+              return prev;
+            });
+          }
+          
           setStockByAccommodation(nextStock);
           setRatesByAccommodation(nextRates);
           setPromoByAccommodation(nextPromo);
@@ -551,7 +688,45 @@ export function ProviderCalendars(): JSX.Element {
             </div>
           </div>
           {selectedAccommodations.size > 0 && (
-            <CompactGrid
+            <>
+              {/* Dropdown de sélection du type de tarif */}
+              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 500, fontSize: 14 }}>Type de tarif :</span>
+                  <select
+                    value={selectedRateTypeId ?? ''}
+                    onChange={(e) => {
+                      const newRateTypeId = e.target.value === '' ? null : Number(e.target.value);
+                      setSelectedRateTypeId(newRateTypeId);
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 6,
+                      fontSize: 14,
+                      minWidth: 200,
+                      background: '#fff',
+                      color: '#111827'
+                    }}
+                  >
+                    {!rateTypesBySupplier[activeSupplier.idFournisseur] || 
+                     rateTypesBySupplier[activeSupplier.idFournisseur].length === 0 ? (
+                      <option value="">Aucun type tarif disponible</option>
+                    ) : (
+                      rateTypesBySupplier[activeSupplier.idFournisseur].map(type => {
+                        const descriptionFr = type.descriptionFr ?? (rateTypeLabelsBySupplier[activeSupplier.idFournisseur]?.[type.idTypeTarif]) ?? `Type ${type.idTypeTarif}`;
+                        const displayText = `${type.idTypeTarif} - ${descriptionFr}`;
+                        return (
+                          <option key={type.idTypeTarif} value={type.idTypeTarif}>
+                            {displayText}
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                </label>
+              </div>
+              <CompactGrid
               startDate={startDate}
               monthsCount={monthsCount}
               accommodations={(accommodations[activeSupplier.idFournisseur] || [])
@@ -566,7 +741,9 @@ export function ProviderCalendars(): JSX.Element {
               modifiedDureeMin={modifiedDureeMin}
               onRateUpdate={handleRateUpdate}
               onDureeMinUpdate={handleDureeMinUpdate}
+              selectedRateTypeId={selectedRateTypeId}
             />
+            </>
           )}
           
           {/* Bouton Sauvegarder */}
@@ -620,11 +797,15 @@ export function ProviderCalendars(): JSX.Element {
                 const lines: string[] = [];
                 for (const dateStr of sortedDates) {
                   const accommodationParts = filteredAccommodations.map(acc => {
-                    const price = ratesByAccommodation[acc.idHebergement]?.[dateStr];
-                    const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
+                    const price = selectedRateTypeId !== null
+                      ? ratesByAccommodation[acc.idHebergement]?.[dateStr]?.[selectedRateTypeId]
+                      : undefined;
+                    const isModified = selectedRateTypeId !== null
+                      ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
+                      : false;
                     const priceStr = price != null 
                       ? `${Math.round(price)}€${isModified ? '*' : ''}` 
-                      : 'N/A';
+                      : '-';
                     return `${acc.nomHebergement} - ${priceStr}`;
                   });
                   const lineParts = [dateStr, ...accommodationParts];
@@ -667,13 +848,14 @@ function CompactGrid({
   modifiedRates,
   modifiedDureeMin,
   onRateUpdate,
-  onDureeMinUpdate
+  onDureeMinUpdate,
+  selectedRateTypeId
 }: {
   startDate: Date;
   monthsCount: number;
   accommodations: Accommodation[];
   stockByAccommodation: Record<number, Record<string, number>>;
-  ratesByAccommodation: Record<number, Record<string, number>>;
+  ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
   selectedDates: Set<string>;
   onSelectedDatesChange: (dates: Set<string>) => void;
@@ -681,6 +863,7 @@ function CompactGrid({
   modifiedDureeMin: Set<string>;
   onRateUpdate: (newPrice: number) => void;
   onDureeMinUpdate: (newDureeMin: number | null) => void;
+  selectedRateTypeId: number | null;
 }) {
   const weeks = React.useMemo(() => getWeeksInRange(startDate, monthsCount), [startDate, monthsCount]);
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -756,10 +939,13 @@ function CompactGrid({
       setEditingDureeMinCell(null);
       setEditingDureeMinValue('');
     }
-    const currentPrice = ratesByAccommodation[accId]?.[dateStr];
+    // Récupérer le prix pour le type tarif sélectionné
+    const currentPrice = selectedRateTypeId !== null
+      ? ratesByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId]
+      : undefined;
     setEditingCell({ accId, dateStr });
     setEditingValue(currentPrice != null ? String(Math.round(currentPrice)) : '');
-  }, [selectedDates, ratesByAccommodation, editingDureeMinCell]);
+  }, [selectedDates, ratesByAccommodation, editingDureeMinCell, selectedRateTypeId]);
 
   // Gestionnaire pour démarrer l'édition d'une cellule (durée minimale)
   const handleDureeMinClick = React.useCallback((accId: number, dateStr: string) => {
@@ -1093,11 +1279,17 @@ function CompactGrid({
                 const dateStr = formatDate(day);
                 const stock = stockMap[dateStr] ?? 0;
                 const isAvailable = stock > 0;
-                const price = priceMap[dateStr];
+                // Récupérer le prix pour le type tarif sélectionné
+                const price = selectedRateTypeId !== null 
+                  ? priceMap[dateStr]?.[selectedRateTypeId] 
+                  : undefined;
                 const dureeMin = dureeMinMap[dateStr] ?? null;
                 const isSelected = selectedDates.has(dateStr);
                 const isDragging = draggingDates.has(dateStr);
-                const isModified = modifiedRates.has(`${acc.idHebergement}-${dateStr}`);
+                // Vérifier si le prix du type tarif sélectionné a été modifié
+                const isModified = selectedRateTypeId !== null 
+                  ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
+                  : false;
                 const isModifiedDureeMin = modifiedDureeMin.has(`${acc.idHebergement}-${dateStr}`);
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
                 const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
@@ -1193,14 +1385,18 @@ function CompactGrid({
                       />
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
-                        {price != null && (
-                          <span style={{ userSelect: 'none' }}>
-                            {`${Math.round(price)}€`}
-                            {isModified && (
-                              <span style={{ color: '#eab308', marginLeft: 2, userSelect: 'none' }}>*</span>
-                            )}
-                          </span>
-                        )}
+                        {selectedRateTypeId !== null ? (
+                          price != null ? (
+                            <span style={{ userSelect: 'none' }}>
+                              {`${Math.round(price)}€`}
+                              {isModified && (
+                                <span style={{ color: '#eab308', marginLeft: 2, userSelect: 'none' }}>*</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span style={{ userSelect: 'none', color: '#9ca3af' }}>-</span>
+                          )
+                        ) : null}
                         {isEditingDureeMin ? (
                           <input
                             type="number"

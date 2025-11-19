@@ -106,6 +106,8 @@ Vue d’ensemble (frontend uniquement) :
 - `PUT /api/fournisseur/{idFournisseur}/typetarifs/{idTypeTarif}` - Modifier un type de tarif
 - `DELETE /api/fournisseur/{idFournisseur}/typetarifs/{idTypeTarif}` - Supprimer un type de tarif
 
+**Note :** Pour obtenir la liste des types de tarif disponibles pour un hébergement, utiliser l'endpoint de la section 3.2.5 (Liaisons Hébergement-TypeTarif) ou extraire les types de tarif depuis les données de tarifs récupérées (section 3.2.6).
+
 #### 3.2.5 Liaisons Hébergement-TypeTarif
 - `GET /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs` - Liste des liaisons
 - `POST /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}` - Ajouter une liaison
@@ -451,6 +453,180 @@ A définir
 	- **Pas de persistance** : Les modifications de prix ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
 	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
 	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder"
+
+##### Sélection globale du type de tarif — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Afficher une dropdown de sélection du type de tarif au-dessus de chaque calendrier.
+	- La sélection s'applique à tout le calendrier affiché.
+	- Les prix affichés dans toutes les cellules correspondent au type de tarif sélectionné.
+	- Si un hébergement n'a pas de tarif pour le type sélectionné, afficher "-".
+
+2. **Position et placement**
+	- **Emplacement de la dropdown** :
+		- Position : au-dessus du calendrier, après le titre "Hébergements — {activeSupplier.nom}".
+		- Placement suggéré : entre le titre et la liste des hébergements (checkboxes), ou juste avant le composant `CompactGrid`.
+		- Visibilité : affichée uniquement si au moins un hébergement est sélectionné (`selectedAccommodations.size > 0`).
+	- **Structure visuelle proposée** :
+		```
+		Hébergements — {activeSupplier.nom}
+		
+		[Dropdown Type de tarif ▼]  ← Nouvelle dropdown ici
+		
+		[Liste des hébergements avec checkboxes]
+		
+		[Calendrier CompactGrid]
+		```
+
+3. **Contenu de la dropdown**
+	- **Options disponibles** :
+		- Afficher tous les types tarifs disponibles pour le fournisseur actif.
+		- Source des données : `listRateTypes(idFournisseur)` pour obtenir la liste des types tarifs du fournisseur.
+		- Format d'affichage : libellé du type tarif (ex: "Base", "Pension complète", "Type 1001").
+		- Si aucun type tarif n'existe : afficher "Aucun type tarif disponible" (disabled).
+	- **Valeur par défaut** :
+		- Au chargement initial : sélectionner le premier type tarif disponible (par ordre d'affichage ou `ordre` si disponible).
+		- Si aucun type tarif n'est disponible : laisser la dropdown vide ou désactivée.
+	- **Style visuel** :
+		- Taille : normale (ex: `fontSize: 14px`).
+		- Largeur : suffisante pour afficher les libellés complets (ex: `minWidth: 200px`).
+		- Style : cohérent avec les autres contrôles de l'interface (bordure, padding, etc.).
+
+4. **Comportement de la sélection**
+	- **Portée de la sélection** :
+		- La sélection s'applique à tout le calendrier affiché.
+		- Toutes les cellules du calendrier affichent le prix correspondant au type tarif sélectionné.
+		- La sélection est globale à l'application (pas spécifique à un fournisseur).
+	- **Mise à jour des prix affichés** :
+		- Lors du changement de sélection dans la dropdown :
+			- Mettre à jour immédiatement tous les prix affichés dans le calendrier.
+			- Pour chaque cellule (jour/hébergement) :
+				- Chercher le prix correspondant au `idTypeTarif` sélectionné dans les données chargées.
+				- Afficher ce prix s'il existe, sinon afficher "-".
+	- **Persistance de la sélection** :
+		- La sélection persiste pendant la session pour tous les fournisseurs.
+		- Lors du changement de fournisseur (tab) : conserver le type de tarif sélectionné s'il existe dans le nouveau fournisseur.
+			- Si le type tarif sélectionné n'existe pas dans le nouveau fournisseur : sélectionner le premier type tarif disponible du nouveau fournisseur.
+		- Lors du rechargement de la page : perdre la sélection (revenir à la valeur par défaut).
+
+5. **Affichage des prix dans le calendrier**
+	- **Récupération du prix par type tarif** :
+		- Structure de données à modifier :
+			- Stocker les prix par type tarif : `ratesByAccommodation: Record<number, Record<string, Record<number, number>>>`
+			- Clé 1 : `idHebergement`
+			- Clé 2 : `dateStr` (format `YYYY-MM-DD`)
+			- Clé 3 : `idTypeTarif`
+			- Valeur : prix pour ce type tarif à cette date
+		- Lors du chargement des tarifs via `getRates()` :
+			- Pour chaque `TarifItem` retourné, extraire `idTypeTarif`.
+			- Stocker le prix dans `ratesByAccommodation[accId][dateStr][idTypeTarif] = price`.
+	- **Affichage conditionnel** :
+		- Si un prix existe pour le type tarif sélectionné : afficher le prix au format `${Math.round(price)}€`.
+		- Si aucun prix n'existe pour le type tarif sélectionné : afficher "-".
+		- Format d'affichage : identique à l'existant (prix en haut, durée minimale en bas).
+
+6. **Modification du prix avec type tarif sélectionné**
+	- **Application du prix au type tarif sélectionné** :
+		- Lors de la modification du prix (via l'édition existante) :
+			- Appliquer le prix au type tarif actuellement sélectionné dans la dropdown globale.
+			- Pour chaque date dans `selectedDates` et chaque hébergement dans `selectedAccommodations` :
+				- Utiliser le `idTypeTarif` sélectionné globalement.
+				- Mettre à jour `ratesByAccommodation[accId][dateStr][selectedRateTypeId] = newPrice`.
+	- **Indication visuelle des modifications** :
+		- L'astérisque jaune (`*`) indique que le prix du type tarif actuellement sélectionné a été modifié.
+		- **Affichage conditionnel** :
+			- L'astérisque est affichée uniquement si le prix du type tarif sélectionné dans la dropdown a été modifié.
+			- Si l'utilisateur change le type tarif dans la dropdown, les astérisques doivent être mises à jour pour refléter les modifications du nouveau type tarif sélectionné.
+		- Format de clé dans `modifiedRates` : `"${idHebergement}-${dateStr}-${idTypeTarif}"`.
+		- Exemple : `"1-2025-03-15-1001"` indique que le prix du type tarif 1001 pour l'hébergement 1 le 15 mars 2025 a été modifié.
+		- **Logique d'affichage** :
+			- Pour chaque cellule, vérifier si `modifiedRates.has(\`${idHebergement}-${dateStr}-${selectedRateTypeId}\`)` est `true`.
+			- Si oui, afficher l'astérisque jaune après le prix.
+			- Si non, ne pas afficher l'astérisque.
+
+7. **Gestion des cas limites**
+	- **Aucun type tarif disponible** :
+		- Si le fournisseur n'a aucun type tarif :
+			- Afficher "Aucun type tarif disponible" dans la dropdown (disabled).
+			- Afficher "-" dans toutes les cellules de prix du calendrier.
+			- Désactiver l'édition des prix (ou permettre la création d'un type tarif).
+	- **Hébergement sans tarif pour le type sélectionné** :
+		- Si un hébergement n'a pas de tarif défini pour le type tarif sélectionné à une date donnée :
+			- Afficher "-" dans la cellule correspondante.
+			- Permettre l'édition pour créer un nouveau prix pour ce type tarif (clic sur "-" si sélection active).
+	- **Changement de type tarif pendant l'édition** :
+		- Si l'utilisateur change le type tarif dans la dropdown pendant l'édition d'un prix :
+			- Annuler l'édition en cours.
+			- Afficher les prix du nouveau type tarif sélectionné dans tout le calendrier.
+			- Mettre à jour les astérisques pour refléter les modifications du nouveau type tarif sélectionné.
+			- Permettre une nouvelle édition si nécessaire.
+
+8. **Récupération et stockage des données**
+	- **Chargement des types tarifs** :
+		- Au chargement d'un fournisseur :
+			- Appeler `listRateTypes(idFournisseur)` pour obtenir la liste des types tarifs.
+			- Stocker dans un état : `rateTypesBySupplier: Record<number, RateType[]>`.
+			- Utiliser cette liste pour remplir la dropdown.
+	- **Chargement des tarifs par type** :
+		- Lors du chargement des tarifs via `getRates()` :
+			- Pour chaque `TarifItem` retourné :
+				- Extraire `idTypeTarif`.
+				- Pour chaque date dans la période (`debut` à `fin`) :
+					- Stocker le prix dans `ratesByAccommodation[accId][dateStr][idTypeTarif] = price`.
+					- Ne plus écraser les prix précédents, mais les organiser par type tarif.
+	- **Affichage du prix sélectionné** :
+		- Pour chaque cellule du calendrier :
+			- Récupérer le `idTypeTarif` sélectionné globalement.
+			- Chercher le prix dans `ratesByAccommodation[accId][dateStr][selectedRateTypeId]`.
+			- Afficher ce prix s'il existe, sinon afficher "-".
+
+9. **Implémentation technique**
+	- **États à ajouter/modifier** :
+		- Ajouter `selectedRateTypeId: number | null` pour suivre le type tarif sélectionné globalement (persiste entre les fournisseurs).
+		- Modifier `ratesByAccommodation` pour stocker les prix par type tarif :
+			- Type : `Record<number, Record<string, Record<number, number>>>`
+		- Ajouter `rateTypesBySupplier: Record<number, RateType[]>` pour stocker les types tarifs par fournisseur.
+		- Modifier `modifiedRates` pour inclure l'`idTypeTarif` dans la clé :
+			- Format : `Set<string>` où chaque clé est `"${idHebergement}-${dateStr}-${idTypeTarif}"`.
+	- **Composants à modifier** :
+		- Ajouter la dropdown dans le composant `ProviderCalendars`, au-dessus du calendrier.
+		- Modifier l'affichage des cellules pour utiliser le type tarif sélectionné globalement.
+		- Modifier `handleRateUpdate` pour appliquer le prix au type tarif sélectionné globalement et mettre à jour `modifiedRates` avec la clé incluant l'`idTypeTarif`.
+		- Modifier le chargement des tarifs pour stocker les prix par type tarif.
+		- Modifier la logique d'affichage de l'astérisque pour vérifier les modifications du type tarif sélectionné.
+
+10. **Exemples visuels**
+	- **Interface avec dropdown** :
+		```
+		Hébergements — La Becterie
+		
+		Type de tarif : [Base ▼]
+		
+		☑ Hébergement 1
+		☑ Hébergement 2
+		
+		[Calendrier avec prix du type "Base"]
+		```
+	- **Cellule avec prix disponible et modifié** :
+		```
+		  120€*
+		   2+
+		```
+	- **Cellule avec prix disponible non modifié** :
+		```
+		  120€
+		   2+
+		```
+	- **Cellule sans prix pour le type sélectionné** :
+		```
+		    -
+		   2+
+		```
+
+11. **Limitations actuelles**
+	- La création de nouveaux types tarifs depuis l'interface n'est pas implémentée (nécessite l'API `createRateType`).
+	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder".
+	- La sélection du type tarif n'est pas persistée entre les sessions (rechargement de page).
 
 ##### Modification de la durée minimale de séjour — Exigences fonctionnelles
 
