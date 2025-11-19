@@ -122,7 +122,7 @@ components/
 ### Typage strict
 - **Toujours typer explicitement** les paramètres de fonction
 - **Éviter `any`** : utiliser `unknown` si le type est vraiment inconnu, puis faire une vérification
-- **Utiliser les types fournis** : préférer les types de `openpro-api-react/src/client/types`
+- **Utiliser les types fournis** : préférer les types de `@openpro-api-react/client/types`
 - **Types génériques** : utiliser les génériques pour la réutilisabilité
 
 ### Interfaces vs Types
@@ -201,8 +201,13 @@ export function Component({ propName, optionalProp = 0 }: ComponentProps): React
 - Limite de 300 lignes pour maintenir la lisibilité
 
 ### Imports depuis le sous-module
-- Utiliser les imports relatifs vers `openpro-api-react/src/client`
-- Exemple : `import type { ClientByRole } from '../../../../openpro-api-react/src/client/OpenProClient'`
+- **Utiliser l'alias `@openpro-api-react`** : toujours utiliser l'alias configuré au lieu de chemins relatifs
+- **Format** : `@openpro-api-react/client/...` pour les imports depuis le sous-module
+- **Exemples** :
+  - `import type { ClientByRole } from '@openpro-api-react/client/OpenProClient'`
+  - `import { createOpenProClient } from '@openpro-api-react/client'`
+  - `import type { AccommodationListResponse } from '@openpro-api-react/client/types'`
+- **Interdiction** : ne jamais utiliser de chemins relatifs vers `openpro-api-react` (ex: `../../../../openpro-api-react/src/client`)
 
 ## Gestion des erreurs et logging
 
@@ -297,7 +302,7 @@ React.useEffect(() => {
 ### Exemple
 ```typescript
 import React from 'react';
-import type { ClientByRole } from '../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Accommodation } from '../types';
 import { formatDate } from '../utils/dateUtils';
 import { loadData } from './services/dataLoader';
@@ -305,7 +310,8 @@ import { loadData } from './services/dataLoader';
 
 ### Règles
 - **Imports de types** : toujours utiliser `import type` pour les types
-- **Imports relatifs** : utiliser des chemins relatifs cohérents
+- **Imports relatifs** : utiliser des chemins relatifs cohérents pour les imports internes au projet
+- **Alias pour sous-modules** : utiliser `@openpro-api-react/*` pour tous les imports depuis le sous-module
 - **Pas d'imports circulaires** : éviter les dépendances circulaires entre modules
 
 ## Gestion des valeurs par défaut

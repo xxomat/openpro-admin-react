@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { createOpenProClient } from '../../../../openpro-api-react/src/client';
+import { createOpenProClient } from '@openpro-api-react/client';
 import type { Supplier } from './types';
 import { ActionButtons } from './components/ActionButtons';
 import { AccommodationList } from './components/AccommodationList';

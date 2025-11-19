@@ -5,7 +5,7 @@
  * depuis l'API et normaliser les données dans le format interne de l'application.
  */
 
-import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Accommodation } from '../../types';
 import type { AccommodationListResponse, ApiAccommodation } from '../types/apiTypes';
 

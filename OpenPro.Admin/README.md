@@ -64,7 +64,7 @@ Exemple minimal dans un composant React :
 
 ```tsx
 import React from 'react';
-import { createOpenProClient } from '../../openpro-api-react/src/client';
+import { createOpenProClient } from '@openpro-api-react/client';
 
 export function Demo({ idFournisseur }: { idFournisseur: number }) {
   const [names, setNames] = React.useState<string[]>([]);

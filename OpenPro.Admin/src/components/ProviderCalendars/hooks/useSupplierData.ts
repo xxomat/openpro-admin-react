@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import type { ClientByRole } from '../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Supplier, Accommodation, RateType } from '../types';
 import { loadAccommodations, loadSupplierData } from '../services/dataLoader';
 import { updateSupplierDataStates } from './utils/supplierDataUtils';

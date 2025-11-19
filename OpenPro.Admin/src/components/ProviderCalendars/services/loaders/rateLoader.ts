@@ -6,7 +6,7 @@
  * traitement individuel de chaque tarif.
  */
 
-import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { ApiTarif, RatesResponse } from '../types/apiTypes';
 import type { DiscoveredRateType } from './rateTypeLoader';
 import { formatDate } from '../../utils/dateUtils';

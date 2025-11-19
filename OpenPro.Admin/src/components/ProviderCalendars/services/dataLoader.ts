@@ -11,7 +11,7 @@
  * les chargements spécifiques.
  */
 
-import type { ClientByRole } from '../../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Accommodation, SupplierData } from '../types';
 import { formatDate, addMonths } from '../utils/dateUtils';
 import { loadAccommodations } from './loaders/accommodationLoader';

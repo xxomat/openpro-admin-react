@@ -5,7 +5,7 @@
  * pour un hébergement sur une plage de dates donnée.
  */
 
-import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 
 /**
  * Charge le stock disponible pour un hébergement sur une plage de dates

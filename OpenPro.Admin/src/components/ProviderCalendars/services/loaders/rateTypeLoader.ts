@@ -5,7 +5,7 @@
  * les découvrir depuis les tarifs, et construire les structures finales de types.
  */
 
-import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
+import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Accommodation, RateType } from '../../types';
 import type { AccommodationRateTypeLink, AccommodationRateTypeLinksResponse, ApiRateType, ApiTarif, RateTypeListResponse } from '../types/apiTypes';
 import { getErrorMessage } from '../../utils/errorUtils';

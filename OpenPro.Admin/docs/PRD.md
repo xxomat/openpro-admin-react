@@ -925,7 +925,7 @@ Exemple d'utilisation du client `openpro-api-react` dans un composant React mont
 
 ```tsx
 import React from 'react';
-import { createOpenProClient } from '../../../openpro-api-react/src/client';
+import { createOpenProClient } from '@openpro-api-react/client';
 
 export function AccommodationsList({ idFournisseur }: { idFournisseur: number }) {
   const [items, setItems] = React.useState<Array<{ idHebergement: number; nomHebergement: string }>>([]);
