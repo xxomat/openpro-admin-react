@@ -7,11 +7,11 @@
  */
 
 import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
+import type { ApiTarif, RatesResponse } from '../types/apiTypes';
 import type { DiscoveredRateType } from './rateTypeLoader';
 import { formatDate } from '../../utils/dateUtils';
 import { extractPriceFromTarif, extractRateLabel } from '../utils/rateUtils';
 import { updateDiscoveredRateTypes } from './rateTypeLoader';
-import type { ApiTarif, RatesResponse } from '../types/apiTypes';
 
 /**
  * Traite un tarif individuel et met à jour les maps de tarifs, promotions, types et durées minimales

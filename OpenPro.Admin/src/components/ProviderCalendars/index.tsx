@@ -10,16 +10,16 @@
 import React from 'react';
 import { createOpenProClient } from '../../../../openpro-api-react/src/client';
 import type { Supplier } from './types';
-import { defaultSuppliers, baseUrl, apiKey } from './config';
-import { formatDate } from './utils/dateUtils';
-import { useSupplierData } from './hooks/useSupplierData';
+import { ActionButtons } from './components/ActionButtons';
+import { AccommodationList } from './components/AccommodationList';
 import { CompactGrid } from './components/CompactGrid';
 import { DateRangeControls } from './components/DateRangeControls';
-import { SupplierTabs } from './components/SupplierTabs';
-import { AccommodationList } from './components/AccommodationList';
 import { RateTypeSelector } from './components/RateTypeSelector';
-import { ActionButtons } from './components/ActionButtons';
 import { SelectionSummary } from './components/SelectionSummary';
+import { SupplierTabs } from './components/SupplierTabs';
+import { defaultSuppliers, baseUrl, apiKey } from './config';
+import { useSupplierData } from './hooks/useSupplierData';
+import { formatDate } from './utils/dateUtils';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);

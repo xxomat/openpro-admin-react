@@ -7,9 +7,9 @@
 
 import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
 import type { Accommodation, RateType } from '../../types';
-import { extractFrenchText } from '../utils/rateUtils';
+import type { AccommodationRateTypeLink, AccommodationRateTypeLinksResponse, ApiRateType, ApiTarif, RateTypeListResponse } from '../types/apiTypes';
 import { getErrorMessage } from '../../utils/errorUtils';
-import type { RateTypeListResponse, ApiRateType, AccommodationRateTypeLinksResponse, AccommodationRateTypeLink, ApiTarif } from '../types/apiTypes';
+import { extractFrenchText } from '../utils/rateUtils';
 
 /**
  * Type interne pour représenter un type de tarif découvert lors du chargement

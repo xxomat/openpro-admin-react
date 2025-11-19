@@ -10,11 +10,11 @@
 import React from 'react';
 import type { Accommodation } from '../types';
 import { formatDate, getWeeksInRange } from '../utils/dateUtils';
+import { GridDataCell } from './CompactGrid/components/GridDataCell';
+import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
 import { useGridDrag } from './CompactGrid/hooks/useGridDrag';
 import { useGridEditing } from './CompactGrid/hooks/useGridEditing';
 import { getDateFromElement, getDateRange } from './CompactGrid/utils/gridUtils';
-import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
-import { GridDataCell } from './CompactGrid/components/GridDataCell';
 
 /**
  * Props du composant CompactGrid
