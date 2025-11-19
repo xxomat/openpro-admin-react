@@ -175,19 +175,13 @@ export function ProviderCalendars(): React.ReactElement {
     });
   }, [selectedDates, selectedAccommodations, activeSupplier, supplierData]);
 
-  // Fonction pour sauvegarder les modifications (pour l'instant juste log)
+  // Fonction pour sauvegarder les modifications
   const handleSave = React.useCallback(async () => {
     if (!activeSupplier) return;
     if (modifiedRates.size === 0 && modifiedDureeMin.size === 0) return;
     
     // TODO: Implémenter l'appel API pour sauvegarder les tarifs et durées minimales
-    // Pour l'instant, on log juste les modifications
-    console.log('Modifications de prix à sauvegarder:', Array.from(modifiedRates));
-    console.log('Modifications de durée minimale à sauvegarder:', Array.from(modifiedDureeMin));
-    
     // Après sauvegarde réussie, vider les modifications du fournisseur actif
-    // supplierData.setModifiedRatesBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }));
-    // supplierData.setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }));
   }, [modifiedRates, modifiedDureeMin, activeSupplier]);
 
   // Fonction pour actualiser les données du fournisseur actif
