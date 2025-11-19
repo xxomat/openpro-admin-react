@@ -213,8 +213,17 @@ Vue d’ensemble (frontend uniquement) :
 
 1. **Paramètres de la timebase**
 	- **Date de début** (`startDate: Date`, alias `TimeBaseStartDate`) : date sélectionnée par l'utilisateur à partir de laquelle commence l'affichage.
-	- **Durée** (`monthsCount: number`, alias `TimebaseDuration`) : nombre de mois à afficher (valeurs possibles : 1, 2 ou 3 mois).
-	- La **date de fin** (`endDate: Date`) est calculée automatiquement : `endDate = addMonths(startDate, monthsCount)`.
+	- **Date de fin** (`endDate: Date`, alias `TimeBaseEndDate`) : date sélectionnée par l'utilisateur jusqu'à laquelle se termine l'affichage (incluse).
+	- La période affichée est définie par l'intervalle `[startDate, endDate]` (inclusif).
+	- **Validation** : La Date de fin doit être postérieure ou égale à la Date de début. Si la Date de fin est antérieure à la Date de début, afficher un message d'erreur et empêcher la génération du calendrier.
+	- **Valeurs par défaut** : Au chargement initial, la Date de début peut être définie à aujourd'hui ou à une date par défaut. La Date de fin doit être initialisée à **1 mois après la Date de début** (pour conserver un comportement similaire à l'existant). L'écart de temps entre `startDate` et `endDate` doit donc être initialisé à **1 mois**.
+	- **Interface utilisateur** : Le composant `DateRangeControls` doit afficher deux champs de type `date` HTML5 :
+		- Un champ "Date de début" (existant)
+		- Un champ "Date de fin" (remplaçant le select "Durée" avec options 1, 2 ou 3 mois)
+		- Les deux champs doivent avoir le même style et le même comportement
+		- Les deux champs doivent être côte à côte dans l'interface
+		- Les deux champs doivent être accessibles au clavier et respecter les standards d'accessibilité (attributs `aria-label`)
+	- **Persistance** : Les dates de début et de fin peuvent être stockées dans l'état local du composant. Optionnel : persister les dates dans le localStorage pour conserver la sélection entre les sessions.
 
 2. **Chargement des hébergements**
 	- **Chargement initial uniquement** : 
@@ -281,11 +290,11 @@ Vue d’ensemble (frontend uniquement) :
 			- Le prix est centré dans la cellule.
 			- La cellule entière (pas seulement le prix) a le fond coloré.
 
-4. **Génération des semaines**
-	- La fonction `getWeeksInRange(startDate, monthsCount)` génère un tableau de semaines (`weeks: Date[][]`).
-	- **Première semaine** : commence exactement à `startDate` (pas de décalage au lundi précédent) et contient 7 jours consécutifs.
-	- **Semaines suivantes** : commencent le lundi suivant la fin de la semaine précédente et contiennent 7 jours consécutifs.
-	- Toutes les semaines sont ensuite aplaties en un seul tableau : `allDays = weeks.flat()` pour créer les colonnes de la grille.
+4. **Génération des jours**
+	- La fonction `getDaysInRange(startDate, endDate)` génère un tableau de dates (`days: Date[]`) couvrant toutes les dates entre `startDate` et `endDate` (incluses).
+	- Les dates sont générées dans l'ordre chronologique, jour par jour, sans limitation à des durées prédéfinies.
+	- Le tableau de dates est utilisé directement pour créer les colonnes de la grille : `allDays = getDaysInRange(startDate, endDate)`.
+	- **Note importante** : Au lieu de générer les dates sur une durée fixe (1, 2 ou 3 mois), le calendrier liste toutes les dates entre la Date de début et la Date de fin (incluses), sans limitation à des durées prédéfinies.
 
 5. **Style différencié des jours de semaine et weekends**
 	- **Détection des weekends** : Les jours de weekend sont identifiés par `day.getDay() === 0` (dimanche) ou `day.getDay() === 6` (samedi).
@@ -779,13 +788,17 @@ A définir
 	- Le bouton doit déclencher une fonction `handleRefreshData` qui :
 		1. Met à jour l'état de chargement (`setLoading(true)`)
 		2. Réinitialise les erreurs (`setError(null)`)
-		3. Charge les données depuis le serveur (hébergements, stock, tarifs, types de tarifs)
+		3. Charge les données depuis le serveur (hébergements, stock, tarifs, types de tarifs) pour la période `[startDate, endDate)`
 		4. Met à jour les états de données (`setAccommodations`, `setStockByAccommodation`, `setRatesByAccommodation`, etc.)
 		5. **Réinitialise les indicateurs visuels** :
 			- `setModifiedRatesBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
 			- `setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
 		6. Met à jour l'état de chargement (`setLoading(false)`)
 	- La fonction doit gérer les erreurs et annuler les requêtes si nécessaire (cleanup).
+	- **Note** : Les fonctions de chargement des données doivent utiliser `startDate` et `endDate` au lieu de `startDate` et `monthsCount`. Les fonctions suivantes doivent être modifiées :
+		- `loadSupplierData(client, idFournisseur, accommodationsList, startDate, endDate, signal)`
+		- `refreshSupplierData(idFournisseur, startDate, endDate)`
+		- `loadInitialData(suppliers, startDate, endDate)`
 
 ##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
 
@@ -863,6 +876,47 @@ A définir
 		```
 		    -
 		```
+
+##### Remplacement du champ "Durée" par "Date de fin" — Fichiers à modifier
+
+**Contexte** : Le champ "Durée" (select avec options 1, 2 ou 3 mois) est remplacé par un champ "Date de fin" (input de type `date` HTML5) pour permettre une sélection plus flexible de la période à afficher.
+
+**Fichiers de code à modifier** :
+
+1. **`OpenPro.Admin/src/components/ProviderCalendars/components/DateRangeControls.tsx`**
+	- Remplacer le select "Durée" (`monthsCount`) par un input "Date de fin" (`endDate`)
+	- Modifier les props pour accepter `endDate` et `onEndDateChange` au lieu de `monthsCount` et `onMonthsCountChange`
+	- Ajouter la validation pour s'assurer que `endDate >= startDate`
+
+2. **`OpenPro.Admin/src/components/ProviderCalendars/index.tsx`**
+	- Remplacer l'état `monthsCount` par `endDate: Date`
+	- Initialiser `endDate` à **1 mois après `startDate`** par défaut (l'écart de temps entre `startDate` et `endDate` doit être initialisé à 1 mois)
+	- Mettre à jour tous les appels de fonctions pour utiliser `endDate` au lieu de `monthsCount`
+
+3. **`OpenPro.Admin/src/components/ProviderCalendars/utils/dateUtils.ts`**
+	- Renommer `getWeeksInRange(startDate, monthsCount)` en `getDaysInRange(startDate, endDate)`
+	- Simplifier la logique pour générer directement tous les jours entre `startDate` et `endDate` (incluses)
+	- La fonction retourne maintenant un tableau de dates (`Date[]`) au lieu d'un tableau de semaines (`Date[][]`)
+
+4. **`OpenPro.Admin/src/components/ProviderCalendars/services/dataLoader.ts`**
+	- Modifier `loadSupplierData()` pour accepter `endDate: Date` au lieu de `monthsCount: number`
+	- Calculer la période de chargement avec `startDate` et `endDate` au lieu de `addMonths(startDate, monthsCount)`
+
+5. **`OpenPro.Admin/src/components/ProviderCalendars/hooks/useSupplierData.ts`**
+	- Modifier les signatures des fonctions pour utiliser `endDate` au lieu de `monthsCount` :
+		- `refreshSupplierData(idFournisseur, startDate, endDate)`
+		- `loadInitialData(suppliers, startDate, endDate)`
+	- Mettre à jour les appels internes à `loadSupplierData()`
+
+6. **`OpenPro.Admin/src/components/ProviderCalendars/components/CompactGrid.tsx`**
+	- Modifier les props pour accepter `endDate: Date` au lieu de `monthsCount: number`
+	- Mettre à jour l'appel à `getDaysInRange(startDate, endDate)`
+	- Supprimer l'appel à `.flat()` car la fonction retourne directement un tableau de dates
+
+**Impact sur les fonctionnalités existantes** :
+- Le chargement des données (stock, tarifs) utilise maintenant `startDate` et `endDate` au lieu de `startDate` et `monthsCount`
+- La génération du calendrier liste toutes les dates entre `startDate` et `endDate` (incluses), sans limitation à des durées prédéfinies
+- La validation des dates doit être ajoutée pour s'assurer que `endDate >= startDate`
 
 ### 6.2 Exigences non-fonctionnelles
 

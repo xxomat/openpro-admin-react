@@ -9,7 +9,7 @@
 
 import React from 'react';
 import type { Accommodation } from '../types';
-import { formatDate, getWeeksInRange } from '../utils/dateUtils';
+import { formatDate, getDaysInRange } from '../utils/dateUtils';
 import { GridDataCell } from './CompactGrid/components/GridDataCell';
 import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
 import { useGridDrag } from './CompactGrid/hooks/useGridDrag';
@@ -22,8 +22,8 @@ import { getDateFromElement, getDateRange } from './CompactGrid/utils/gridUtils'
 export interface CompactGridProps {
   /** Date de début de la période à afficher */
   startDate: Date;
-  /** Nombre de mois à afficher */
-  monthsCount: number;
+  /** Date de fin de la période à afficher (incluse) */
+  endDate: Date;
   /** Liste des hébergements à afficher */
   accommodations: Accommodation[];
   /** Map du stock par hébergement et date */
@@ -50,7 +50,7 @@ export interface CompactGridProps {
 
 export function CompactGrid({
   startDate,
-  monthsCount,
+  endDate,
   accommodations,
   stockByAccommodation,
   ratesByAccommodation,
@@ -63,8 +63,7 @@ export function CompactGrid({
   onDureeMinUpdate,
   selectedRateTypeId
 }: CompactGridProps): React.ReactElement {
-  const weeks = React.useMemo(() => getWeeksInRange(startDate, monthsCount), [startDate, monthsCount]);
-  const allDays = weeks.flat();
+  const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
 
   // Hook pour gérer l'édition
   const {

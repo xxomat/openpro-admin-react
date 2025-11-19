@@ -2,7 +2,7 @@
  * Utilitaires de manipulation de dates
  * 
  * Ce fichier contient toutes les fonctions utilitaires pour manipuler les dates,
- * incluant le formatage, l'addition de jours/mois, et le calcul des semaines
+ * incluant le formatage, l'addition de jours/mois, et le calcul des jours
  * dans une plage de dates donnée.
  */
 
@@ -35,42 +35,29 @@ export function addDays(date: Date, n: number): Date {
 }
 
 /**
- * Calcule les semaines dans une plage de dates
- * La première semaine commence exactement à startDate, les semaines suivantes
- * commencent le lundi.
+ * Calcule toutes les dates dans une plage de dates
+ * 
+ * @param startDate - Date de début de la période (incluse)
+ * @param endDate - Date de fin de la période (incluse)
+ * @returns Tableau de dates dans l'ordre chronologique
  */
-export function getWeeksInRange(startDate: Date, monthsCount: number): Date[][] {
-  const weeks: Date[][] = [];
-  const endDate = addMonths(startDate, monthsCount);
-  let currentDate = new Date(startDate);
+export function getDaysInRange(startDate: Date, endDate: Date): Date[] {
+  const days: Date[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   
-  while (currentDate < endDate) {
-    const weekDays: Date[] = [];
-    // First week starts exactly at startDate
-    if (weeks.length === 0) {
-      // First week: start from startDate and add 6 more days (7 days total)
-      for (let i = 0; i < 7 && currentDate < endDate; i++) {
-        weekDays.push(new Date(currentDate));
-        currentDate = addDays(currentDate, 1);
-      }
-    } else {
-      // Subsequent weeks: start on Monday
-      // Find the Monday of the week containing currentDate
-      const dayOfWeek = (currentDate.getDay() + 6) % 7; // 0 = Monday
-      if (dayOfWeek !== 0) {
-        // Move to next Monday
-        currentDate = addDays(currentDate, 7 - dayOfWeek);
-      }
-      // Add 7 days for a complete week
-      for (let i = 0; i < 7 && currentDate < endDate; i++) {
-        weekDays.push(new Date(currentDate));
-        currentDate = addDays(currentDate, 1);
-      }
-    }
-    if (weekDays.length > 0) {
-      weeks.push(weekDays);
-    }
+  // Normaliser les dates à minuit pour la comparaison
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  let currentDate = new Date(start);
+  
+  while (currentDate.getTime() <= end.getTime()) {
+    days.push(new Date(currentDate));
+    currentDate = addDays(currentDate, 1);
+    currentDate.setHours(0, 0, 0, 0); // Normaliser après addDays
   }
-  return weeks;
+  
+  return days;
 }
 

@@ -13,7 +13,7 @@
 
 import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Accommodation, SupplierData } from '../types';
-import { formatDate, addMonths } from '../utils/dateUtils';
+import { formatDate } from '../utils/dateUtils';
 import { loadAccommodations } from './loaders/accommodationLoader';
 import { loadStockForAccommodation } from './loaders/stockLoader';
 import { loadRateTypes, buildRateTypesList } from './loaders/rateTypeLoader';
@@ -33,8 +33,8 @@ import { loadRatesForAccommodation } from './loaders/rateLoader';
  * @param client - Client API OpenPro configuré avec le rôle 'admin'
  * @param idFournisseur - Identifiant du fournisseur
  * @param accommodationsList - Liste des hébergements pour lesquels charger les données
- * @param startDate - Date de début de la plage de dates
- * @param monthsCount - Nombre de mois à charger à partir de startDate
+ * @param startDate - Date de début de la plage de dates (incluse)
+ * @param endDate - Date de fin de la plage de dates (incluse)
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec toutes les données chargées et structurées
  * @throws {Error} Peut lever une erreur si le chargement des données échoue
@@ -45,7 +45,7 @@ export async function loadSupplierData(
   idFournisseur: number,
   accommodationsList: Accommodation[],
   startDate: Date,
-  monthsCount: number,
+  endDate: Date,
   signal?: AbortSignal
 ): Promise<SupplierData> {
   const nextStock: Record<number, Record<string, number>> = {};
@@ -54,7 +54,6 @@ export async function loadSupplierData(
   const nextRateTypes: Record<number, Record<string, string[]>> = {};
   const nextDureeMin: Record<number, Record<string, number | null>> = {};
   const debut = formatDate(startDate);
-  const endDate = addMonths(startDate, monthsCount);
   const fin = formatDate(endDate);
   
   // Charger les types de tarifs disponibles

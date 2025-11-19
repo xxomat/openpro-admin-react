@@ -19,7 +19,7 @@ import { SelectionSummary } from './components/SelectionSummary';
 import { SupplierTabs } from './components/SupplierTabs';
 import { defaultSuppliers, baseUrl, apiKey } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
-import { formatDate } from './utils/dateUtils';
+import { formatDate, addMonths } from './utils/dateUtils';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
@@ -28,7 +28,11 @@ export function ProviderCalendars(): React.ReactElement {
     const today = new Date();
     return formatDate(today);
   });
-  const [monthsCount, setMonthsCount] = React.useState<number>(1);
+  const [endInput, setEndInput] = React.useState<string>(() => {
+    const today = new Date();
+    const endDate = addMonths(today, 1);
+    return formatDate(endDate);
+  });
 
   const client = React.useMemo(
     () => createOpenProClient('admin', { baseUrl, apiKey }),
@@ -42,6 +46,10 @@ export function ProviderCalendars(): React.ReactElement {
     const d = new Date(startInput);
     return isNaN(d.getTime()) ? new Date() : d;
   }, [startInput]);
+  const endDate = React.useMemo(() => {
+    const d = new Date(endInput);
+    return isNaN(d.getTime()) ? addMonths(startDate, 1) : d;
+  }, [endInput, startDate]);
 
   // Obtenir la sélection de dates pour le fournisseur actif
   const selectedDates = React.useMemo(() => {
@@ -187,12 +195,12 @@ export function ProviderCalendars(): React.ReactElement {
   // Fonction pour actualiser les données du fournisseur actif
   const handleRefreshData = React.useCallback(async () => {
     if (!activeSupplier) return;
-    await supplierData.refreshSupplierData(activeSupplier.idFournisseur, startDate, monthsCount);
-  }, [activeSupplier, startDate, monthsCount, supplierData]);
+    await supplierData.refreshSupplierData(activeSupplier.idFournisseur, startDate, endDate);
+  }, [activeSupplier, startDate, endDate, supplierData]);
 
   // Chargement initial des données pour tous les fournisseurs au montage du composant
   React.useEffect(() => {
-    supplierData.loadInitialData(suppliers, startDate, monthsCount);
+    supplierData.loadInitialData(suppliers, startDate, endDate);
   }, []); // Seulement au montage du composant
 
   // Callback pour mettre à jour le selectedRateTypeId
@@ -209,8 +217,8 @@ export function ProviderCalendars(): React.ReactElement {
       <DateRangeControls
         startInput={startInput}
         onStartInputChange={setStartInput}
-        monthsCount={monthsCount}
-        onMonthsCountChange={setMonthsCount}
+        endInput={endInput}
+        onEndInputChange={setEndInput}
       />
       <SupplierTabs
         suppliers={suppliers}
@@ -243,7 +251,7 @@ export function ProviderCalendars(): React.ReactElement {
               />
               <CompactGrid
                 startDate={startDate}
-                monthsCount={monthsCount}
+                endDate={endDate}
                 accommodations={(supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
                   .filter(acc => selectedAccommodations.has(acc.idHebergement))
                   .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}

@@ -62,8 +62,8 @@ export interface UseSupplierDataReturn {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   
   // Fonctions utilitaires
-  refreshSupplierData: (idFournisseur: number, startDate: Date, monthsCount: number) => Promise<void>;
-  loadInitialData: (suppliers: Supplier[], startDate: Date, monthsCount: number) => Promise<void>;
+  refreshSupplierData: (idFournisseur: number, startDate: Date, endDate: Date) => Promise<void>;
+  loadInitialData: (suppliers: Supplier[], startDate: Date, endDate: Date) => Promise<void>;
 }
 
 export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataReturn {
@@ -101,15 +101,15 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
    * Actualise les données d'un fournisseur
    * 
    * @param idFournisseur - Identifiant du fournisseur
-   * @param startDate - Date de début de la plage de dates
-   * @param monthsCount - Nombre de mois à charger
+   * @param startDate - Date de début de la plage de dates (incluse)
+   * @param endDate - Date de fin de la plage de dates (incluse)
    * @throws {Error} Peut lever une erreur si le chargement échoue
    * @throws {DOMException} Peut lever une AbortError si la requête est annulée
    */
   const refreshSupplierData = React.useCallback(async (
     idFournisseur: number,
     startDate: Date,
-    monthsCount: number
+    endDate: Date
   ): Promise<void> => {
     const controller = new AbortController();
     
@@ -118,7 +118,7 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
       setError(null);
       
       const accommodationsList = await loadAccommodations(client, idFournisseur, controller.signal);
-      const data = await loadSupplierData(client, idFournisseur, accommodationsList, startDate, monthsCount, controller.signal);
+      const data = await loadSupplierData(client, idFournisseur, accommodationsList, startDate, endDate, controller.signal);
       
       updateSupplierDataStates({
         idFournisseur,
@@ -151,15 +151,15 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
    * Charge les données initiales pour tous les fournisseurs
    * 
    * @param suppliers - Liste des fournisseurs pour lesquels charger les données
-   * @param startDate - Date de début de la plage de dates
-   * @param monthsCount - Nombre de mois à charger
+   * @param startDate - Date de début de la plage de dates (incluse)
+   * @param endDate - Date de fin de la plage de dates (incluse)
    * @throws {Error} Peut lever une erreur si le chargement échoue
    * @throws {DOMException} Peut lever une AbortError si la requête est annulée
    */
   const loadInitialData = React.useCallback(async (
     suppliers: Supplier[],
     startDate: Date,
-    monthsCount: number
+    endDate: Date
   ): Promise<void> => {
     let cancelled = false;
     const controller = new AbortController();
@@ -176,7 +176,7 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
           const accommodationsList = await loadAccommodations(client, supplier.idFournisseur, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
-          const data = await loadSupplierData(client, supplier.idFournisseur, accommodationsList, startDate, monthsCount, controller.signal);
+          const data = await loadSupplierData(client, supplier.idFournisseur, accommodationsList, startDate, endDate, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
           updateSupplierDataStates({
