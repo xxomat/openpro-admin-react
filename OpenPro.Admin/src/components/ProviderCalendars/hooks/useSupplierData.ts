@@ -12,6 +12,7 @@ import type { ClientByRole } from '../../../../openpro-api-react/src/client/Open
 import type { Supplier, Accommodation, RateType } from '../types';
 import { loadAccommodations, loadSupplierData } from '../services/dataLoader';
 import { updateSupplierDataStates } from './utils/supplierDataUtils';
+import { getErrorMessage, isCancellationError } from '../utils/errorUtils';
 
 export interface UseSupplierDataReturn {
   // États de données
@@ -90,11 +91,20 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  /**
+   * Actualise les données d'un fournisseur
+   * 
+   * @param idFournisseur - Identifiant du fournisseur
+   * @param startDate - Date de début de la plage de dates
+   * @param monthsCount - Nombre de mois à charger
+   * @throws {Error} Peut lever une erreur si le chargement échoue
+   * @throws {DOMException} Peut lever une AbortError si la requête est annulée
+   */
   const refreshSupplierData = React.useCallback(async (
     idFournisseur: number,
     startDate: Date,
     monthsCount: number
-  ) => {
+  ): Promise<void> => {
     const controller = new AbortController();
     
     try {
@@ -122,20 +132,29 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
         setModifiedDureeMinBySupplier
       });
       
-    } catch (e: any) {
-      if (e.message !== 'Cancelled') {
-        setError(e?.message ?? 'Erreur lors de l\'actualisation des données');
+    } catch (error: unknown) {
+      if (!isCancellationError(error)) {
+        setError(getErrorMessage(error, 'Erreur lors de l\'actualisation des données'));
       }
     } finally {
       setLoading(false);
     }
   }, [client]);
 
+  /**
+   * Charge les données initiales pour tous les fournisseurs
+   * 
+   * @param suppliers - Liste des fournisseurs pour lesquels charger les données
+   * @param startDate - Date de début de la plage de dates
+   * @param monthsCount - Nombre de mois à charger
+   * @throws {Error} Peut lever une erreur si le chargement échoue
+   * @throws {DOMException} Peut lever une AbortError si la requête est annulée
+   */
   const loadInitialData = React.useCallback(async (
     suppliers: Supplier[],
     startDate: Date,
     monthsCount: number
-  ) => {
+  ): Promise<void> => {
     let cancelled = false;
     const controller = new AbortController();
     
@@ -179,15 +198,17 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
               [supplier.idFournisseur]: data.rateTypesList[0].idTypeTarif
             }));
           }
-        } catch (e: any) {
-          if (e.message !== 'Cancelled' && !controller.signal.aborted) {
-            console.error(`Erreur lors du chargement des données pour ${supplier.nom}:`, e);
+        } catch (error: unknown) {
+          if (!isCancellationError(error) && !controller.signal.aborted) {
+            const errorMessage = getErrorMessage(error, `Erreur lors du chargement des données pour ${supplier.nom}`);
+            console.error(`Erreur lors du chargement des données pour ${supplier.nom}:`, error);
+            // On continue le chargement pour les autres fournisseurs même si un échoue
           }
         }
       }
-    } catch (e: any) {
+    } catch (error: unknown) {
       if (!cancelled && !controller.signal.aborted) {
-        setError(e?.message ?? 'Erreur lors du chargement initial des données');
+        setError(getErrorMessage(error, 'Erreur lors du chargement initial des données'));
       }
     } finally {
       if (!cancelled) {

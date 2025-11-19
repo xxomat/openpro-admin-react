@@ -140,6 +140,8 @@ function processTarif(
  * @param discoveredRateTypes - Map des types de tarifs découverts (sera modifiée)
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Objet contenant les maps de tarifs, promotions, types et durées minimales
+ * @throws {Error} Peut lever une erreur si le chargement des tarifs échoue
+ * @throws {DOMException} Peut lever une AbortError si la requête est annulée
  */
 export async function loadRatesForAccommodation(
   client: ClientByRole<'admin'>,

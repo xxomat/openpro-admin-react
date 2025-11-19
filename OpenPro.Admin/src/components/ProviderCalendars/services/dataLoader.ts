@@ -37,6 +37,8 @@ import { loadRatesForAccommodation } from './loaders/rateLoader';
  * @param monthsCount - Nombre de mois à charger à partir de startDate
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec toutes les données chargées et structurées
+ * @throws {Error} Peut lever une erreur si le chargement des données échoue
+ * @throws {DOMException} Peut lever une AbortError si la requête est annulée
  */
 export async function loadSupplierData(
   client: ClientByRole<'admin'>,

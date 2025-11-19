@@ -20,6 +20,8 @@ import type { ClientByRole } from '../../../../../../openpro-api-react/src/clien
  * @param fin - Date de fin au format YYYY-MM-DD
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Map du stock par date (clé: date YYYY-MM-DD, valeur: quantité disponible)
+ * @throws {Error} Peut lever une erreur si le chargement du stock échoue
+ * @throws {DOMException} Peut lever une AbortError si la requête est annulée
  */
 export async function loadStockForAccommodation(
   client: ClientByRole<'admin'>,

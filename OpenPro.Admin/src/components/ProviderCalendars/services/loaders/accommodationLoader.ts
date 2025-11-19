@@ -19,6 +19,8 @@ import type { Accommodation } from '../../types';
  * @param idFournisseur - Identifiant du fournisseur
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec la liste des hébergements normalisés
+ * @throws {Error} Peut lever une erreur si le chargement des hébergements échoue
+ * @throws {DOMException} Peut lever une AbortError si la requête est annulée
  */
 export async function loadAccommodations(
   client: ClientByRole<'admin'>,

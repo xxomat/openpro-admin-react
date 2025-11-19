@@ -8,6 +8,7 @@
 import type { ClientByRole } from '../../../../../../openpro-api-react/src/client/OpenProClient';
 import type { Accommodation, RateType } from '../../types';
 import { extractFrenchText } from '../utils/rateUtils';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 /**
  * Type interne pour représenter un type de tarif découvert lors du chargement
@@ -32,6 +33,8 @@ export type DiscoveredRateType = {
  * @param accommodationsList - Liste des hébergements pour déterminer les types de tarifs liés
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Map des types de tarifs découverts, indexée par idTypeTarif
+ * @throws {Error} Peut lever une erreur si le chargement des types de tarifs échoue
+ * @throws {DOMException} Peut lever une AbortError si la requête est annulée
  */
 export async function loadRateTypes(
   client: ClientByRole<'admin'>,
@@ -74,8 +77,9 @@ export async function loadRateTypes(
         }
       }
     }
-  } catch (error) {
-    console.error('Error fetching rate types:', error);
+  } catch (error: unknown) {
+    const errorMessage = getErrorMessage(error, 'Erreur lors du chargement des types de tarifs');
+    console.error('Error fetching rate types:', errorMessage, error);
   }
   
   return discoveredRateTypes;
