@@ -7,9 +7,15 @@
 import React from 'react';
 import type { Supplier } from '../types';
 
+/**
+ * Props du composant SupplierTabs
+ */
 export interface SupplierTabsProps {
+  /** Liste des fournisseurs à afficher */
   suppliers: Supplier[];
+  /** Index du fournisseur actuellement actif */
   activeIdx: number;
+  /** Callback appelé quand l'utilisateur change de fournisseur */
   onActiveIdxChange: (idx: number) => void;
 }
 

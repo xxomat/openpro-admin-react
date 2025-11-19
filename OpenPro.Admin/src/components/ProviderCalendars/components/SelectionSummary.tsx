@@ -8,11 +8,19 @@
 import React from 'react';
 import type { Accommodation } from '../types';
 
+/**
+ * Props du composant SelectionSummary
+ */
 export interface SelectionSummaryProps {
+  /** Set des dates sélectionnées au format YYYY-MM-DD */
   selectedDates: Set<string>;
+  /** Liste des hébergements sélectionnés */
   selectedAccommodations: Accommodation[];
+  /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
+  /** Map des tarifs par hébergement, date et type de tarif */
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
+  /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
 }
 

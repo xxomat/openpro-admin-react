@@ -8,31 +8,59 @@
 import React from 'react';
 import type { EditingCell } from '../hooks/useGridEditing';
 
+/**
+ * Props du composant GridDataCell
+ */
 export interface GridDataCellProps {
+  /** Identifiant de l'hébergement */
   accId: number;
+  /** Date au format YYYY-MM-DD */
   dateStr: string;
+  /** Stock disponible pour cette date */
   stock: number;
+  /** Prix pour cette date et ce type de tarif */
   price: number | undefined;
+  /** Durée minimale de séjour pour cette date */
   dureeMin: number | null;
+  /** Indique si la cellule est sélectionnée */
   isSelected: boolean;
+  /** Indique si la cellule est en cours de drag */
   isDragging: boolean;
+  /** Indique si le prix a été modifié */
   isModified: boolean;
+  /** Indique si la durée minimale a été modifiée */
   isModifiedDureeMin: boolean;
+  /** Indique si le prix est en cours d'édition */
   isEditing: boolean;
+  /** Indique si la durée minimale est en cours d'édition */
   isEditingDureeMin: boolean;
+  /** Valeur en cours d'édition pour le prix */
   editingValue: string;
+  /** Valeur en cours d'édition pour la durée minimale */
   editingDureeMinValue: string;
+  /** Indique si la date est un week-end */
   isWeekend: boolean;
+  /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
+  /** État du drag (pour empêcher les clics pendant le drag) */
   draggingState: { isDragging: boolean } | null;
+  /** Référence pour détecter si un drag vient de se terminer */
   justFinishedDragRef: React.MutableRefObject<boolean>;
+  /** Callback appelé quand l'utilisateur clique sur la cellule pour éditer le prix */
   onCellClick: (accId: number, dateStr: string) => void;
+  /** Callback appelé quand l'utilisateur clique sur la durée minimale pour l'éditer */
   onDureeMinClick: (accId: number, dateStr: string) => void;
+  /** Setter pour la valeur en cours d'édition du prix */
   setEditingValue: React.Dispatch<React.SetStateAction<string>>;
+  /** Setter pour la valeur en cours d'édition de la durée minimale */
   setEditingDureeMinValue: React.Dispatch<React.SetStateAction<string>>;
+  /** Callback appelé pour valider l'édition du prix */
   onEditSubmit: () => void;
+  /** Callback appelé pour valider l'édition de la durée minimale */
   onEditDureeMinSubmit: () => void;
+  /** Callback appelé pour annuler l'édition du prix */
   onEditCancel: () => void;
+  /** Callback appelé pour annuler l'édition de la durée minimale */
   onEditDureeMinCancel: () => void;
 }
 

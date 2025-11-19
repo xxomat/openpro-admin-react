@@ -8,10 +8,17 @@
 import React from 'react';
 import type { RateType } from '../types';
 
+/**
+ * Props du composant RateTypeSelector
+ */
 export interface RateTypeSelectorProps {
+  /** Liste des types de tarifs disponibles */
   rateTypes: RateType[];
+  /** Map des labels des types de tarifs par ID */
   rateTypeLabels: Record<number, string>;
+  /** ID du type de tarif actuellement sélectionné */
   selectedRateTypeId: number | null;
+  /** Callback appelé quand l'utilisateur change de type de tarif */
   onSelectedRateTypeIdChange: (id: number | null) => void;
 }
 

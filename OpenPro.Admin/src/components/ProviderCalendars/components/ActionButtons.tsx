@@ -6,11 +6,19 @@
 
 import React from 'react';
 
+/**
+ * Props du composant ActionButtons
+ */
 export interface ActionButtonsProps {
+  /** Indique si une opération de chargement est en cours */
   loading: boolean;
+  /** Nombre de tarifs modifiés */
   modifiedRatesCount: number;
+  /** Nombre de durées minimales modifiées */
   modifiedDureeMinCount: number;
+  /** Callback appelé quand l'utilisateur clique sur "Actualiser" */
   onRefresh: () => void;
+  /** Callback appelé quand l'utilisateur clique sur "Sauvegarder" */
   onSave: () => void;
 }
 

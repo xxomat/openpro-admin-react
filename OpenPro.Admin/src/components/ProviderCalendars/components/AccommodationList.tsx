@@ -8,9 +8,15 @@
 import React from 'react';
 import type { Accommodation } from '../types';
 
+/**
+ * Props du composant AccommodationList
+ */
 export interface AccommodationListProps {
+  /** Liste des hébergements disponibles */
   accommodations: Accommodation[];
+  /** Set des IDs des hébergements actuellement sélectionnés */
   selectedAccommodations: Set<number>;
+  /** Callback pour mettre à jour la sélection d'hébergements */
   onSelectedAccommodationsChange: (updater: Set<number> | ((prev: Set<number>) => Set<number>)) => void;
 }
 

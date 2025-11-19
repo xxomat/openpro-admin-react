@@ -8,14 +8,25 @@
 import React from 'react';
 import { formatDate } from '../../../utils/dateUtils';
 
+/**
+ * Props du composant GridHeaderCell
+ */
 export interface GridHeaderCellProps {
+  /** Date de la colonne */
   day: Date;
+  /** Date au format YYYY-MM-DD */
   dateStr: string;
+  /** Indique si la colonne est sélectionnée */
   isSelected: boolean;
+  /** Indique si la colonne est en cours de drag */
   isDragging: boolean;
+  /** État du drag (pour empêcher les clics après un drag) */
   draggingState: { isDragging: boolean } | null;
+  /** Référence pour détecter si un drag vient de se terminer */
   justFinishedDragRef: React.MutableRefObject<boolean>;
+  /** Callback appelé quand l'utilisateur clique sur l'en-tête */
   onHeaderClick: (dateStr: string) => void;
+  /** Callback appelé quand l'utilisateur appuie sur la souris */
   onMouseDown: (e: React.MouseEvent, dateStr: string) => void;
 }
 

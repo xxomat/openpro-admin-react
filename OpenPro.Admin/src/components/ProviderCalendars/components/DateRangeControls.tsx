@@ -7,10 +7,17 @@
 
 import React from 'react';
 
+/**
+ * Props du composant DateRangeControls
+ */
 export interface DateRangeControlsProps {
+  /** Date de début au format YYYY-MM-DD */
   startInput: string;
+  /** Callback appelé quand la date de début change */
   onStartInputChange: (value: string) => void;
+  /** Nombre de mois à afficher */
   monthsCount: number;
+  /** Callback appelé quand le nombre de mois change */
   onMonthsCountChange: (value: number) => void;
 }
 

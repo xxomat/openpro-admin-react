@@ -16,19 +16,35 @@ import { getDateFromElement, getDateRange } from './CompactGrid/utils/gridUtils'
 import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
 import { GridDataCell } from './CompactGrid/components/GridDataCell';
 
+/**
+ * Props du composant CompactGrid
+ */
 export interface CompactGridProps {
+  /** Date de début de la période à afficher */
   startDate: Date;
+  /** Nombre de mois à afficher */
   monthsCount: number;
+  /** Liste des hébergements à afficher */
   accommodations: Accommodation[];
+  /** Map du stock par hébergement et date */
   stockByAccommodation: Record<number, Record<string, number>>;
+  /** Map des tarifs par hébergement, date et type de tarif */
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
+  /** Map des durées minimales par hébergement et date */
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
+  /** Set des dates sélectionnées au format YYYY-MM-DD */
   selectedDates: Set<string>;
+  /** Callback pour mettre à jour la sélection de dates */
   onSelectedDatesChange: (dates: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
+  /** Set des identifiants de durées minimales modifiées (format: "accId-dateStr") */
   modifiedDureeMin: Set<string>;
+  /** Callback appelé quand un prix est mis à jour */
   onRateUpdate: (newPrice: number) => void;
+  /** Callback appelé quand une durée minimale est mise à jour */
   onDureeMinUpdate: (newDureeMin: number | null) => void;
+  /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
 }
 

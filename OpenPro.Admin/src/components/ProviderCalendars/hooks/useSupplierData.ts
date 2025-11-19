@@ -14,6 +14,12 @@ import { loadAccommodations, loadSupplierData } from '../services/dataLoader';
 import { updateSupplierDataStates } from './utils/supplierDataUtils';
 import { getErrorMessage, isCancellationError } from '../utils/errorUtils';
 
+/**
+ * Valeur de retour du hook useSupplierData
+ * 
+ * Contient tous les états et fonctions nécessaires pour gérer les données
+ * des fournisseurs, incluant les hébergements, tarifs, stock, et sélections.
+ */
 export interface UseSupplierDataReturn {
   // États de données
   accommodations: Record<number, Accommodation[]>;
