@@ -86,20 +86,21 @@ export function ProviderCalendars(): JSX.Element {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
   const [activeIdx, setActiveIdx] = React.useState(0);
   const [accommodations, setAccommodations] = React.useState<Record<number, Accommodation[]>>({});
-  const [stockByAccommodation, setStockByAccommodation] = React.useState<
-    Record<number, Record<string, number>>
+  // Structure: Record<idFournisseur, Record<idHebergement, Record<dateStr, value>>>
+  const [stockBySupplierAndAccommodation, setStockBySupplierAndAccommodation] = React.useState<
+    Record<number, Record<number, Record<string, number>>>
   >({});
-  const [ratesByAccommodation, setRatesByAccommodation] = React.useState<
-    Record<number, Record<string, Record<number, number>>>
+  const [ratesBySupplierAndAccommodation, setRatesBySupplierAndAccommodation] = React.useState<
+    Record<number, Record<number, Record<string, Record<number, number>>>>
   >({});
-  const [promoByAccommodation, setPromoByAccommodation] = React.useState<
-    Record<number, Record<string, boolean>>
+  const [promoBySupplierAndAccommodation, setPromoBySupplierAndAccommodation] = React.useState<
+    Record<number, Record<number, Record<string, boolean>>>
   >({});
-  const [rateTypesByAccommodation, setRateTypesByAccommodation] = React.useState<
-    Record<number, Record<string, string[]>>
+  const [rateTypesBySupplierAndAccommodation, setRateTypesBySupplierAndAccommodation] = React.useState<
+    Record<number, Record<number, Record<string, string[]>>>
   >({});
-  const [dureeMinByAccommodation, setDureeMinByAccommodation] = React.useState<
-    Record<number, Record<string, number | null>>
+  const [dureeMinBySupplierAndAccommodation, setDureeMinByAccommodation] = React.useState<
+    Record<number, Record<number, Record<string, number | null>>>
   >({});
   const [rateTypeLabelsBySupplier, setRateTypeLabelsBySupplier] = React.useState<
     Record<number, Record<number, string>>
@@ -107,7 +108,8 @@ export function ProviderCalendars(): JSX.Element {
   const [rateTypesBySupplier, setRateTypesBySupplier] = React.useState<
     Record<number, Array<{ idTypeTarif: number; libelle?: unknown; descriptionFr?: string; ordre?: number }>>
   >({});
-  const [selectedRateTypeId, setSelectedRateTypeId] = React.useState<number | null>(null);
+  // selectedRateTypeId indexé par fournisseur
+  const [selectedRateTypeIdBySupplier, setSelectedRateTypeIdBySupplier] = React.useState<Record<number, number | null>>({});
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [startInput, setStartInput] = React.useState<string>(() => {
@@ -115,7 +117,8 @@ export function ProviderCalendars(): JSX.Element {
     return formatDate(today);
   });
   const [monthsCount, setMonthsCount] = React.useState<number>(1);
-  const [selectedAccommodations, setSelectedAccommodations] = React.useState<Set<number>>(new Set());
+  // Sélection d'hébergements indexée par fournisseur pour que chaque onglet ait sa propre sélection
+  const [selectedAccommodationsBySupplier, setSelectedAccommodationsBySupplier] = React.useState<Record<number, Set<number>>>({});
   // Sélection de dates indexée par fournisseur pour que chaque onglet ait sa propre sélection
   const [selectedDatesBySupplier, setSelectedDatesBySupplier] = React.useState<Record<number, Set<string>>>({});
   // Suivi des modifications locales indexé par fournisseur (format: "idHebergement-dateStr")
@@ -140,6 +143,22 @@ export function ProviderCalendars(): JSX.Element {
     return selectedDatesBySupplier[activeSupplier.idFournisseur] || new Set<string>();
   }, [activeSupplier, selectedDatesBySupplier]);
 
+  // Obtenir la sélection d'hébergements pour le fournisseur actif
+  const selectedAccommodations = React.useMemo(() => {
+    if (!activeSupplier) return new Set<number>();
+    return selectedAccommodationsBySupplier[activeSupplier.idFournisseur] || new Set<number>();
+  }, [activeSupplier, selectedAccommodationsBySupplier]);
+
+  // Fonction pour mettre à jour la sélection d'hébergements du fournisseur actif
+  const setSelectedAccommodations = React.useCallback((updater: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    if (!activeSupplier) return;
+    setSelectedAccommodationsBySupplier(prev => {
+      const current = prev[activeSupplier.idFournisseur] || new Set<number>();
+      const newSet = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [activeSupplier.idFournisseur]: newSet };
+    });
+  }, [activeSupplier]);
+
   // Fonction pour mettre à jour la sélection de dates du fournisseur actif
   const setSelectedDates = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
@@ -161,26 +180,51 @@ export function ProviderCalendars(): JSX.Element {
     return modifiedDureeMinBySupplier[activeSupplier.idFournisseur] || new Set<string>();
   }, [activeSupplier, modifiedDureeMinBySupplier]);
 
+  // Obtenir le selectedRateTypeId pour le fournisseur actif
+  const selectedRateTypeId = React.useMemo(() => {
+    if (!activeSupplier) return null;
+    return selectedRateTypeIdBySupplier[activeSupplier.idFournisseur] ?? null;
+  }, [activeSupplier, selectedRateTypeIdBySupplier]);
+
+  // Helper pour extraire les données du fournisseur actif
+  const stockByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    return stockBySupplierAndAccommodation[activeSupplier.idFournisseur] || {};
+  }, [activeSupplier, stockBySupplierAndAccommodation]);
+
+  const ratesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    return ratesBySupplierAndAccommodation[activeSupplier.idFournisseur] || {};
+  }, [activeSupplier, ratesBySupplierAndAccommodation]);
+
+  const dureeMinByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    return dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] || {};
+  }, [activeSupplier, dureeMinBySupplierAndAccommodation]);
+
   // Fonction pour mettre à jour les prix localement
   const handleRateUpdate = React.useCallback((newPrice: number) => {
     if (!activeSupplier || selectedRateTypeId === null) return;
     const modifications = new Set<string>();
-    setRatesByAccommodation(prev => {
+    setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
+      const supplierData = updated[activeSupplier.idFournisseur] || {};
+      
       // Appliquer le prix à toutes les combinaisons date-hébergement sélectionnées pour le type tarif sélectionné
       for (const dateStr of selectedDates) {
         for (const accId of selectedAccommodations) {
-          if (!updated[accId]) {
-            updated[accId] = {};
+          if (!supplierData[accId]) {
+            supplierData[accId] = {};
           }
-          if (!updated[accId][dateStr]) {
-            updated[accId][dateStr] = {};
+          if (!supplierData[accId][dateStr]) {
+            supplierData[accId][dateStr] = {};
           }
-          updated[accId][dateStr][selectedRateTypeId] = newPrice;
+          supplierData[accId][dateStr][selectedRateTypeId] = newPrice;
           modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
         }
       }
-      return updated;
+      
+      return { ...updated, [activeSupplier.idFournisseur]: supplierData };
     });
     // Marquer comme modifié après la mise à jour des prix (pour le fournisseur actif)
     setModifiedRatesBySupplier(prev => {
@@ -199,17 +243,20 @@ export function ProviderCalendars(): JSX.Element {
     const modifications = new Set<string>();
     setDureeMinByAccommodation(prev => {
       const updated = { ...prev };
+      const supplierData = updated[activeSupplier.idFournisseur] || {};
+      
       // Appliquer la durée minimale à toutes les combinaisons date-hébergement sélectionnées
       for (const dateStr of selectedDates) {
         for (const accId of selectedAccommodations) {
-          if (!updated[accId]) {
-            updated[accId] = {};
+          if (!supplierData[accId]) {
+            supplierData[accId] = {};
           }
-          updated[accId][dateStr] = newDureeMin;
+          supplierData[accId][dateStr] = newDureeMin;
           modifications.add(`${accId}-${dateStr}`);
         }
       }
-      return updated;
+      
+      return { ...updated, [activeSupplier.idFournisseur]: supplierData };
     });
     // Marquer comme modifié après la mise à jour de la durée minimale (pour le fournisseur actif)
     setModifiedDureeMinBySupplier(prev => {
@@ -221,6 +268,298 @@ export function ProviderCalendars(): JSX.Element {
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
   }, [selectedDates, selectedAccommodations, activeSupplier]);
+
+  // Fonction pour charger les hébergements d'un fournisseur
+  const loadAccommodations = React.useCallback(async (idFournisseur: number, signal?: AbortSignal): Promise<Accommodation[]> => {
+    const resp = await client.listAccommodations(idFournisseur);
+    if (signal?.aborted) throw new Error('Cancelled');
+    // Normalize API/stub shapes to internal { idHebergement, nomHebergement }
+    const items: Accommodation[] = ((resp as any).hebergements ?? (resp as any).listeHebergement ?? []).map((x: any) => {
+      const id = x?.idHebergement ?? x?.cleHebergement?.idHebergement;
+      const name = x?.nomHebergement ?? x?.nom ?? '';
+      return { idHebergement: Number(id), nomHebergement: String(name) };
+    });
+    return items;
+  }, [client]);
+
+  // Fonction pour charger les données (stock, tarifs, types de tarifs) d'un fournisseur
+  const loadSupplierData = React.useCallback(async (
+    idFournisseur: number,
+    accommodationsList: Accommodation[],
+    signal?: AbortSignal
+  ): Promise<{
+    stock: Record<number, Record<string, number>>;
+    rates: Record<number, Record<string, Record<number, number>>>;
+    promo: Record<number, Record<string, boolean>>;
+    rateTypes: Record<number, Record<string, string[]>>;
+    dureeMin: Record<number, Record<string, number | null>>;
+    rateTypeLabels: Record<number, string>;
+    rateTypesList: Array<{ idTypeTarif: number; libelle?: unknown; descriptionFr?: string; ordre?: number }>;
+  }> => {
+    const nextStock: Record<number, Record<string, number>> = {};
+    const nextRates: Record<number, Record<string, Record<number, number>>> = {};
+    const nextPromo: Record<number, Record<string, boolean>> = {};
+    const nextRateTypes: Record<number, Record<string, string[]>> = {};
+    const nextDureeMin: Record<number, Record<string, number | null>> = {};
+    const debut = formatDate(startDate);
+    const endDate = addMonths(startDate, monthsCount);
+    const fin = formatDate(endDate);
+    
+    // Map pour collecter les types de tarif trouvés dans les tarifs récupérés
+    const discoveredRateTypes = new Map<number, { idTypeTarif: number; libelle?: unknown; label?: string; descriptionFr?: string; ordre?: number }>();
+    
+    // Obtenir les détails complets des types de tarif via listRateTypes
+    if (accommodationsList.length > 0) {
+      try {
+        const allRateTypesResponse = await client.listRateTypes(idFournisseur);
+        if (signal?.aborted) throw new Error('Cancelled');
+        const allRateTypes = (allRateTypesResponse as any).typeTarifs ?? [];
+        
+        const firstAcc = accommodationsList[0];
+        const links = await client.listAccommodationRateTypeLinks(idFournisseur, firstAcc.idHebergement);
+        if (signal?.aborted) throw new Error('Cancelled');
+        const liaisons = (links as any).liaisonHebergementTypeTarifs ?? (links as any).data?.liaisonHebergementTypeTarifs ?? [];
+        const linkedIds = new Set(liaisons.map((l: any) => Number(l.idTypeTarif)));
+        
+        for (const rateType of allRateTypes) {
+          const id = Number(rateType.cleTypeTarif?.idTypeTarif ?? rateType.idTypeTarif);
+          
+          if (id && linkedIds.has(id)) {
+            let descriptionFr: string | undefined = undefined;
+            const description = rateType.description;
+            if (Array.isArray(description)) {
+              const frEntry = description.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
+              descriptionFr = frEntry?.texte ?? frEntry?.Texte;
+            } else if (typeof description === 'string') {
+              descriptionFr = description;
+            }
+            
+            let libelleFr: string | undefined = undefined;
+            const libelle = rateType.libelle;
+            if (Array.isArray(libelle)) {
+              const frEntry = libelle.find((l: any) => (l?.langue ?? l?.Langue) === 'fr');
+              libelleFr = frEntry?.texte ?? frEntry?.Texte;
+            } else if (typeof libelle === 'string') {
+              libelleFr = libelle;
+            }
+            
+            if (!discoveredRateTypes.has(id)) {
+              discoveredRateTypes.set(id, {
+                idTypeTarif: id,
+                libelle: libelle,
+                label: libelleFr,
+                descriptionFr: descriptionFr ?? libelleFr,
+                ordre: rateType.ordre
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching rate types:', error);
+      }
+    }
+    
+    for (const acc of accommodationsList) {
+      if (signal?.aborted) throw new Error('Cancelled');
+      
+      const stock = await client.getStock(idFournisseur, acc.idHebergement, {
+        debut,
+        fin,
+        start: debut,
+        end: fin
+      } as unknown as { debut?: string; fin?: string });
+      if (signal?.aborted) throw new Error('Cancelled');
+      
+      const mapStock: Record<string, number> = {};
+      const jours = (stock as any).jours ?? (stock as any).stock ?? [];
+      for (const j of jours) {
+        const date = j.date ?? j.jour;
+        const dispo = j.dispo ?? j.stock ?? 0;
+        if (date) {
+          mapStock[String(date)] = Number(dispo ?? 0);
+        }
+      }
+      nextStock[acc.idHebergement] = mapStock;
+
+      try {
+        const rates = await client.getRates(idFournisseur, acc.idHebergement, { debut, fin });
+        if (signal?.aborted) throw new Error('Cancelled');
+        
+        const mapRates: Record<string, Record<number, number>> = {};
+        const mapPromo: Record<string, boolean> = {};
+        const mapRateTypes: Record<string, string[]> = {};
+        const mapDureeMin: Record<string, number | null> = {};
+        const tarifs = (rates as any).tarifs ?? (rates as any).periodes ?? [];
+        const requestedStart = new Date(debut + 'T00:00:00');
+        const requestedEnd = new Date(fin + 'T23:59:59');
+        
+        for (const t of tarifs) {
+          const deb = t.debut ?? t.dateDebut ?? debut;
+          const fe = t.fin ?? t.dateFin ?? fin;
+          const startD = new Date(deb + 'T00:00:00');
+          const endD = new Date(fe + 'T23:59:59');
+          
+          if (endD < requestedStart || startD > requestedEnd) {
+            continue;
+          }
+          
+          const actualStart = startD > requestedStart ? startD : requestedStart;
+          const actualEnd = endD < requestedEnd ? endD : requestedEnd;
+          
+          let price: number | undefined = undefined;
+          const pax = t.tarifPax ?? t.prixPax ?? {};
+          const occs = pax.listeTarifPaxOccupation ?? t.listeTarifPaxOccupation ?? [];
+          const tHasPromo =
+            Boolean((t as any)?.promotion) ||
+            Boolean((t as any)?.promo) ||
+            Boolean((t as any)?.promotionActive) ||
+            Boolean((t as any)?.hasPromo);
+          const idType = Number(t.idTypeTarif ?? t?.typeTarif?.idTypeTarif);
+          let rateLabel: string | undefined = undefined;
+          const labelCandidate = (t?.typeTarif?.libelle ?? t?.typeTarif?.Libelle ?? t?.libelle ?? t?.Libelle) as unknown;
+          if (typeof labelCandidate === 'string') {
+            rateLabel = labelCandidate;
+          } else if (Array.isArray(labelCandidate)) {
+            const frEntry = labelCandidate.find((l: any) => (l?.langue ?? l?.Langue) === 'fr');
+            const fr = frEntry?.texte ?? frEntry?.Texte;
+            const anyText = fr ?? (labelCandidate[0]?.texte ?? labelCandidate[0]?.Texte);
+            if (anyText) rateLabel = String(anyText);
+          }
+          if (!rateLabel && idType) rateLabel = `Type ${idType}`;
+          
+          if (idType && !discoveredRateTypes.has(idType)) {
+            let descriptionFr: string | undefined = undefined;
+            const descriptionCandidate = (t?.typeTarif?.description ?? t?.description) as unknown;
+            if (Array.isArray(descriptionCandidate)) {
+              const frEntry = descriptionCandidate.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
+              descriptionFr = frEntry?.texte ?? frEntry?.Texte;
+            } else if (typeof descriptionCandidate === 'string') {
+              descriptionFr = descriptionCandidate;
+            }
+            
+            const ordre = t?.typeTarif?.ordre ?? t?.ordre;
+            discoveredRateTypes.set(idType, {
+              idTypeTarif: idType,
+              libelle: labelCandidate,
+              label: rateLabel,
+              descriptionFr: descriptionFr ?? rateLabel ?? `Type ${idType}`,
+              ordre: ordre != null ? Number(ordre) : undefined
+            });
+          } else if (idType && discoveredRateTypes.has(idType)) {
+            const existing = discoveredRateTypes.get(idType)!;
+            if (!existing.descriptionFr || existing.descriptionFr.startsWith('Type ')) {
+              const descriptionCandidate = (t?.typeTarif?.description ?? t?.description) as unknown;
+              if (Array.isArray(descriptionCandidate)) {
+                const frEntry = descriptionCandidate.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
+                const descFr = frEntry?.texte ?? frEntry?.Texte;
+                if (descFr) {
+                  existing.descriptionFr = descFr;
+                }
+              } else if (typeof descriptionCandidate === 'string') {
+                existing.descriptionFr = descriptionCandidate;
+              }
+            }
+          }
+          
+          if (Array.isArray(occs)) {
+            const two = occs.find((o: any) => Number(o.nbPers) === 2 && o.prix != null);
+            const anyOcc = two ?? occs.find((o: any) => o.prix != null);
+            if (anyOcc && anyOcc.prix != null) price = Number(anyOcc.prix);
+          } else if (typeof pax === 'object' && pax && pax.prix != null) {
+            price = Number(pax.prix);
+          } else if (t.prix != null) {
+            price = Number(t.prix);
+          }
+          
+          const dureeMinValue = t.dureeMin != null && typeof t.dureeMin === 'number' && t.dureeMin > 0 
+            ? t.dureeMin 
+            : null;
+          
+          if (idType && price != null && !isNaN(price)) {
+            const cur = new Date(actualStart);
+            while (cur <= actualEnd) {
+              const key = formatDate(cur);
+              if (!mapRates[key]) {
+                mapRates[key] = {};
+              }
+              mapRates[key][idType] = price;
+              if (tHasPromo) {
+                mapPromo[key] = true;
+              }
+              if (rateLabel) {
+                const arr = mapRateTypes[key] ?? [];
+                if (!arr.includes(rateLabel)) {
+                  arr.push(rateLabel);
+                  mapRateTypes[key] = arr.slice(0, 2);
+                } else {
+                  mapRateTypes[key] = arr;
+                }
+              }
+              if (dureeMinValue != null) {
+                const existingDureeMin = mapDureeMin[key];
+                if (existingDureeMin == null || dureeMinValue > existingDureeMin) {
+                  mapDureeMin[key] = dureeMinValue;
+                }
+              } else if (mapDureeMin[key] == null) {
+                mapDureeMin[key] = null;
+              }
+              cur.setDate(cur.getDate() + 1);
+            }
+          } else {
+            const cur = new Date(actualStart);
+            while (cur <= actualEnd) {
+              const key = formatDate(cur);
+              if (dureeMinValue != null) {
+                const existingDureeMin = mapDureeMin[key];
+                if (existingDureeMin == null || dureeMinValue > existingDureeMin) {
+                  mapDureeMin[key] = dureeMinValue;
+                }
+              } else if (mapDureeMin[key] == null) {
+                mapDureeMin[key] = null;
+              }
+              cur.setDate(cur.getDate() + 1);
+            }
+          }
+        }
+        nextRates[acc.idHebergement] = mapRates;
+        nextPromo[acc.idHebergement] = mapPromo;
+        nextRateTypes[acc.idHebergement] = mapRateTypes;
+        nextDureeMin[acc.idHebergement] = mapDureeMin;
+      } catch {
+        // ignore rates errors for now
+      }
+    }
+    
+    const rateTypeLabels: Record<number, string> = {};
+    const rateTypesList: Array<{ idTypeTarif: number; libelle?: unknown; descriptionFr?: string; ordre?: number }> = [];
+    
+    for (const [id, info] of discoveredRateTypes) {
+      const displayLabel = info.descriptionFr ?? info.label ?? `Type ${id}`;
+      rateTypeLabels[id] = displayLabel;
+      rateTypesList.push({
+        idTypeTarif: info.idTypeTarif,
+        libelle: info.libelle,
+        descriptionFr: info.descriptionFr,
+        ordre: info.ordre
+      });
+    }
+    
+    rateTypesList.sort((a, b) => {
+      const ordreA = a.ordre ?? 999;
+      const ordreB = b.ordre ?? 999;
+      return ordreA - ordreB;
+    });
+    
+    return {
+      stock: nextStock,
+      rates: nextRates,
+      promo: nextPromo,
+      rateTypes: nextRateTypes,
+      dureeMin: nextDureeMin,
+      rateTypeLabels,
+      rateTypesList
+    };
+  }, [client, startDate, monthsCount]);
 
   // Fonction pour sauvegarder les modifications (pour l'instant juste log)
   const handleSave = React.useCallback(async () => {
@@ -237,369 +576,167 @@ export function ProviderCalendars(): JSX.Element {
     // setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }));
   }, [modifiedRates, modifiedDureeMin, activeSupplier]);
 
-  // Load accommodations on supplier change
-  React.useEffect(() => {
+  // Fonction pour actualiser les données du fournisseur actif
+  const handleRefreshData = React.useCallback(async () => {
     if (!activeSupplier) return;
+    
     const idFournisseur = activeSupplier.idFournisseur;
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const resp = await client.listAccommodations(idFournisseur);
-        if (cancelled) return;
-        // Normalize API/stub shapes to internal { idHebergement, nomHebergement }
-        const items: Accommodation[] = ((resp as any).hebergements ?? (resp as any).listeHebergement ?? []).map((x: any) => {
-          const id = x?.idHebergement ?? x?.cleHebergement?.idHebergement;
-          const name = x?.nomHebergement ?? x?.nom ?? '';
-          return { idHebergement: Number(id), nomHebergement: String(name) };
+    const controller = new AbortController();
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Charger les hébergements (toujours recharger pour avoir les données à jour)
+      const accommodationsList = await loadAccommodations(idFournisseur, controller.signal);
+      
+      setAccommodations(prev => ({ ...prev, [idFournisseur]: accommodationsList }));
+      
+      // Sélectionner tous les hébergements du fournisseur actif après le rechargement
+      setSelectedAccommodationsBySupplier(prev => ({
+        ...prev,
+        [idFournisseur]: new Set(accommodationsList.map(acc => acc.idHebergement))
+      }));
+      
+      // Charger les données (stock, tarifs, etc.)
+      const data = await loadSupplierData(idFournisseur, accommodationsList, controller.signal);
+      
+      // Mettre à jour les états avec la nouvelle structure indexée par fournisseur puis hébergement
+      setStockBySupplierAndAccommodation(prev => ({
+        ...prev,
+        [idFournisseur]: data.stock
+      }));
+      setRatesBySupplierAndAccommodation(prev => ({
+        ...prev,
+        [idFournisseur]: data.rates
+      }));
+      setPromoBySupplierAndAccommodation(prev => ({
+        ...prev,
+        [idFournisseur]: data.promo
+      }));
+      setRateTypesBySupplierAndAccommodation(prev => ({
+        ...prev,
+        [idFournisseur]: data.rateTypes
+      }));
+      setDureeMinByAccommodation(prev => ({
+        ...prev,
+        [idFournisseur]: data.dureeMin
+      }));
+      setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypeLabels }));
+      setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypesList }));
+      
+      // Initialiser selectedRateTypeId pour le fournisseur actif
+      if (data.rateTypesList.length > 0) {
+        setSelectedRateTypeIdBySupplier(prev => {
+          const current = prev[idFournisseur];
+          if (current === null || current === undefined) {
+            return { ...prev, [idFournisseur]: data.rateTypesList[0].idTypeTarif };
+          }
+          const exists = data.rateTypesList.some(t => t.idTypeTarif === current);
+          if (!exists) {
+            return { ...prev, [idFournisseur]: data.rateTypesList[0].idTypeTarif };
+          }
+          return prev;
         });
-        setAccommodations(prev => ({ ...prev, [idFournisseur]: items }));
-        // Auto-select all accommodations when loaded
-        setSelectedAccommodations(new Set(items.map(acc => acc.idHebergement)));
-      } catch (e: any) {
-        if (cancelled) return;
-        setError(e?.message ?? 'Erreur lors du chargement des hébergements');
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSupplier?.idFournisseur]);
+      
+      // Réinitialiser les indicateurs visuels pour le fournisseur actif
+      setModifiedRatesBySupplier(prev => ({ ...prev, [idFournisseur]: new Set() }));
+      setModifiedDureeMinBySupplier(prev => ({ ...prev, [idFournisseur]: new Set() }));
+      
+    } catch (e: any) {
+      if (e.message !== 'Cancelled') {
+        setError(e?.message ?? 'Erreur lors de l\'actualisation des données');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [activeSupplier, loadAccommodations, loadSupplierData]);
 
-  // Load stock for each accommodation of active supplier
+  // Chargement initial des données pour tous les fournisseurs au montage du composant
   React.useEffect(() => {
-    const idFournisseur = activeSupplier?.idFournisseur;
-    if (!idFournisseur) return;
-    const list = accommodations[idFournisseur] || [];
-    if (!list.length) return;
     let cancelled = false;
+    const controller = new AbortController();
+    
     (async () => {
       try {
         setLoading(true);
         setError(null);
-        const nextStock: Record<number, Record<string, number>> = {};
-        const nextRates: Record<number, Record<string, Record<number, number>>> = {};
-        const nextPromo: Record<number, Record<string, boolean>> = {};
-        const nextRateTypes: Record<number, Record<string, string[]>> = {};
-        const nextDureeMin: Record<number, Record<string, number | null>> = {};
-        // Use actual start date (TimeBaseStartDate) and calculate end date by adding months
-        const debut = formatDate(startDate);
-        const endDate = addMonths(startDate, monthsCount);
-        const fin = formatDate(endDate);
         
-        // Map pour collecter les types de tarif trouvés dans les tarifs récupérés
-        const discoveredRateTypes = new Map<number, { idTypeTarif: number; libelle?: unknown; label?: string; descriptionFr?: string; ordre?: number }>();
-        
-        // Obtenir les détails complets des types de tarif via listRateTypes
-        // puis filtrer selon les IDs retournés par listAccommodationRateTypeLinks pour le premier hébergement
-        // (les types de tarif sont généralement les mêmes pour tous les hébergements d'un fournisseur)
-        if (list.length > 0) {
-          try {
-            // Obtenir tous les types de tarif avec leurs détails complets
-            const allRateTypesResponse = await client.listRateTypes(idFournisseur);
-            const allRateTypes = (allRateTypesResponse as any).typeTarifs ?? [];
-            
-            // Obtenir les IDs des types de tarif liés au premier hébergement
-            const firstAcc = list[0];
-            const links = await client.listAccommodationRateTypeLinks(idFournisseur, firstAcc.idHebergement);
-            const liaisons = (links as any).liaisonHebergementTypeTarifs ?? (links as any).data?.liaisonHebergementTypeTarifs ?? [];
-            const linkedIds = new Set(liaisons.map((l: any) => Number(l.idTypeTarif)));
-            
-            // Combiner les deux pour obtenir les détails complets des types de tarif liés
-            for (const rateType of allRateTypes) {
-              // Extraire l'ID depuis cleTypeTarif ou directement depuis idTypeTarif
-              const id = Number(rateType.cleTypeTarif?.idTypeTarif ?? rateType.idTypeTarif);
-              
-              // Ne garder que les types de tarif liés à l'hébergement
-              if (id && linkedIds.has(id)) {
-                // Extraire la description en français
-                let descriptionFr: string | undefined = undefined;
-                const description = rateType.description;
-                if (Array.isArray(description)) {
-                  const frEntry = description.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
-                  descriptionFr = frEntry?.texte ?? frEntry?.Texte;
-                } else if (typeof description === 'string') {
-                  descriptionFr = description;
-                }
-                
-                // Extraire le libelle en français comme fallback
-                let libelleFr: string | undefined = undefined;
-                const libelle = rateType.libelle;
-                if (Array.isArray(libelle)) {
-                  const frEntry = libelle.find((l: any) => (l?.langue ?? l?.Langue) === 'fr');
-                  libelleFr = frEntry?.texte ?? frEntry?.Texte;
-                } else if (typeof libelle === 'string') {
-                  libelleFr = libelle;
-                }
-                
-                if (!discoveredRateTypes.has(id)) {
-                  discoveredRateTypes.set(id, {
-                    idTypeTarif: id,
-                    libelle: libelle,
-                    label: libelleFr,
-                    descriptionFr: descriptionFr ?? libelleFr,
-                    ordre: rateType.ordre
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching rate types:', error);
-            // Si l'endpoint n'est pas disponible, on continuera avec l'extraction depuis les tarifs
-          }
-        }
-        
-        for (const acc of list) {
-          const stock = await client.getStock(idFournisseur, acc.idHebergement, {
-            debut,
-            fin,
-            // support stub-server filtering keys too
-            start: debut,
-            end: fin
-          } as unknown as { debut?: string; fin?: string });
-          if (cancelled) return;
-          const mapStock: Record<string, number> = {};
-          const jours = (stock as any).jours ?? (stock as any).stock ?? [];
-          for (const j of jours) {
-            const date = j.date ?? j.jour;
-            const dispo = j.dispo ?? j.stock ?? 0;
-            if (date) {
-              mapStock[String(date)] = Number(dispo ?? 0);
-            }
-          }
-          nextStock[acc.idHebergement] = mapStock;
-
-          // Fetch rates for the same period, if available
-          try {
-            const rates = await client.getRates(idFournisseur, acc.idHebergement, { debut, fin });
-            const mapRates: Record<string, Record<number, number>> = {};
-            const mapPromo: Record<string, boolean> = {};
-            const mapRateTypes: Record<string, string[]> = {};
-            const mapDureeMin: Record<string, number | null> = {};
-            const tarifs = (rates as any).tarifs ?? (rates as any).periodes ?? [];
-            // Convertir les dates de la plage demandée en Date pour comparaison (format ISO pour éviter les problèmes de fuseau horaire)
-            const requestedStart = new Date(debut + 'T00:00:00');
-            const requestedEnd = new Date(fin + 'T23:59:59');
-            
-            for (const t of tarifs) {
-              const deb = t.debut ?? t.dateDebut ?? debut;
-              const fe = t.fin ?? t.dateFin ?? fin;
-              // Utiliser le format ISO pour éviter les problèmes de fuseau horaire
-              const startD = new Date(deb + 'T00:00:00');
-              const endD = new Date(fe + 'T23:59:59');
-              
-              // Vérifier si la période chevauche la plage demandée
-              if (endD < requestedStart || startD > requestedEnd) {
-                continue; // Skip cette période si elle ne chevauche pas la plage demandée
-              }
-              
-              // Calculer l'intersection de la période avec la plage demandée
-              const actualStart = startD > requestedStart ? startD : requestedStart;
-              const actualEnd = endD < requestedEnd ? endD : requestedEnd;
-              
-              // find price for 2 persons if present, otherwise any/default
-              let price: number | undefined = undefined;
-              const pax = t.tarifPax ?? t.prixPax ?? {};
-              const occs = pax.listeTarifPaxOccupation ?? t.listeTarifPaxOccupation ?? [];
-              // Heuristic: detect promotions if present in payload
-              const tHasPromo =
-                Boolean((t as any)?.promotion) ||
-                Boolean((t as any)?.promo) ||
-                Boolean((t as any)?.promotionActive) ||
-                Boolean((t as any)?.hasPromo);
-              // Determine rate type label and collect rate type info
-              const idType = Number(t.idTypeTarif ?? t?.typeTarif?.idTypeTarif);
-              let rateLabel: string | undefined = undefined;
-              const labelCandidate = (t?.typeTarif?.libelle ?? t?.typeTarif?.Libelle ?? t?.libelle ?? t?.Libelle) as unknown;
-              if (typeof labelCandidate === 'string') {
-                rateLabel = labelCandidate;
-              } else if (Array.isArray(labelCandidate)) {
-                const frEntry = labelCandidate.find((l: any) => (l?.langue ?? l?.Langue) === 'fr');
-                const fr = frEntry?.texte ?? frEntry?.Texte;
-                const anyText = fr ?? (labelCandidate[0]?.texte ?? labelCandidate[0]?.Texte);
-                if (anyText) rateLabel = String(anyText);
-              }
-              if (!rateLabel && idType) rateLabel = `Type ${idType}`;
-              
-              // Collecter les informations sur le type de tarif pour la liste globale
-              if (idType && !discoveredRateTypes.has(idType)) {
-                // Essayer d'extraire la description depuis la période de tarif
-                let descriptionFr: string | undefined = undefined;
-                const descriptionCandidate = (t?.typeTarif?.description ?? t?.description) as unknown;
-                if (Array.isArray(descriptionCandidate)) {
-                  const frEntry = descriptionCandidate.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
-                  descriptionFr = frEntry?.texte ?? frEntry?.Texte;
-                } else if (typeof descriptionCandidate === 'string') {
-                  descriptionFr = descriptionCandidate;
-                }
-                
-                const ordre = t?.typeTarif?.ordre ?? t?.ordre;
-                discoveredRateTypes.set(idType, {
-                  idTypeTarif: idType,
-                  libelle: labelCandidate,
-                  label: rateLabel,
-                  descriptionFr: descriptionFr ?? rateLabel ?? `Type ${idType}`,
-                  ordre: ordre != null ? Number(ordre) : undefined
-                });
-              } else if (idType && discoveredRateTypes.has(idType)) {
-                // Si le type existe déjà mais n'a pas de description, essayer de l'ajouter
-                const existing = discoveredRateTypes.get(idType)!;
-                if (!existing.descriptionFr || existing.descriptionFr.startsWith('Type ')) {
-                  const descriptionCandidate = (t?.typeTarif?.description ?? t?.description) as unknown;
-                  if (Array.isArray(descriptionCandidate)) {
-                    const frEntry = descriptionCandidate.find((d: any) => (d?.langue ?? d?.Langue) === 'fr');
-                    const descFr = frEntry?.texte ?? frEntry?.Texte;
-                    if (descFr) {
-                      existing.descriptionFr = descFr;
-                    }
-                  } else if (typeof descriptionCandidate === 'string') {
-                    existing.descriptionFr = descriptionCandidate;
-                  }
-                }
-              }
-              if (Array.isArray(occs)) {
-                const two = occs.find((o: any) => Number(o.nbPers) === 2 && o.prix != null);
-                const anyOcc = two ?? occs.find((o: any) => o.prix != null);
-                if (anyOcc && anyOcc.prix != null) price = Number(anyOcc.prix);
-                if (!tHasPromo) {
-                  const occHasPromo = Boolean((two ?? anyOcc)?.hasPromo || (two ?? anyOcc)?.promotion);
-                  if (occHasPromo) {
-                    // mark later per-day
-                  }
-                }
-              } else if (typeof pax === 'object' && pax && pax.prix != null) {
-                price = Number(pax.prix);
-              } else if (t.prix != null) {
-                price = Number(t.prix);
-              }
-              // Extract dureeMin from tarif
-              const dureeMinValue = t.dureeMin != null && typeof t.dureeMin === 'number' && t.dureeMin > 0 
-                ? t.dureeMin 
-                : null;
-              
-              // Store rates by rate type
-              if (idType && price != null && !isNaN(price)) {
-                const cur = new Date(actualStart);
-                while (cur <= actualEnd) {
-                  const key = formatDate(cur);
-                  if (!mapRates[key]) {
-                    mapRates[key] = {};
-                  }
-                  mapRates[key][idType] = price;
-                  if (tHasPromo) {
-                    mapPromo[key] = true;
-                  }
-                  if (rateLabel) {
-                    const arr = mapRateTypes[key] ?? [];
-                    if (!arr.includes(rateLabel)) {
-                      arr.push(rateLabel);
-                      // Limit labels per day to avoid overflow
-                      mapRateTypes[key] = arr.slice(0, 2);
-                    } else {
-                      mapRateTypes[key] = arr;
-                    }
-                  }
-                  // Store dureeMin for this date (use maximum if multiple periods overlap)
-                  if (dureeMinValue != null) {
-                    const existingDureeMin = mapDureeMin[key];
-                    if (existingDureeMin == null || dureeMinValue > existingDureeMin) {
-                      mapDureeMin[key] = dureeMinValue;
-                    }
-                  } else if (mapDureeMin[key] == null) {
-                    // Only set to null if not already set (to preserve existing value)
-                    mapDureeMin[key] = null;
-                  }
-                  cur.setDate(cur.getDate() + 1);
-                }
-              } else {
-                // Even if no price or no idType, we might have dureeMin
-                const cur = new Date(actualStart);
-                while (cur <= actualEnd) {
-                  const key = formatDate(cur);
-                  if (dureeMinValue != null) {
-                    const existingDureeMin = mapDureeMin[key];
-                    if (existingDureeMin == null || dureeMinValue > existingDureeMin) {
-                      mapDureeMin[key] = dureeMinValue;
-                    }
-                  } else if (mapDureeMin[key] == null) {
-                    mapDureeMin[key] = null;
-                  }
-                  cur.setDate(cur.getDate() + 1);
-                }
-              }
-            }
-            nextRates[acc.idHebergement] = mapRates;
-            nextPromo[acc.idHebergement] = mapPromo;
-            nextRateTypes[acc.idHebergement] = mapRateTypes;
-            nextDureeMin[acc.idHebergement] = mapDureeMin;
-          } catch {
-            // ignore rates errors for now
-          }
-        }
-        
-        // Construire la liste des types de tarif depuis les données extraites
-        const rateTypeLabels: Record<number, string> = {};
-        const rateTypesList: Array<{ idTypeTarif: number; libelle?: unknown; descriptionFr?: string; ordre?: number }> = [];
-        
-        for (const [id, info] of discoveredRateTypes) {
-          // Utiliser la description en français pour le label, avec fallback sur le libelle
-          const displayLabel = info.descriptionFr ?? info.label ?? `Type ${id}`;
-          rateTypeLabels[id] = displayLabel;
-          rateTypesList.push({
-            idTypeTarif: info.idTypeTarif,
-            libelle: info.libelle,
-            descriptionFr: info.descriptionFr,
-            ordre: info.ordre
-          });
-        }
-        
-        // Trier par ordre si disponible
-        rateTypesList.sort((a, b) => {
-          const ordreA = a.ordre ?? 999;
-          const ordreB = b.ordre ?? 999;
-          return ordreA - ordreB;
-        });
-        
-        // Mettre à jour les états avec les types de tarif découverts
-        if (!cancelled) {
-          setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: rateTypeLabels }));
-          setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: rateTypesList }));
+        // Charger les données pour tous les fournisseurs
+        for (const supplier of suppliers) {
+          if (cancelled || controller.signal.aborted) return;
           
-          // Initialiser selectedRateTypeId au premier type disponible si pas encore sélectionné
-          // ou si le type sélectionné n'existe pas dans ce fournisseur
-          if (rateTypesList.length > 0) {
-            setSelectedRateTypeId(prev => {
-              if (prev === null) {
-                return rateTypesList[0].idTypeTarif;
-              }
-              // Vérifier si le type sélectionné existe dans ce fournisseur
-              const exists = rateTypesList.some(t => t.idTypeTarif === prev);
-              if (!exists) {
-                return rateTypesList[0].idTypeTarif;
-              }
-              return prev;
-            });
+          try {
+            // Charger les hébergements
+            const accommodationsList = await loadAccommodations(supplier.idFournisseur, controller.signal);
+            if (cancelled || controller.signal.aborted) return;
+            
+            setAccommodations(prev => ({ ...prev, [supplier.idFournisseur]: accommodationsList }));
+            
+            // Sélectionner tous les hébergements pour chaque fournisseur au chargement initial
+            setSelectedAccommodationsBySupplier(prev => ({
+              ...prev,
+              [supplier.idFournisseur]: new Set(accommodationsList.map(acc => acc.idHebergement))
+            }));
+            
+            // Charger les données (stock, tarifs, etc.)
+            const data = await loadSupplierData(supplier.idFournisseur, accommodationsList, controller.signal);
+            if (cancelled || controller.signal.aborted) return;
+            
+            // Mettre à jour les états avec la nouvelle structure indexée par fournisseur puis hébergement
+            setStockBySupplierAndAccommodation(prev => ({
+              ...prev,
+              [supplier.idFournisseur]: data.stock
+            }));
+            setRatesBySupplierAndAccommodation(prev => ({
+              ...prev,
+              [supplier.idFournisseur]: data.rates
+            }));
+            setPromoBySupplierAndAccommodation(prev => ({
+              ...prev,
+              [supplier.idFournisseur]: data.promo
+            }));
+            setRateTypesBySupplierAndAccommodation(prev => ({
+              ...prev,
+              [supplier.idFournisseur]: data.rateTypes
+            }));
+            setDureeMinByAccommodation(prev => ({
+              ...prev,
+              [supplier.idFournisseur]: data.dureeMin
+            }));
+            setRateTypeLabelsBySupplier(prev => ({ ...prev, [supplier.idFournisseur]: data.rateTypeLabels }));
+            setRateTypesBySupplier(prev => ({ ...prev, [supplier.idFournisseur]: data.rateTypesList }));
+            
+            // Initialiser selectedRateTypeId pour chaque fournisseur
+            if (data.rateTypesList.length > 0) {
+              setSelectedRateTypeIdBySupplier(prev => ({
+                ...prev,
+                [supplier.idFournisseur]: data.rateTypesList[0].idTypeTarif
+              }));
+            }
+          } catch (e: any) {
+            if (e.message !== 'Cancelled' && !controller.signal.aborted) {
+              console.error(`Erreur lors du chargement des données pour ${supplier.nom}:`, e);
+            }
           }
-          
-          setStockByAccommodation(nextStock);
-          setRatesByAccommodation(nextRates);
-          setPromoByAccommodation(nextPromo);
-          setRateTypesByAccommodation(nextRateTypes);
-          setDureeMinByAccommodation(nextDureeMin);
         }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? 'Erreur lors du chargement du stock');
+        if (!cancelled && !controller.signal.aborted) {
+          setError(e?.message ?? 'Erreur lors du chargement initial des données');
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
+    
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [activeSupplier?.idFournisseur, accommodations[activeSupplier?.idFournisseur || -1], startInput, monthsCount]);
+  }, []); // Seulement au montage du composant
 
   return (
     <div style={{ padding: '16px', fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif' }}>
@@ -693,12 +830,16 @@ export function ProviderCalendars(): JSX.Element {
               <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontWeight: 500, fontSize: 14 }}>Type de tarif :</span>
-                  <select
-                    value={selectedRateTypeId ?? ''}
-                    onChange={(e) => {
-                      const newRateTypeId = e.target.value === '' ? null : Number(e.target.value);
-                      setSelectedRateTypeId(newRateTypeId);
-                    }}
+                    <select
+                      value={selectedRateTypeId ?? ''}
+                      onChange={(e) => {
+                        if (!activeSupplier) return;
+                        const newRateTypeId = e.target.value === '' ? null : Number(e.target.value);
+                        setSelectedRateTypeIdBySupplier(prev => ({
+                          ...prev,
+                          [activeSupplier.idFournisseur]: newRateTypeId
+                        }));
+                      }}
                     style={{
                       padding: '6px 12px',
                       border: '1px solid #e5e7eb',
@@ -746,9 +887,37 @@ export function ProviderCalendars(): JSX.Element {
             </>
           )}
           
-          {/* Bouton Sauvegarder */}
-          {(modifiedRates.size > 0 || modifiedDureeMin.size > 0) && (
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Boutons Sauvegarder et Actualiser les données */}
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              onClick={handleRefreshData}
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                background: loading ? '#9ca3af' : '#6b7280',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                opacity: loading ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#4b5563';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#6b7280';
+                }
+              }}
+            >
+              {loading ? 'Actualisation...' : 'Actualiser les données'}
+            </button>
+            {(modifiedRates.size > 0 || modifiedDureeMin.size > 0) && (
               <button
                 onClick={handleSave}
                 style={{
@@ -771,8 +940,8 @@ export function ProviderCalendars(): JSX.Element {
               >
                 Sauvegarder ({modifiedRates.size + modifiedDureeMin.size} modification{(modifiedRates.size + modifiedDureeMin.size) > 1 ? 's' : ''})
               </button>
-            </div>
-          )}
+            )}
+          </div>
           
           {/* Champ texte pour le résumé de sélection (pour tests) */}
           <div style={{ marginTop: 16 }}>

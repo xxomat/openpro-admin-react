@@ -217,9 +217,14 @@ Vue d’ensemble (frontend uniquement) :
 	- La **date de fin** (`endDate: Date`) est calculée automatiquement : `endDate = addMonths(startDate, monthsCount)`.
 
 2. **Chargement des hébergements**
-	- Pour le fournisseur actif (`activeSupplier.idFournisseur`), charger la liste complète des hébergements (`accommodations: Accommodation[]`).
-	- Chaque hébergement contient : `idHebergement: number` et `nomHebergement: string`.
-	- La liste des hébergements doit être **affichée par ordre alphabétique** des noms (`nomHebergement`).
+	- **Chargement initial uniquement** : 
+		- Au chargement initial de la page web uniquement, pour **chaque fournisseur** (`suppliers: Supplier[]`), charger la liste complète des hébergements (`accommodations: Accommodation[]`).
+		- Chaque hébergement contient : `idHebergement: number` et `nomHebergement: string`.
+		- La liste des hébergements doit être **affichée par ordre alphabétique** des noms (`nomHebergement`).
+		- **Note** : Le chargement initial se fait pour tous les fournisseurs disponibles, pas uniquement pour le fournisseur actif.
+	- **Chargement lors du changement d'onglet** :
+		- **Aucun chargement automatique** : Lors du changement d'onglet, les hébergements ne sont **pas** rechargés automatiquement.
+		- Les hébergements déjà chargés en mémoire pour le fournisseur sélectionné sont réaffichés telles quelles.
 
 3. **Filtrage des hébergements**
 	- Afficher une liste de **checkboxes** permettant de sélectionner les hébergements à afficher.
@@ -228,9 +233,22 @@ Vue d’ensemble (frontend uniquement) :
 	- Seuls les hébergements sélectionnés (`selectedAccommodations`) apparaissent dans la grille.
 
 4. **Chargement des données (stock et tarifs)**
-	- Pour chaque hébergement sélectionné, charger les données sur la période `[startDate, endDate)` :
-		- **Stock** (`stockByAccommodation: Record<idHebergement, Record<dateStr, stock>>`) : stock disponible par date (format `dateStr: "YYYY-MM-DD"`).
-		- **Tarifs** (`ratesByAccommodation: Record<idHebergement, Record<dateStr, price>>`) : prix par date pour 2 personnes (format entier en euros).
+	- **Chargement initial** : 
+		- Au chargement initial de la page web uniquement, pour **chaque fournisseur** (`suppliers: Supplier[]`), charger les données pour chaque hébergement sélectionné sur la période `[startDate, endDate)` :
+			- **Stock** (`stockByAccommodation: Record<idHebergement, Record<dateStr, stock>>`) : stock disponible par date (format `dateStr: "YYYY-MM-DD"`).
+			- **Tarifs** (`ratesByAccommodation: Record<idHebergement, Record<dateStr, price>>`) : prix par date pour 2 personnes (format entier en euros).
+		- **Note** : Le chargement initial se fait pour tous les fournisseurs disponibles, pas uniquement pour le fournisseur actif.
+	- **Chargement lors du changement d'onglet** :
+		- **Aucun chargement automatique** : Lors du changement d'onglet (passage d'un fournisseur à un autre), les données ne sont **pas** rechargées automatiquement depuis le serveur.
+		- Les données déjà chargées en mémoire pour le fournisseur sélectionné sont réaffichées telles quelles.
+	- **Bouton "Actualiser les données"** :
+		- Un bouton **"Actualiser les données"** (ou "Fetch data") doit être affiché dans l'interface, à proximité du bouton de Sauvegarde des moficiations.
+		- **Action du bouton** : Lors du clic sur ce bouton :
+			- Recharger les données (stock et tarifs) depuis le serveur pour le fournisseur actif et les hébergements sélectionnés sur la période `[startDate, endDate)`.
+			- **Remettre à zéro les indicateurs visuels des modifications non sauvegardées** : Toutes les astérisques jaunes (`*`) indiquant des modifications non sauvegardées doivent être supprimées pour le fournisseur actif.
+			- Vider les états de suivi des modifications : `modifiedRatesBySupplier[activeSupplier.idFournisseur]` et `modifiedDureeMinBySupplier[activeSupplier.idFournisseur]` doivent être réinitialisés à des `Set` vides.
+		- **État du bouton** : Le bouton peut afficher un état de chargement pendant le fetch (ex: "Actualisation..." ou spinner).
+		- **Visibilité** : Le bouton doit être visible pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
 
 ##### Vue compacte — Grille hebdomadaire
 
@@ -431,6 +449,7 @@ A définir
 	- **Affichage conditionnel** : L'astérisque jaune est affichée uniquement si `modifiedRates.has(\`${idHebergement}-${dateStr}\`)` est `true`.
 	- **Persistance de l'indication** : L'astérisque reste visible tant que la modification n'a pas été sauvegardée vers le serveur (ou tant que les données ne sont pas rechargées depuis le serveur).
 	- **Isolation par fournisseur** : Chaque fournisseur (onglet) possède ses **propres modifications non sauvegardées indépendantes**. Les astérisques jaunes affichées dans un onglet ne doivent **pas** apparaître dans un autre onglet. L'état de suivi des modifications doit être indexé par `idFournisseur` : `modifiedRatesBySupplier: Record<number, Set<string>>`. Lors du changement d'onglet, seules les modifications du fournisseur actif sont affichées et peuvent être sauvegardées.
+	- **Réinitialisation lors de l'actualisation** : Lors de l'utilisation du bouton "Actualiser les données", toutes les astérisques jaunes du fournisseur actif sont automatiquement supprimées, même si les données rechargées correspondent aux modifications locales. Cela permet à l'utilisateur de repartir d'un état propre après avoir rechargé les données depuis le serveur.
 
 7. **Gestion des valeurs invalides**
 	- Si l'utilisateur saisit une valeur non numérique ou vide :
@@ -674,6 +693,7 @@ A définir
 	- **Affichage conditionnel** : L'astérisque jaune est affichée uniquement si `modifiedDureeMin.has(\`${idHebergement}-${dateStr}\`)` est `true`.
 	- **Persistance de l'indication** : L'astérisque reste visible tant que la modification n'a pas été sauvegardée vers le serveur (ou tant que les données ne sont pas rechargées depuis le serveur).
 	- **Isolation par fournisseur** : Chaque fournisseur (onglet) possède ses **propres modifications non sauvegardées indépendantes**. Les astérisques jaunes affichées dans un onglet ne doivent **pas** apparaître dans un autre onglet. L'état de suivi des modifications doit être indexé par `idFournisseur` : `modifiedDureeMinBySupplier: Record<number, Set<string>>`. Lors du changement d'onglet, seules les modifications du fournisseur actif sont affichées et peuvent être sauvegardées.
+	- **Réinitialisation lors de l'actualisation** : Lors de l'utilisation du bouton "Actualiser les données", toutes les astérisques jaunes du fournisseur actif sont automatiquement supprimées, même si les données rechargées correspondent aux modifications locales. Cela permet à l'utilisateur de repartir d'un état propre après avoir rechargé les données depuis le serveur.
 
 7. **Gestion des valeurs invalides**
 	- Si l'utilisateur saisit une valeur non numérique :
@@ -708,6 +728,64 @@ A définir
 	- **Pas de persistance** : Les modifications de durée minimale ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
 	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
 	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder" (probablement le même bouton que pour les prix, ou un bouton dédié).
+
+##### Bouton d'actualisation des données — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Un bouton **"Actualiser les données"** permet à l'utilisateur de recharger manuellement les données depuis le serveur pour le fournisseur actif.
+
+2. **Position et placement**
+	- **Emplacement du bouton** :
+		- Position : à proximité du bouton de Sauvegarde des modifications.
+		- Visibilité : toujours visible, quel que soit le fournisseur actif.
+
+3. **Comportement du bouton**
+	- **Action principale** :
+		- Au clic sur le bouton, déclencher le rechargement des données suivantes pour le fournisseur actif uniquement :
+			- Liste des hébergements (si nécessaire ou si pas encore chargée)
+			- Stock pour chaque hébergement sélectionné sur la période `[startDate, endDate)`
+			- Tarifs pour chaque hébergement sélectionné sur la période `[startDate, endDate)`
+			- Types de tarifs disponibles pour le fournisseur
+		- **Note importante** : Ce bouton permet de recharger les données **du fournisseur actif uniquement**. Le chargement initial de la page charge les données de tous les fournisseurs, mais après cela, seul le bouton permet de recharger les données, et uniquement pour le fournisseur actif.
+	- **Réinitialisation des indicateurs visuels** :
+		- **Obligatoire** : Après le rechargement réussi des données, remettre à zéro tous les indicateurs visuels de modifications non sauvegardées pour le fournisseur actif :
+			- Vider `modifiedRatesBySupplier[activeSupplier.idFournisseur]` (Set vide)
+			- Vider `modifiedDureeMinBySupplier[activeSupplier.idFournisseur]` (Set vide)
+			- Supprimer toutes les astérisques jaunes (`*`) affichées dans le calendrier pour le fournisseur actif
+		- Cette réinitialisation doit se faire **après** le chargement réussi des données, mais **avant** la mise à jour de l'affichage.
+	- **Gestion des erreurs** :
+		- Si le chargement échoue, afficher un message d'erreur approprié.
+		- En cas d'erreur, **ne pas** réinitialiser les indicateurs visuels (les modifications locales doivent être préservées).
+
+4. **État du bouton**
+	- **État normal** : Bouton cliquable avec le texte "Actualiser les données" (ou icône de rafraîchissement).
+	- **État de chargement** : Pendant le fetch des données :
+		- Désactiver le bouton (`disabled: true`)
+		- Afficher un indicateur de chargement (ex: texte "Actualisation..." ou spinner)
+		- Empêcher les interactions utilisateur pendant le chargement
+	- **Retour à l'état normal** : Après le chargement (succès ou échec), restaurer l'état normal du bouton.
+
+5. **Isolation par fournisseur**
+	- Le bouton agit uniquement sur le fournisseur actif (`activeSupplier`).
+	- Les modifications non sauvegardées des autres fournisseurs (autres onglets) ne sont **pas** affectées par l'actualisation.
+	- Chaque fournisseur peut être actualisé indépendamment.
+
+6. **Cas limites**
+	- **Aucun hébergement sélectionné** : Si `selectedAccommodations.size === 0`, le bouton peut être désactivé ou afficher un message d'avertissement.
+	- **Données déjà en cours de chargement** : Si un chargement est déjà en cours, ignorer les clics supplémentaires ou afficher un message approprié.
+	- **Changement d'onglet pendant le chargement** : Si l'utilisateur change d'onglet pendant le chargement, annuler le chargement en cours et ne pas appliquer les modifications aux données du nouvel onglet.
+
+7. **Implémentation technique**
+	- Le bouton doit déclencher une fonction `handleRefreshData` qui :
+		1. Met à jour l'état de chargement (`setLoading(true)`)
+		2. Réinitialise les erreurs (`setError(null)`)
+		3. Charge les données depuis le serveur (hébergements, stock, tarifs, types de tarifs)
+		4. Met à jour les états de données (`setAccommodations`, `setStockByAccommodation`, `setRatesByAccommodation`, etc.)
+		5. **Réinitialise les indicateurs visuels** :
+			- `setModifiedRatesBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
+			- `setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
+		6. Met à jour l'état de chargement (`setLoading(false)`)
+	- La fonction doit gérer les erreurs et annuler les requêtes si nécessaire (cleanup).
 
 ##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
 
