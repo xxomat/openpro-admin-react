@@ -248,10 +248,6 @@ export function ProviderCalendars(): React.ReactElement {
 
       {activeSupplier && (
         <div>
-          <h3 style={{ marginBottom: 16, color: darkTheme.textPrimary }}>
-            Hébergements — {activeSupplier.nom}
-          </h3>
-          
           <AccommodationList
             accommodations={supplierData.accommodations[activeSupplier.idFournisseur] ?? []}
             selectedAccommodations={selectedAccommodations}
