@@ -65,6 +65,9 @@ export function CompactGrid({
   selectedRateTypeId
 }: CompactGridProps): React.ReactElement {
   const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
+  
+  // Référence au conteneur scrollable
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Hook pour gérer l'édition
   const {
@@ -115,6 +118,18 @@ export function CompactGrid({
     });
   }, [onSelectedDatesChange]);
 
+  // Gestionnaire pour convertir le scroll vertical en scroll horizontal
+  const handleWheel = React.useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // Convertir le scroll vertical en scroll horizontal
+    container.scrollLeft += event.deltaY;
+    
+    // Empêcher le scroll vertical par défaut
+    event.preventDefault();
+  }, []);
+
   // Gestionnaire pour la touche Échap : annule toute sélection ou annule l'édition
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -136,13 +151,40 @@ export function CompactGrid({
   }, [editingCell, editingDureeMinCell, onSelectedDatesChange, handleEditCancel, handleDureeMinCancel]);
 
   return (
-    <div style={{ 
-      overflowX: 'auto', 
-      border: `1px solid ${darkTheme.borderColor}`, 
-      borderRadius: 8, 
-      background: darkTheme.bgSecondary, 
-      userSelect: 'none' 
-    }}>
+    <>
+      <style>{`
+        .compact-grid-scroll::-webkit-scrollbar {
+          height: 12px;
+        }
+        .compact-grid-scroll::-webkit-scrollbar-track {
+          background: ${darkTheme.bgTertiary};
+          border-radius: 6px;
+        }
+        .compact-grid-scroll::-webkit-scrollbar-thumb {
+          background: ${darkTheme.borderColorLight};
+          border-radius: 6px;
+          border: 2px solid ${darkTheme.bgTertiary};
+        }
+        .compact-grid-scroll::-webkit-scrollbar-thumb:hover {
+          background: ${darkTheme.bgHover};
+        }
+        .compact-grid-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: ${darkTheme.borderColorLight} ${darkTheme.bgTertiary};
+        }
+      `}</style>
+      <div 
+        ref={scrollContainerRef}
+        className="compact-grid-scroll"
+        onWheel={handleWheel}
+        style={{ 
+          overflowX: 'scroll', 
+          border: `1px solid ${darkTheme.borderColor}`, 
+          borderRadius: 8, 
+          background: darkTheme.bgSecondary, 
+          userSelect: 'none' 
+        }}
+      >
       <div
         style={{
           display: 'grid',
@@ -270,5 +312,6 @@ export function CompactGrid({
         })}
       </div>
     </div>
+    </>
   );
 }
