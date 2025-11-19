@@ -14,6 +14,12 @@ import { defaultSuppliers, baseUrl, apiKey } from './config';
 import { formatDate } from './utils/dateUtils';
 import { useSupplierData } from './hooks/useSupplierData';
 import { CompactGrid } from './components/CompactGrid';
+import { DateRangeControls } from './components/DateRangeControls';
+import { SupplierTabs } from './components/SupplierTabs';
+import { AccommodationList } from './components/AccommodationList';
+import { RateTypeSelector } from './components/RateTypeSelector';
+import { ActionButtons } from './components/ActionButtons';
+import { SelectionSummary } from './components/SelectionSummary';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
@@ -195,54 +201,28 @@ export function ProviderCalendars(): React.ReactElement {
     supplierData.loadInitialData(suppliers, startDate, monthsCount);
   }, []); // Seulement au montage du composant
 
+  // Callback pour mettre à jour le selectedRateTypeId
+  const handleSelectedRateTypeIdChange = React.useCallback((newRateTypeId: number | null) => {
+    if (!activeSupplier) return;
+    supplierData.setSelectedRateTypeIdBySupplier(prev => ({
+      ...prev,
+      [activeSupplier.idFournisseur]: newRateTypeId
+    }));
+  }, [activeSupplier, supplierData]);
+
   return (
     <div style={{ padding: '16px', fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif' }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 12, justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Date de début</span>
-            <input
-              type="date"
-              value={startInput}
-              onChange={e => setStartInput(e.currentTarget.value)}
-              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-            />
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Durée</span>
-            <select
-              value={monthsCount}
-              onChange={e => setMonthsCount(Number(e.currentTarget.value))}
-              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
-            >
-              <option value={1}>1 mois</option>
-              <option value={2}>2 mois</option>
-              <option value={3}>3 mois</option>
-            </select>
-          </label>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
-        {suppliers.map((s, idx) => {
-          const isActive = idx === activeIdx;
-          return (
-            <button
-              key={s.idFournisseur}
-              onClick={() => setActiveIdx(idx)}
-              style={{
-                padding: '8px 12px',
-                border: 'none',
-                background: isActive ? '#111827' : 'transparent',
-                color: isActive ? '#fff' : '#111827',
-                borderRadius: '8px 8px 0 0',
-                cursor: 'pointer'
-              }}
-            >
-              {s.nom}
-            </button>
-          );
-        })}
-      </div>
+      <DateRangeControls
+        startInput={startInput}
+        onStartInputChange={setStartInput}
+        monthsCount={monthsCount}
+        onMonthsCountChange={setMonthsCount}
+      />
+      <SupplierTabs
+        suppliers={suppliers}
+        activeIdx={activeIdx}
+        onActiveIdxChange={setActiveIdx}
+      />
 
       {supplierData.loading && <div>Chargement…</div>}
       {supplierData.error && <div style={{ color: '#b91c1c' }}>Erreur: {supplierData.error}</div>}
@@ -253,208 +233,56 @@ export function ProviderCalendars(): React.ReactElement {
             Hébergements — {activeSupplier.nom}
           </h3>
           
-          <div style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {(supplierData.accommodations[activeSupplier.idFournisseur] || [])
-                .slice()
-                .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))
-                .map(acc => (
-                <label
-                  key={acc.idHebergement}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedAccommodations.has(acc.idHebergement)}
-                    onChange={e => {
-                      const newSet = new Set(selectedAccommodations);
-                      if (e.target.checked) {
-                        newSet.add(acc.idHebergement);
-                      } else {
-                        newSet.delete(acc.idHebergement);
-                      }
-                      setSelectedAccommodations(newSet);
-                    }}
-                  />
-                  <span>{acc.nomHebergement}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <AccommodationList
+            accommodations={supplierData.accommodations[activeSupplier.idFournisseur] || []}
+            selectedAccommodations={selectedAccommodations}
+            onSelectedAccommodationsChange={setSelectedAccommodations}
+          />
+          
           {selectedAccommodations.size > 0 && (
             <>
-              {/* Dropdown de sélection du type de tarif */}
-              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 500, fontSize: 14 }}>Type de tarif :</span>
-                    <select
-                      value={selectedRateTypeId ?? ''}
-                      onChange={(e) => {
-                        if (!activeSupplier) return;
-                        const newRateTypeId = e.target.value === '' ? null : Number(e.target.value);
-                        supplierData.setSelectedRateTypeIdBySupplier(prev => ({
-                          ...prev,
-                          [activeSupplier.idFournisseur]: newRateTypeId
-                        }));
-                      }}
-                    style={{
-                      padding: '6px 12px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 6,
-                      fontSize: 14,
-                      minWidth: 200,
-                      background: '#fff',
-                      color: '#111827'
-                    }}
-                  >
-                    {!supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] || 
-                     supplierData.rateTypesBySupplier[activeSupplier.idFournisseur].length === 0 ? (
-                      <option value="">Aucun type tarif disponible</option>
-                    ) : (
-                      supplierData.rateTypesBySupplier[activeSupplier.idFournisseur].map(type => {
-                        const descriptionFr = type.descriptionFr ?? (supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur]?.[type.idTypeTarif]) ?? `Type ${type.idTypeTarif}`;
-                        const displayText = `${type.idTypeTarif} - ${descriptionFr}`;
-                        return (
-                          <option key={type.idTypeTarif} value={type.idTypeTarif}>
-                            {displayText}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
-                </label>
-              </div>
+              <RateTypeSelector
+                rateTypes={supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] || []}
+                rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur] || {}}
+                selectedRateTypeId={selectedRateTypeId}
+                onSelectedRateTypeIdChange={handleSelectedRateTypeIdChange}
+              />
               <CompactGrid
-              startDate={startDate}
-              monthsCount={monthsCount}
-              accommodations={(supplierData.accommodations[activeSupplier.idFournisseur] || [])
-                .filter(acc => selectedAccommodations.has(acc.idHebergement))
-                .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
-              stockByAccommodation={stockByAccommodation}
-              ratesByAccommodation={ratesByAccommodation}
-              dureeMinByAccommodation={dureeMinByAccommodation}
-              selectedDates={selectedDates}
-              onSelectedDatesChange={setSelectedDates}
-              modifiedRates={modifiedRates}
-              modifiedDureeMin={modifiedDureeMin}
-              onRateUpdate={handleRateUpdate}
-              onDureeMinUpdate={handleDureeMinUpdate}
-              selectedRateTypeId={selectedRateTypeId}
-            />
+                startDate={startDate}
+                monthsCount={monthsCount}
+                accommodations={(supplierData.accommodations[activeSupplier.idFournisseur] || [])
+                  .filter(acc => selectedAccommodations.has(acc.idHebergement))
+                  .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
+                stockByAccommodation={stockByAccommodation}
+                ratesByAccommodation={ratesByAccommodation}
+                dureeMinByAccommodation={dureeMinByAccommodation}
+                selectedDates={selectedDates}
+                onSelectedDatesChange={setSelectedDates}
+                modifiedRates={modifiedRates}
+                modifiedDureeMin={modifiedDureeMin}
+                onRateUpdate={handleRateUpdate}
+                onDureeMinUpdate={handleDureeMinUpdate}
+                selectedRateTypeId={selectedRateTypeId}
+              />
             </>
           )}
           
-          {/* Boutons Sauvegarder et Actualiser les données */}
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-            <button
-              onClick={handleRefreshData}
-              disabled={supplierData.loading}
-              style={{
-                padding: '10px 20px',
-                background: supplierData.loading ? '#9ca3af' : '#6b7280',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: supplierData.loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-                opacity: supplierData.loading ? 0.6 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (!supplierData.loading) {
-                  e.currentTarget.style.background = '#4b5563';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!supplierData.loading) {
-                  e.currentTarget.style.background = '#6b7280';
-                }
-              }}
-            >
-              {supplierData.loading ? 'Actualisation...' : 'Actualiser les données'}
-            </button>
-            {(modifiedRates.size > 0 || modifiedDureeMin.size > 0) && (
-              <button
-                onClick={handleSave}
-                style={{
-                  padding: '10px 20px',
-                  background: '#3b82f6',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#2563eb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#3b82f6';
-                }}
-              >
-                Sauvegarder ({modifiedRates.size + modifiedDureeMin.size} modification{(modifiedRates.size + modifiedDureeMin.size) > 1 ? 's' : ''})
-              </button>
-            )}
-          </div>
+          <ActionButtons
+            loading={supplierData.loading}
+            modifiedRatesCount={modifiedRates.size}
+            modifiedDureeMinCount={modifiedDureeMin.size}
+            onRefresh={handleRefreshData}
+            onSave={handleSave}
+          />
           
-          {/* Champ texte pour le résumé de sélection (pour tests) */}
-          <div style={{ marginTop: 16 }}>
-            <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#374151' }}>
-              Résumé de sélection (pour tests)
-            </label>
-            <textarea
-              readOnly
-              value={(() => {
-                if (selectedDates.size === 0 || selectedAccommodations.size === 0) return '';
-                
-                const filteredAccommodations = (supplierData.accommodations[activeSupplier.idFournisseur] || [])
-                  .filter(acc => selectedAccommodations.has(acc.idHebergement))
-                  .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement));
-                
-                // Trier les dates sélectionnées par ordre chronologique
-                const sortedDates = Array.from(selectedDates).sort();
-                
-                // Générer le résumé : un jour par ligne
-                // Format : Date1, H1 - T1, H2 - T2, H3 - T3
-                //          Date2, H1 - T1, H2 - T2, H3 - T3
-                const lines: string[] = [];
-                for (const dateStr of sortedDates) {
-                  const accommodationParts = filteredAccommodations.map(acc => {
-                    const price = selectedRateTypeId !== null
-                      ? ratesByAccommodation[acc.idHebergement]?.[dateStr]?.[selectedRateTypeId]
-                      : undefined;
-                    const isModified = selectedRateTypeId !== null
-                      ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
-                      : false;
-                    const priceStr = price != null 
-                      ? `${Math.round(price)}€${isModified ? '*' : ''}` 
-                      : '-';
-                    return `${acc.nomHebergement} - ${priceStr}`;
-                  });
-                  const lineParts = [dateStr, ...accommodationParts];
-                  lines.push(lineParts.join(', '));
-                }
-                
-                return lines.join('\n');
-              })()}
-              style={{
-                width: '100%',
-                minHeight: 80,
-                padding: '8px 12px',
-                border: '1px solid #e5e7eb',
-                borderRadius: 6,
-                fontSize: 13,
-                fontFamily: 'monospace',
-                background: '#f9fafb',
-                color: '#111827',
-                resize: 'vertical'
-              }}
-              placeholder="Aucune sélection"
-            />
-          </div>
+          <SelectionSummary
+            selectedDates={selectedDates}
+            selectedAccommodations={(supplierData.accommodations[activeSupplier.idFournisseur] || [])
+              .filter(acc => selectedAccommodations.has(acc.idHebergement))}
+            selectedRateTypeId={selectedRateTypeId}
+            ratesByAccommodation={ratesByAccommodation}
+            modifiedRates={modifiedRates}
+          />
         </div>
       )}
 

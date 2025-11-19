@@ -11,7 +11,7 @@ import React from 'react';
 import type { ClientByRole } from '../../../../openpro-api-react/src/client/OpenProClient';
 import type { Supplier, Accommodation, RateType } from '../types';
 import { loadAccommodations, loadSupplierData } from '../services/dataLoader';
-import { formatDate } from '../utils/dateUtils';
+import { updateSupplierDataStates } from './utils/supplierDataUtils';
 
 export interface UseSupplierDataReturn {
   // États de données
@@ -101,62 +101,26 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
       setLoading(true);
       setError(null);
       
-      // Charger les hébergements (toujours recharger pour avoir les données à jour)
       const accommodationsList = await loadAccommodations(client, idFournisseur, controller.signal);
-      
-      setAccommodations(prev => ({ ...prev, [idFournisseur]: accommodationsList }));
-      
-      // Sélectionner tous les hébergements du fournisseur actif après le rechargement
-      setSelectedAccommodationsBySupplier(prev => ({
-        ...prev,
-        [idFournisseur]: new Set(accommodationsList.map(acc => acc.idHebergement))
-      }));
-      
-      // Charger les données (stock, tarifs, etc.)
       const data = await loadSupplierData(client, idFournisseur, accommodationsList, startDate, monthsCount, controller.signal);
       
-      // Mettre à jour les états avec la nouvelle structure indexée par fournisseur puis hébergement
-      setStockBySupplierAndAccommodation(prev => ({
-        ...prev,
-        [idFournisseur]: data.stock
-      }));
-      setRatesBySupplierAndAccommodation(prev => ({
-        ...prev,
-        [idFournisseur]: data.rates
-      }));
-      setPromoBySupplierAndAccommodation(prev => ({
-        ...prev,
-        [idFournisseur]: data.promo
-      }));
-      setRateTypesBySupplierAndAccommodation(prev => ({
-        ...prev,
-        [idFournisseur]: data.rateTypes
-      }));
-      setDureeMinByAccommodation(prev => ({
-        ...prev,
-        [idFournisseur]: data.dureeMin
-      }));
-      setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypeLabels }));
-      setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypesList }));
-      
-      // Initialiser selectedRateTypeId pour le fournisseur actif
-      if (data.rateTypesList.length > 0) {
-        setSelectedRateTypeIdBySupplier(prev => {
-          const current = prev[idFournisseur];
-          if (current === null || current === undefined) {
-            return { ...prev, [idFournisseur]: data.rateTypesList[0].idTypeTarif };
-          }
-          const exists = data.rateTypesList.some(t => t.idTypeTarif === current);
-          if (!exists) {
-            return { ...prev, [idFournisseur]: data.rateTypesList[0].idTypeTarif };
-          }
-          return prev;
-        });
-      }
-      
-      // Réinitialiser les indicateurs visuels pour le fournisseur actif
-      setModifiedRatesBySupplier(prev => ({ ...prev, [idFournisseur]: new Set() }));
-      setModifiedDureeMinBySupplier(prev => ({ ...prev, [idFournisseur]: new Set() }));
+      updateSupplierDataStates({
+        idFournisseur,
+        data,
+        accommodationsList,
+        setAccommodations,
+        setStockBySupplierAndAccommodation,
+        setRatesBySupplierAndAccommodation,
+        setPromoBySupplierAndAccommodation,
+        setRateTypesBySupplierAndAccommodation,
+        setDureeMinByAccommodation,
+        setRateTypeLabelsBySupplier,
+        setRateTypesBySupplier,
+        setSelectedAccommodationsBySupplier,
+        setSelectedRateTypeIdBySupplier,
+        setModifiedRatesBySupplier,
+        setModifiedDureeMinBySupplier
+      });
       
     } catch (e: any) {
       if (e.message !== 'Cancelled') {
@@ -184,47 +148,31 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
         if (cancelled || controller.signal.aborted) return;
         
         try {
-          // Charger les hébergements
           const accommodationsList = await loadAccommodations(client, supplier.idFournisseur, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
-          setAccommodations(prev => ({ ...prev, [supplier.idFournisseur]: accommodationsList }));
-          
-          // Sélectionner tous les hébergements pour chaque fournisseur au chargement initial
-          setSelectedAccommodationsBySupplier(prev => ({
-            ...prev,
-            [supplier.idFournisseur]: new Set(accommodationsList.map(acc => acc.idHebergement))
-          }));
-          
-          // Charger les données (stock, tarifs, etc.)
           const data = await loadSupplierData(client, supplier.idFournisseur, accommodationsList, startDate, monthsCount, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
-          // Mettre à jour les états avec la nouvelle structure indexée par fournisseur puis hébergement
-          setStockBySupplierAndAccommodation(prev => ({
-            ...prev,
-            [supplier.idFournisseur]: data.stock
-          }));
-          setRatesBySupplierAndAccommodation(prev => ({
-            ...prev,
-            [supplier.idFournisseur]: data.rates
-          }));
-          setPromoBySupplierAndAccommodation(prev => ({
-            ...prev,
-            [supplier.idFournisseur]: data.promo
-          }));
-          setRateTypesBySupplierAndAccommodation(prev => ({
-            ...prev,
-            [supplier.idFournisseur]: data.rateTypes
-          }));
-          setDureeMinByAccommodation(prev => ({
-            ...prev,
-            [supplier.idFournisseur]: data.dureeMin
-          }));
-          setRateTypeLabelsBySupplier(prev => ({ ...prev, [supplier.idFournisseur]: data.rateTypeLabels }));
-          setRateTypesBySupplier(prev => ({ ...prev, [supplier.idFournisseur]: data.rateTypesList }));
+          updateSupplierDataStates({
+            idFournisseur: supplier.idFournisseur,
+            data,
+            accommodationsList,
+            setAccommodations,
+            setStockBySupplierAndAccommodation,
+            setRatesBySupplierAndAccommodation,
+            setPromoBySupplierAndAccommodation,
+            setRateTypesBySupplierAndAccommodation,
+            setDureeMinByAccommodation,
+            setRateTypeLabelsBySupplier,
+            setRateTypesBySupplier,
+            setSelectedAccommodationsBySupplier,
+            setSelectedRateTypeIdBySupplier,
+            setModifiedRatesBySupplier,
+            setModifiedDureeMinBySupplier
+          });
           
-          // Initialiser selectedRateTypeId pour chaque fournisseur
+          // Pour le chargement initial, on initialise toujours le premier type de tarif
           if (data.rateTypesList.length > 0) {
             setSelectedRateTypeIdBySupplier(prev => ({
               ...prev,

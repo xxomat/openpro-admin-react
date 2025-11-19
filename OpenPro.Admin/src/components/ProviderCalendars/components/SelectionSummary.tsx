@@ -1,0 +1,81 @@
+/**
+ * Composant SelectionSummary - Résumé de sélection
+ * 
+ * Ce composant affiche un résumé textuel de la sélection actuelle
+ * (dates, hébergements et tarifs) pour les tests.
+ */
+
+import React from 'react';
+import type { Accommodation } from '../types';
+
+export interface SelectionSummaryProps {
+  selectedDates: Set<string>;
+  selectedAccommodations: Accommodation[];
+  selectedRateTypeId: number | null;
+  ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
+  modifiedRates: Set<string>;
+}
+
+/**
+ * Composant pour le résumé de sélection
+ */
+export function SelectionSummary({
+  selectedDates,
+  selectedAccommodations,
+  selectedRateTypeId,
+  ratesByAccommodation,
+  modifiedRates
+}: SelectionSummaryProps): React.ReactElement {
+  const summaryText = React.useMemo(() => {
+    if (selectedDates.size === 0 || selectedAccommodations.length === 0) return '';
+    
+    const sortedDates = Array.from(selectedDates).sort();
+    const sortedAccommodations = [...selectedAccommodations].sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement));
+    
+    const lines: string[] = [];
+    for (const dateStr of sortedDates) {
+      const accommodationParts = sortedAccommodations.map(acc => {
+        const price = selectedRateTypeId !== null
+          ? ratesByAccommodation[acc.idHebergement]?.[dateStr]?.[selectedRateTypeId]
+          : undefined;
+        const isModified = selectedRateTypeId !== null
+          ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
+          : false;
+        const priceStr = price != null 
+          ? `${Math.round(price)}€${isModified ? '*' : ''}` 
+          : '-';
+        return `${acc.nomHebergement} - ${priceStr}`;
+      });
+      const lineParts = [dateStr, ...accommodationParts];
+      lines.push(lineParts.join(', '));
+    }
+    
+    return lines.join('\n');
+  }, [selectedDates, selectedAccommodations, selectedRateTypeId, ratesByAccommodation, modifiedRates]);
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#374151' }}>
+        Résumé de sélection (pour tests)
+      </label>
+      <textarea
+        readOnly
+        value={summaryText}
+        style={{
+          width: '100%',
+          minHeight: 80,
+          padding: '8px 12px',
+          border: '1px solid #e5e7eb',
+          borderRadius: 6,
+          fontSize: 13,
+          fontFamily: 'monospace',
+          background: '#f9fafb',
+          color: '#111827',
+          resize: 'vertical'
+        }}
+        placeholder="Aucune sélection"
+      />
+    </div>
+  );
+}
+
