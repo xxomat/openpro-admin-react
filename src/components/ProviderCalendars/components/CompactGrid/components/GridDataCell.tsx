@@ -8,6 +8,7 @@
 import React from 'react';
 import type { EditingCell } from '../hooks/useGridEditing';
 import { darkTheme } from '../../../utils/theme';
+import type { BookingDisplay } from '../../../types';
 
 /**
  * Props du composant GridDataCell
@@ -43,6 +44,8 @@ export interface GridDataCellProps {
   isWeekend: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
+  /** Réservations pour cette date */
+  bookings: BookingDisplay[];
   /** État du drag (pour empêcher les clics pendant le drag) */
   draggingState: { isDragging: boolean } | null;
   /** Référence pour détecter si un drag vient de se terminer */
@@ -84,6 +87,7 @@ export function GridDataCell({
   editingDureeMinValue,
   isWeekend,
   selectedRateTypeId,
+  bookings,
   draggingState,
   justFinishedDragRef,
   onCellClick,
@@ -96,9 +100,13 @@ export function GridDataCell({
   onEditDureeMinCancel
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
+  const hasBookings = bookings.length > 0;
   
   let bgColor: string;
-  if (isDragging) {
+  if (hasBookings) {
+    // Fond bleu foncé pour les réservations
+    bgColor = darkTheme.bookingBg;
+  } else if (isDragging) {
     bgColor = darkTheme.selectionDraggingBg;
   } else if (isSelected) {
     bgColor = isAvailable 
@@ -112,7 +120,9 @@ export function GridDataCell({
     }
   }
   
-  const borderColor = (isSelected || isDragging)
+  const borderColor = hasBookings
+    ? darkTheme.bookingBorder
+    : (isSelected || isDragging)
     ? darkTheme.selectionBorder
     : (isAvailable ? darkTheme.success : darkTheme.error);
   const borderWidth = isDragging ? '2px' : (isSelected ? '3px' : '1px');
@@ -147,7 +157,11 @@ export function GridDataCell({
         opacity: isWeekend || isSelected || isDragging ? 1 : 0.7,
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
+      title={hasBookings 
+        ? `${dateStr} — Réservation${bookings.length > 1 ? 's' : ''}: ${bookings.map(b => 
+            `${b.clientNom || 'Sans nom'}${b.montantTotal ? ` - ${b.montantTotal}€` : ''}`
+          ).join(', ')}`
+        : `${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
     >
       {isEditing ? (
         <input
@@ -181,6 +195,20 @@ export function GridDataCell({
           min="0"
           step="0.01"
         />
+      ) : hasBookings ? (
+        // Affichage pour les réservations : nom du client et prix total
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
+          {bookings.map((booking, idx) => (
+            <div key={idx} style={{ fontSize: 11, fontWeight: 500, color: darkTheme.textPrimary }}>
+              {booking.clientNom || 'Sans nom'}
+              {booking.montantTotal != null && (
+                <span style={{ fontSize: 10, marginLeft: 4, color: darkTheme.textSecondary }}>
+                  {Math.round(booking.montantTotal)}€
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
           {selectedRateTypeId !== null ? (

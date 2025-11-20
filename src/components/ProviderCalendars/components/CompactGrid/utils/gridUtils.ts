@@ -6,6 +6,7 @@
  */
 
 import { formatDate } from '../../../utils/dateUtils';
+import type { BookingDisplay } from '../../../types';
 
 /**
  * Obtient la date à partir d'un élément DOM
@@ -47,5 +48,45 @@ export function getDateRange(startDateStr: string, endDateStr: string): string[]
   }
   
   return dates;
+}
+
+/**
+ * Filtre les réservations pour ne garder que celles qui chevauchent la plage de dates
+ * 
+ * Une réservation chevauche la plage si dateArrivee <= endDate && dateDepart > startDate
+ * 
+ * @param bookings - Liste des réservations à filtrer
+ * @param startDate - Date de début de la plage (incluse)
+ * @param endDate - Date de fin de la plage (incluse)
+ * @returns Liste des réservations qui chevauchent la plage
+ */
+export function filterBookingsByDateRange(
+  bookings: BookingDisplay[],
+  startDate: Date,
+  endDate: Date
+): BookingDisplay[] {
+  const startDateStr = formatDate(startDate);
+  const endDateStr = formatDate(endDate);
+  
+  return bookings.filter(booking => {
+    // Une réservation chevauche si dateArrivee <= endDate && dateDepart > startDate
+    return booking.dateArrivee <= endDateStr && booking.dateDepart > startDateStr;
+  });
+}
+
+/**
+ * Retourne toutes les réservations qui couvrent une date donnée
+ * 
+ * Une réservation couvre une date si la date est dans [dateArrivee, dateDepart[
+ * 
+ * @param bookings - Liste des réservations à vérifier
+ * @param dateStr - Date au format YYYY-MM-DD
+ * @returns Liste des réservations qui couvrent cette date
+ */
+export function getBookingsForDate(bookings: BookingDisplay[], dateStr: string): BookingDisplay[] {
+  return bookings.filter(booking => {
+    // La date est couverte si dateArrivee <= dateStr < dateDepart
+    return booking.dateArrivee <= dateStr && booking.dateDepart > dateStr;
+  });
 }
 

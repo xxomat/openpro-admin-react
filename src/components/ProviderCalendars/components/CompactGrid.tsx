@@ -8,13 +8,13 @@
  */
 
 import React from 'react';
-import type { Accommodation } from '../types';
+import type { Accommodation, BookingDisplay } from '../types';
 import { formatDate, getDaysInRange } from '../utils/dateUtils';
 import { GridDataCell } from './CompactGrid/components/GridDataCell';
 import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
 import { useGridDrag } from './CompactGrid/hooks/useGridDrag';
 import { useGridEditing } from './CompactGrid/hooks/useGridEditing';
-import { getDateFromElement, getDateRange } from './CompactGrid/utils/gridUtils';
+import { getDateFromElement, getDateRange, filterBookingsByDateRange, getBookingsForDate } from './CompactGrid/utils/gridUtils';
 import { darkTheme } from '../utils/theme';
 
 /**
@@ -33,6 +33,8 @@ export interface CompactGridProps {
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
   /** Map des durées minimales par hébergement et date */
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
+  /** Map des réservations par hébergement */
+  bookingsByAccommodation: Record<number, BookingDisplay[]>;
   /** Set des dates sélectionnées au format YYYY-MM-DD */
   selectedDates: Set<string>;
   /** Callback pour mettre à jour la sélection de dates */
@@ -56,6 +58,7 @@ export function CompactGrid({
   stockByAccommodation,
   ratesByAccommodation,
   dureeMinByAccommodation,
+  bookingsByAccommodation,
   selectedDates,
   onSelectedDatesChange,
   modifiedRates,
@@ -65,6 +68,16 @@ export function CompactGrid({
   selectedRateTypeId
 }: CompactGridProps): React.ReactElement {
   const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
+  
+  // Filtrer les réservations pour ne garder que celles dans la plage de dates
+  const filteredBookingsByAccommodation = React.useMemo(() => {
+    const filtered: Record<number, BookingDisplay[]> = {};
+    for (const acc of accommodations) {
+      const bookings = bookingsByAccommodation[acc.idHebergement] || [];
+      filtered[acc.idHebergement] = filterBookingsByDateRange(bookings, startDate, endDate);
+    }
+    return filtered;
+  }, [accommodations, bookingsByAccommodation, startDate, endDate]);
   
   // Référence au conteneur scrollable
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -276,6 +289,10 @@ export function CompactGrid({
                   ? priceMap[dateStr]?.[selectedRateTypeId] 
                   : undefined;
                 const dureeMin = dureeMinMap[dateStr] ?? null;
+                const bookingsForDate = getBookingsForDate(
+                  filteredBookingsByAccommodation[acc.idHebergement] || [],
+                  dateStr
+                );
                 const isSelected = selectedDates.has(dateStr);
                 const isDragging = draggingDates.has(dateStr);
                 const isModified = selectedRateTypeId !== null 
@@ -304,6 +321,7 @@ export function CompactGrid({
                     editingDureeMinValue={editingDureeMinValue}
                     isWeekend={isWeekend}
                     selectedRateTypeId={selectedRateTypeId}
+                    bookings={bookingsForDate}
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}
                     onCellClick={handleCellClick}
