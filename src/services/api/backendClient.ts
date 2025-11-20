@@ -126,3 +126,60 @@ export async function fetchStock(
   return res.json();
 }
 
+/**
+ * Type pour une date modifiée dans la requête bulk
+ */
+export interface BulkUpdateDate {
+  date: string;              // YYYY-MM-DD
+  rateTypeId?: number;       // présent si tarif modifié
+  price?: number;            // présent si tarif modifié
+  dureeMin?: number | null;  // présent si dureeMin modifiée
+}
+
+/**
+ * Type pour un hébergement avec ses dates modifiées
+ */
+export interface BulkUpdateAccommodation {
+  idHebergement: number;
+  dates: BulkUpdateDate[];
+}
+
+/**
+ * Type pour la requête bulk update
+ */
+export interface BulkUpdateRequest {
+  accommodations: BulkUpdateAccommodation[];
+}
+
+/**
+ * Sauvegarde les modifications de tarifs et durées minimales en bulk
+ * 
+ * @param idFournisseur - Identifiant du fournisseur
+ * @param bulkData - Données des modifications groupées par hébergement
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue en cas de succès
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function saveBulkUpdates(
+  idFournisseur: number,
+  bulkData: BulkUpdateRequest,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/bulk-update`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bulkData),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to save bulk updates: ${errorText}`);
+  }
+}
+

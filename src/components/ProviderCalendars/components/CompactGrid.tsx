@@ -119,15 +119,26 @@ export function CompactGrid({
   }, [onSelectedDatesChange]);
 
   // Gestionnaire pour convertir le scroll vertical en scroll horizontal
-  const handleWheel = React.useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+  // Utilisation d'un useEffect avec addEventListener pour pouvoir utiliser { passive: false }
+  // et empêcher efficacement le scroll de la page
+  React.useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    // Convertir le scroll vertical en scroll horizontal
-    container.scrollLeft += event.deltaY;
+    const handleWheel = (event: WheelEvent) => {
+      // Convertir le scroll vertical en scroll horizontal
+      container.scrollLeft += event.deltaY;
+      
+      // Empêcher le scroll vertical par défaut et la propagation vers la page
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
     
-    // Empêcher le scroll vertical par défaut
-    event.preventDefault();
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   // Gestionnaire pour la touche Échap : annule toute sélection ou annule l'édition
@@ -176,7 +187,6 @@ export function CompactGrid({
       <div 
         ref={scrollContainerRef}
         className="compact-grid-scroll"
-        onWheel={handleWheel}
         style={{ 
           overflowX: 'scroll', 
           border: `1px solid ${darkTheme.borderColor}`, 
