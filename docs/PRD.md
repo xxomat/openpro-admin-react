@@ -483,9 +483,7 @@ A définir
 	- Lors de l'application d'un prix modifié, ajouter chaque combinaison `idHebergement-dateStr` concernée dans `modifiedRates` pour permettre l'affichage de l'astérisque jaune.
 
 9. **Limitations actuelles**
-	- **Pas de persistance** : Les modifications de prix ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
-	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
-	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder"
+	- ✅ **Sauvegarde en bulk implémentée** : Les modifications de prix et de durée minimale peuvent être sauvegardées via le bouton "Sauvegarder" (voir section 6.4).
 
 ##### Sélection globale du type de tarif — Exigences fonctionnelles
 
@@ -739,9 +737,7 @@ A définir
 	- Les deux types de modifications peuvent être effectuées sur la même sélection, mais pas simultanément.
 
 10. **Limitations actuelles**
-	- **Pas de persistance** : Les modifications de durée minimale ne sont pas sauvegardées vers le serveur (stub ou API Open Pro).
-	- Les modifications sont perdues lors d'un rechargement de la page ou d'un rechargement des données.
-	- La synchronisation avec le backend sera implémentée dans une phase ultérieure, sur l'appui d'un bouton "Sauvegarder" (probablement le même bouton que pour les prix, ou un bouton dédié).
+	- ✅ **Sauvegarde en bulk implémentée** : Les modifications de durée minimale peuvent être sauvegardées via le bouton "Sauvegarder" (voir section 6.4).
 
 ##### Bouton d'actualisation des données — Exigences fonctionnelles
 
@@ -804,6 +800,91 @@ A définir
 		- `loadSupplierData(client, idFournisseur, accommodationsList, startDate, endDate, signal)`
 		- `refreshSupplierData(idFournisseur, startDate, endDate)`
 		- `loadInitialData(suppliers, startDate, endDate)`
+
+##### Sauvegarde en bulk des modifications — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Un bouton **"Sauvegarder"** permet de sauvegarder toutes les modifications non sauvegardées (tarifs et durées minimales) pour le fournisseur actif.
+	- Les modifications sont envoyées au backend en une seule requête bulk pour optimiser les performances.
+
+2. **Position et placement**
+	- **Emplacement du bouton** :
+		- Position : à proximité du bouton "Actualiser les données".
+		- Visibilité : affiché uniquement si des modifications existent (`modifiedRates.size > 0` ou `modifiedDureeMin.size > 0`).
+		- Texte : "Sauvegarder (X modification(s))" où X est le nombre total de modifications.
+
+3. **Structure des données envoyées**
+	- **Format de la requête** :
+		```typescript
+		POST /api/suppliers/:idFournisseur/bulk-update
+		{
+		  accommodations: [
+		    {
+		      idHebergement: number,
+		      dates: [
+		        {
+		          date: string,              // YYYY-MM-DD
+		          rateTypeId?: number,       // présent si tarif modifié
+		          price?: number,            // présent si tarif modifié
+		          dureeMin?: number | null   // présent si dureeMin modifiée
+		        }
+		      ]
+		    }
+		  ]
+		}
+		```
+	- **Collecte des modifications** :
+		- Pour chaque modification dans `modifiedRates` (format: `"${idHebergement}-${dateStr}-${idTypeTarif}"`), extraire les informations nécessaires.
+		- Pour chaque modification dans `modifiedDureeMin` (format: `"${idHebergement}-${dateStr}"`), extraire les informations nécessaires.
+		- Grouper les modifications par hébergement, puis par date.
+		- N'envoyer que les données réellement modifiées (pas toutes les dates/hébergements).
+
+4. **Comportement du bouton**
+	- **Action principale** :
+		- Au clic sur le bouton, collecter toutes les modifications du fournisseur actif.
+		- Transformer les modifications en structure bulk.
+		- Envoyer la requête `POST /api/suppliers/:idFournisseur/bulk-update` au backend.
+		- Afficher un état de chargement pendant la sauvegarde.
+	- **Réinitialisation après succès** :
+		- Après une sauvegarde réussie :
+			- Vider `modifiedRatesBySupplier[activeSupplier.idFournisseur]` (Set vide).
+			- Vider `modifiedDureeMinBySupplier[activeSupplier.idFournisseur]` (Set vide).
+			- Supprimer toutes les astérisques jaunes (`*`) affichées dans le calendrier pour le fournisseur actif.
+	- **Gestion des erreurs** :
+		- Si la sauvegarde échoue, afficher un message d'erreur approprié.
+		- En cas d'erreur, **ne pas** réinitialiser les indicateurs visuels (les modifications locales doivent être préservées).
+		- Permettre à l'utilisateur de réessayer la sauvegarde.
+
+5. **État du bouton**
+	- **État normal** : Bouton cliquable avec le texte "Sauvegarder (X modification(s))".
+	- **État de chargement** : Pendant la sauvegarde :
+		- Désactiver le bouton (`disabled: true`).
+		- Afficher un indicateur de chargement (ex: texte "Sauvegarde..." ou spinner).
+		- Empêcher les interactions utilisateur pendant la sauvegarde.
+	- **Retour à l'état normal** : Après la sauvegarde (succès ou échec), restaurer l'état normal du bouton.
+
+6. **Isolation par fournisseur**
+	- Le bouton agit uniquement sur le fournisseur actif (`activeSupplier`).
+	- Les modifications non sauvegardées des autres fournisseurs (autres onglets) ne sont **pas** affectées par la sauvegarde.
+	- Chaque fournisseur peut être sauvegardé indépendamment.
+
+7. **Cas limites**
+	- **Aucune modification** : Si `modifiedRates.size === 0` et `modifiedDureeMin.size === 0`, le bouton n'est pas affiché.
+	- **Sauvegarde déjà en cours** : Si une sauvegarde est déjà en cours, ignorer les clics supplémentaires ou afficher un message approprié.
+	- **Changement d'onglet pendant la sauvegarde** : Si l'utilisateur change d'onglet pendant la sauvegarde, la sauvegarde continue pour le fournisseur d'origine.
+
+8. **Implémentation technique**
+	- Le bouton doit déclencher une fonction `handleSave` qui :
+		1. Collecte les modifications depuis `modifiedRatesBySupplier` et `modifiedDureeMinBySupplier` pour le fournisseur actif.
+		2. Transforme les modifications en structure bulk (groupées par hébergement puis par date).
+		3. Met à jour l'état de chargement (`setSaving(true)`).
+		4. Appelle `saveBulkUpdates(idFournisseur, bulkData)` du client API backend.
+		5. En cas de succès :
+			- Réinitialise les indicateurs visuels :
+				- `setModifiedRatesBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
+				- `setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
+		6. Met à jour l'état de chargement (`setSaving(false)`).
+	- La fonction doit gérer les erreurs et afficher des messages appropriés.
 
 ##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
 
