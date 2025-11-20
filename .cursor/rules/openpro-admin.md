@@ -1,3 +1,9 @@
+---
+description: Règles de codage pour le projet OpenPro Admin
+globs: []
+alwaysApply: true
+---
+
 # Règles de codage - OpenPro Admin
 
 ## Taille des fichiers
