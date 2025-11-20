@@ -4,8 +4,6 @@
   "exclude": ["dist"],
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {
-      "@openpro-api-react/*": ["../openpro-api-react/src/*"]
-    }
+    "paths": {}
   }
 }

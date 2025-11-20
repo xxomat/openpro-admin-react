@@ -10,10 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
 	integrations: [react()],
 	vite: {
-		resolve: {
-			alias: {
-				'@openpro-api-react': path.resolve(__dirname, '../openpro-api-react/src')
+			resolve: {
+				alias: {}
 			}
-		}
 	}
 });

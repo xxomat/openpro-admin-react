@@ -2,16 +2,16 @@
  * Service de chargement du stock
  * 
  * Ce fichier contient les fonctions pour charger le stock disponible
- * pour un hébergement sur une plage de dates donnée depuis le backend.
+ * pour un hébergement sur une plage de dates donnée.
  */
 
-import { fetchStock } from '../../../../services/api/backendClient';
+import { openProClient } from '../openProClient.js';
 
 /**
  * Charge le stock disponible pour un hébergement sur une plage de dates
  * 
- * Cette fonction appelle le backend pour récupérer le stock disponible.
- * Le backend gère la communication avec l'API OpenPro et la normalisation des données.
+ * Cette fonction récupère le stock depuis l'API OpenPro et normalise les différentes
+ * structures de réponse possibles vers une map simple date -> quantité.
  * 
  * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
@@ -29,6 +29,23 @@ export async function loadStockForAccommodation(
   fin: string,
   signal?: AbortSignal
 ): Promise<Record<string, number>> {
-  return fetchStock(idFournisseur, idHebergement, debut, fin, signal);
+  const stock = await openProClient.getStock(idFournisseur, idHebergement, {
+    debut,
+    fin,
+    start: debut,
+    end: fin
+  } as unknown as { debut?: string; fin?: string });
+  if (signal?.aborted) throw new Error('Cancelled');
+  
+  const mapStock: Record<string, number> = {};
+  const jours = (stock as any).jours ?? (stock as any).stock ?? [];
+  for (const j of jours) {
+    const date = j.date ?? j.jour;
+    const dispo = j.dispo ?? j.stock ?? 0;
+    if (date) {
+      mapStock[String(date)] = Number(dispo ?? 0);
+    }
+  }
+  return mapStock;
 }
 

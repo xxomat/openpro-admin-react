@@ -1,0 +1,28 @@
+{
+  "name": "openpro-api-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "stub": "node stub-server/server.js"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "typescript": "^5.6.3",
+    "vite": "^7.2.2",
+    "vitest": "^4.0.9"
+  }
+}

@@ -19,7 +19,7 @@
 
 ### 1.2 Contexte
 
-L'application utilise l'API Open Pro Multi v1 (documentation disponible sur [documentation.open-system.fr](https://documentation.open-system.fr/api-openpro/tarif/multi/v1/)) via le sous-module client `openpro-api-react` (client TypeScript fournissant types et appels HTTP) pour consommer l'API (fournisseurs, hébergements, tarifs, stocks et réservations).
+L'application communique avec un backend Node.js/Fastify (`OpenPro.Backend`) qui gère tous les appels à l'API Open Pro Multi v1. Le frontend n'accède plus directement à l'API OpenPro, ce qui permet de sécuriser la clé API côté serveur. Le backend expose une API REST simplifiée que le frontend consomme via des requêtes HTTP fetch.
 
 ### 1.3 Portée
 
@@ -41,36 +41,35 @@ L'application couvre les domaines fonctionnels suivants :
 - Langage: TypeScript
 - Bundler/Dev Server: Vite (inclus via Astro)
 - Gestion de paquets: npm
-- Client API: sous-module Git `openpro-api-react` (librairie TypeScript/React fournissant client et types Open Pro) intégré au dépôt à la racine (`openpro-api-react/`) et consommé par l'app Astro/React
+- Backend API: OpenPro.Backend (dépôt séparé) exposant une API REST
+- Client HTTP: fetch API native pour communiquer avec le backend
 - Ciblage Navigateurs: modernes (ESM); rétrocompatibilité à définir selon besoin
 - Outils: ESLint/TSConfig fournis par le projet, configuration Astro
 
 ### 2.2 Structure du projet
 
-Arborescence principale du dépôt (monorepo simple avec sous-module Git) :
+Arborescence principale du dépôt :
 
 - `OpenPro.Admin/` — Application Astro + React (frontend admin)
 	- `src/pages/` — Pages Astro (routage par fichiers, ex: `index.astro`)
 	- `src/components/` — Composants UI (Astro/React)
+	- `src/services/api/` — Client HTTP pour communiquer avec le backend
 	- `src/layouts/` — Layouts Astro
 	- `public/` — Assets statiques
 	- `package.json` — Dépendances et scripts (dev/build)
-- `openpro-api-react/` — Sous-module Git (client Open Pro)
-	- `src/client/` — Client HTTP, erreurs, types
-	- `__tests__/` — Tests du client et stub-server
-	- `stub-server/` — Stub pour développement/tests
-	- `package.json` — Build du client (lib TS)
 
-Consommation du sous-module dans l'app :
-- Import direct depuis `openpro-api-react/src/client` ou via un alias/entrée de build selon configuration du projet.
-- Le client expose des types (`types.ts`) et un client (`OpenProClient`) pour les appels API.
+Note : Le backend (`OpenPro.Backend`) est dans un dépôt Git séparé. Il gère tous les appels à l'API OpenPro et expose une API REST pour le frontend.
+
+Consommation du backend :
+- Le frontend utilise le client HTTP (`src/services/api/backendClient.ts`) pour appeler les endpoints du backend.
+- Les endpoints du backend sont configurés via la variable d'environnement `PUBLIC_BACKEND_BASE_URL`.
 
 ### 2.3 Architecture actuelle
 
-Vue d’ensemble (frontend uniquement) :
+Vue d'ensemble :
 - Astro gère le routage, le rendu statique/SSR et l'assemblage des pages.
 - Les zones interactives sont implémentées en React (îles Astro) montées dans les pages `.astro`.
-- Le client `OpenProClient` (depuis `openpro-api-react`) est instancié côté client ou côté serveur selon le besoin de la page (SSR/CSR), avec gestion de la clé API via configuration d’environnement.
+- Le frontend React communique avec le backend via fetch HTTP. Le backend gère l'authentification avec l'API OpenPro et expose des endpoints REST simplifiés. Le frontend n'a plus accès à la clé API.
 - Vite est utilisé pour le dev server et le bundling, avec TypeScript pour la sécurité de types.
 
 ---
