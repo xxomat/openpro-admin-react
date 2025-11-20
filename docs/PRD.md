@@ -963,6 +963,139 @@ A définir
 		    -
 		```
 
+##### Affichage des réservations — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Les réservations sont affichées sous forme de **rectangles bleus opaques** par-dessus les cellules du calendrier.
+	- Chaque réservation est représentée par un rectangle continu qui s'étend sur plusieurs cellules selon les dates d'arrivée et de départ.
+	- Les rectangles sont positionnés directement dans la grille CSS pour un alignement automatique avec les lignes d'hébergements.
+
+2. **Chargement des données de réservation**
+	- **Chargement initial** : 
+		- Au chargement initial de la page web, pour **chaque fournisseur** (`suppliers: Supplier[]`), charger toutes les réservations pour chaque hébergement.
+		- Les réservations sont chargées via l'endpoint backend `/api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/bookings` ou via une requête bulk qui charge toutes les réservations du fournisseur.
+		- **Note** : Le chargement initial se fait pour tous les fournisseurs disponibles, pas uniquement pour le fournisseur actif.
+	- **Chargement lors du changement d'onglet** :
+		- **Aucun chargement automatique** : Lors du changement d'onglet, les réservations ne sont **pas** rechargées automatiquement depuis le serveur.
+		- Les réservations déjà chargées en mémoire pour le fournisseur sélectionné sont réaffichées telles quelles.
+	- **Structure de données** :
+		- Les réservations sont stockées dans `bookingsByAccommodation: Record<number, BookingDisplay[]>` où la clé est `idHebergement`.
+		- Chaque `BookingDisplay` contient :
+			- `idDossier: number` - Identifiant du dossier de réservation
+			- `idHebergement: number` - Identifiant de l'hébergement
+			- `dateArrivee: string` - Date d'arrivée au format `YYYY-MM-DD`
+			- `dateDepart: string` - Date de départ au format `YYYY-MM-DD`
+			- `clientNom?: string` - Nom complet du client (prénom + nom)
+			- `montantTotal?: number` - Prix total de la réservation
+			- `nbPersonnes?: number` - Nombre de personnes
+
+3. **Filtrage des réservations**
+	- **Filtrage par plage de dates** :
+		- Seules les réservations qui **chevauchent** la plage de dates affichée (`[startDate, endDate]`) sont affichées.
+		- Une réservation chevauche la plage si : `dateArrivee <= endDate && dateDepart > startDate`.
+		- Les réservations complètement hors de la plage ne sont pas affichées.
+	- **Filtrage par hébergements sélectionnés** :
+		- Seules les réservations des hébergements sélectionnés (`selectedAccommodations`) sont affichées.
+
+4. **Positionnement et dimensions des rectangles**
+	- **Position horizontale** :
+		- Le rectangle commence à **60% de la largeur** de la cellule de date d'arrivée (si la date d'arrivée est visible dans la plage).
+		- Le rectangle se termine à **20% de la largeur** de la cellule de date de départ (si la date de départ est visible dans la plage).
+		- Si la date d'arrivée est avant la plage affichée, le rectangle commence au début de la première colonne de dates (après les 200px de la colonne des noms).
+		- Si la date de départ est après la plage affichée, le rectangle se termine à la fin de la dernière colonne de dates.
+	- **Position verticale** :
+		- Le rectangle est **centré verticalement** dans la ligne d'hébergement correspondante.
+		- Le calcul utilise l'alignement des centres : `top = lineCenter - height / 2` où `lineCenter` est le centre vertical de la ligne.
+	- **Hauteur** :
+		- La hauteur du rectangle est de **80% de la hauteur** d'une cellule (`height = cellHeight * 0.8`).
+	- **Limitation horizontale** :
+		- Les rectangles ne doivent **jamais déborder** sur la colonne des noms d'hébergements (200px à gauche).
+		- L'overlay des rectangles est limité en x pour empêcher tout débordement.
+
+5. **Style visuel des rectangles**
+	- **Couleur de fond** : Bleu foncé opaque (`darkTheme.bookingBg`, ex: `#3b82f6`).
+	- **Bordures** : Bordures arrondies avec `borderRadius: 8px`.
+	- **Z-index** : `zIndex: 2` pour s'afficher au-dessus des cellules de la grille (`zIndex: 1`).
+	- **Pointer events** : `pointerEvents: 'none'` pour ne pas bloquer les interactions avec les cellules sous-jacentes.
+
+6. **Contenu affiché dans les rectangles**
+	- **Format** : Tout le contenu est affiché sur **une seule ligne** avec des séparateurs " • " entre les éléments.
+	- **Ordre des informations** :
+		1. **Nom de famille du client** : Dernier mot du nom complet (`clientNom.split(' ').pop()`).
+		2. **Nombre de personnes** : Format `"2p."` ou `"4p."` selon `nbPersonnes`.
+		3. **Nom de l'hébergement** : Nom complet de l'hébergement (`nomHebergement`).
+		4. **Prix total** : Format `${Math.round(montantTotal)}€`.
+	- **Exemple d'affichage** : `"Dupont • 2p. • Chambre Deluxe • 450€"`
+	- **Taille de police** : `fontSize: 13px` (identique à celle des prix dans les cellules).
+	- **Couleur du texte** : Blanc (`color: 'white'`).
+	- **Gestion du débordement** : `whiteSpace: 'nowrap'`, `overflow: 'hidden'`, `textOverflow: 'ellipsis'` avec un `title` pour afficher le texte complet au survol.
+
+7. **Calcul des positions**
+	- **Méthode** : Utilisation de `getBoundingClientRect()` pour mesurer les positions réelles des cellules dans le DOM.
+	- **Recalcul lors du scroll** : Les positions sont recalculées lors du scroll horizontal pour maintenir l'alignement correct.
+	- **Références DOM** : Utilisation de refs (`gridRef`) pour accéder aux éléments de la grille et mesurer leurs positions.
+
+8. **Cas limites**
+	- **Réservations chevauchantes** : Si plusieurs réservations se chevauchent, elles sont toutes affichées (le backend génère une erreur pour les chevauchements invalides).
+	- **Réservations hors plage** : Les réservations complètement hors de la plage affichée ne sont pas affichées, mais restent chargées en mémoire.
+	- **Hébergements sans réservations** : Aucun rectangle n'est affiché pour les hébergements sans réservations dans la plage affichée.
+
+9. **Implémentation technique**
+	- **Composant** : `BookingOverlay` - Composant React qui calcule et affiche les rectangles de réservation.
+	- **Positionnement** : Utilisation de `position: absolute` avec des positions calculées dynamiquement.
+	- **Performance** : Utilisation de `useMemo` pour calculer les positions des rectangles uniquement lorsque les données changent.
+	- **Intégration** : Le composant `BookingOverlay` est intégré dans `CompactGrid` et reçoit les données de réservation via les props.
+
+10. **Exemples visuels**
+	- **Rectangle de réservation standard** :
+		```
+		┌─────────────────────────────────────────┐
+		│  Dupont • 2p. • Chambre Deluxe • 450€  │
+		└─────────────────────────────────────────┘
+		```
+	- **Rectangle partiellement visible** (arrivée avant la plage) :
+		```
+		┌─────────────────────────────────────┐
+		│  Martin • 4p. • Suite Familiale     │
+		└─────────────────────────────────────┘
+		```
+	- **Rectangle partiellement visible** (départ après la plage) :
+		```
+		┌───────────────────────────────────────────────
+		│  Bernard • 2p. • Studio • 320€
+		└───────────────────────────────────────────────
+		```
+
+##### Masquage du prix et de la durée minimale pour les jours sans stock — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Lorsqu'une journée n'a plus de stock (stock = 0), le prix et la durée minimale de séjour ne sont **pas affichés** dans la cellule correspondante.
+	- Seule la couleur de fond (rouge) indique l'indisponibilité.
+
+2. **Condition d'affichage**
+	- **Prix** : Affiché uniquement si `stock > 0` ET `selectedRateTypeId !== null`.
+	- **Durée minimale** : Affichée uniquement si `stock > 0` ET `dureeMin !== null`.
+	- **Couleur de fond** : Toujours affichée selon la disponibilité (vert si `stock > 0`, rouge si `stock === 0`).
+
+3. **Comportement visuel**
+	- **Cellule avec stock disponible** :
+		- Fond vert
+		- Prix affiché (si disponible)
+		- Durée minimale affichée (si disponible)
+	- **Cellule sans stock** :
+		- Fond rouge
+		- Aucun prix affiché
+		- Aucune durée minimale affichée
+		- Cellule vide visuellement (seule la couleur de fond est visible)
+
+4. **Mode édition**
+	- **Édition du prix** : Désactivée si `stock === 0` (les cellules sans stock ne sont pas éditables).
+	- **Édition de la durée minimale** : Désactivée si `stock === 0` (les cellules sans stock ne sont pas éditables).
+
+5. **Implémentation technique**
+	- Ajout de la condition `stock > 0` dans l'affichage conditionnel du prix et de la durée minimale dans `GridDataCell`.
+	- Les cellules sans stock restent visibles avec leur couleur de fond, mais sans contenu textuel.
+
 ##### Remplacement du champ "Durée" par "Date de fin" — Fichiers à modifier
 
 **Contexte** : Le champ "Durée" (select avec options 1, 2 ou 3 mois) est remplacé par un champ "Date de fin" (input de type `date` HTML5) pour permettre une sélection plus flexible de la période à afficher.
