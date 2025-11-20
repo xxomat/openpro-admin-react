@@ -68,25 +68,31 @@ export function ActionButtons({
       {totalModifications > 0 && (
         <button
           onClick={onSave}
+          disabled={loading}
           style={{
             padding: '10px 20px',
-            background: darkTheme.buttonPrimaryBg,
+            background: loading ? darkTheme.buttonDisabledBg : darkTheme.buttonPrimaryBg,
             color: darkTheme.buttonText,
             border: 'none',
             borderRadius: 6,
             fontSize: 14,
             fontWeight: 500,
-            cursor: 'pointer',
-            boxShadow: darkTheme.shadowSm
+            cursor: loading ? 'not-allowed' : 'pointer',
+            boxShadow: darkTheme.shadowSm,
+            opacity: loading ? 0.6 : 1
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = darkTheme.buttonPrimaryHover;
+            if (!loading) {
+              e.currentTarget.style.background = darkTheme.buttonPrimaryHover;
+            }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = darkTheme.buttonPrimaryBg;
+            if (!loading) {
+              e.currentTarget.style.background = darkTheme.buttonPrimaryBg;
+            }
           }}
         >
-          Sauvegarder ({totalModifications} modification{totalModifications > 1 ? 's' : ''})
+          {loading ? 'Sauvegarde...' : `Sauvegarder (${totalModifications} modification${totalModifications > 1 ? 's' : ''})`}
         </button>
       )}
     </div>

@@ -9,6 +9,8 @@ import React from 'react';
 import { darkTheme } from '../utils/theme';
 
 export function AdminFooter(): React.ReactElement {
+  const backendUrl = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
+  
   return (
     <footer
       style={{
@@ -21,7 +23,19 @@ export function AdminFooter(): React.ReactElement {
       }}
     >
       <div>
-        OpenPro.Admin - Backend API: {import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001'}
+        OpenPro.Admin - Backend API:{' '}
+        <a
+          href={backendUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: darkTheme.info,
+            textDecoration: 'underline',
+            cursor: 'pointer'
+          }}
+        >
+          {backendUrl}
+        </a>
       </div>
     </footer>
   );
