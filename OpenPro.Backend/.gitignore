@@ -4,6 +4,3 @@ dist/
 *.log
 .DS_Store
 *.tsbuildinfo
-
-# Sous-module (sera ajouté via git submodule)
-openpro-api-react/
