@@ -25,6 +25,7 @@ export type RateType = {
 
 export type BookingDisplay = {
   idDossier: number;
+  idHebergement: number;
   dateArrivee: string; // YYYY-MM-DD
   dateDepart: string;   // YYYY-MM-DD
   reference?: string;
