@@ -21,6 +21,8 @@
 
 L'application communique avec un backend Node.js/Fastify (`OpenPro.Backend`) qui gère tous les appels à l'API Open Pro Multi v1. Le frontend n'accède plus directement à l'API OpenPro, ce qui permet de sécuriser la clé API côté serveur. Le backend expose une API REST simplifiée que le frontend consomme via des requêtes HTTP fetch.
 
+**Note importante:** Le frontend n'a plus de dépendance directe sur `openpro-api-react`, toutes les interactions avec l'API OpenPro transitent par le backend.
+
 ### 1.3 Portée
 
 L'application couvre les domaines fonctionnels suivants :
@@ -60,6 +62,8 @@ Arborescence principale du dépôt :
 
 Note : Le backend (`OpenPro.Backend`) est dans un dépôt Git séparé. Il gère tous les appels à l'API OpenPro et expose une API REST pour le frontend.
 
+**Note importante:** Le frontend n'a plus de référence à `openpro-api-react`. L'ancien alias `@openpro-api-react` a été supprimé. Le backend gère cette dépendance via son propre sous-module Git.
+
 Consommation du backend :
 - Le frontend utilise le client HTTP (`src/services/api/backendClient.ts`) pour appeler les endpoints du backend.
 - Les endpoints du backend sont configurés via la variable d'environnement `PUBLIC_BACKEND_BASE_URL`.
@@ -71,6 +75,8 @@ Vue d'ensemble :
 - Les zones interactives sont implémentées en React (îles Astro) montées dans les pages `.astro`.
 - Le frontend React communique avec le backend via fetch HTTP. Le backend gère l'authentification avec l'API OpenPro et expose des endpoints REST simplifiés. Le frontend n'a plus accès à la clé API.
 - Vite est utilisé pour le dev server et le bundling, avec TypeScript pour la sécurité de types.
+
+**Architecture en couches:** Frontend → Backend → openpro-api-react (client) → API OpenPro. Le frontend ne connaît que le backend.
 
 ---
 

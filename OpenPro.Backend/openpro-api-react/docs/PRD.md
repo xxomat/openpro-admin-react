@@ -38,8 +38,32 @@ Référence produit:
 
 ### Out of scope (MVP)
 - Gestion complète des webhooks (uniquement notes et helpers de vérification)
-- UI finale d’intégration/branding
+- UI finale d'intégration/branding
 - Caching/offline, retries avancés, circuit breaker
+
+## Dépôt et utilisation
+
+### Dépôt Git
+`openpro-api-react` est un dépôt Git indépendant utilisé:
+- Comme sous-module par `OpenPro.Backend` (pour accès au client API)
+- De façon standalone pour le développement et les tests
+
+### Stub-server
+Le stub-server (`stub-server/server.js` et `stub-server/stub-data.json`) fait partie intégrante de ce dépôt. Il est l'unique source du serveur de simulation en développement.
+
+**Important**: Le stub-server ne doit jamais être copié ou dupliqué dans d'autres projets. Les projets qui en ont besoin (comme `OpenPro.Backend`) doivent:
+1. Référencer ce dépôt comme sous-module Git
+2. Lancer le stub-server depuis un checkout séparé de ce dépôt (recommandé en développement monorepo)
+
+**Workflow développement**:
+```bash
+# Depuis la racine du monorepo ou checkout séparé
+cd openpro-api-react
+npm install
+npm run stub  # Lance le stub-server sur port 3000
+```
+
+Les modifications de `stub-data.json` doivent être commitées dans ce dépôt uniquement.
 
 ## Utilisateurs cibles
 - Intégrateurs front (React) et développeurs d’interface Astro.
@@ -329,10 +353,12 @@ Note: les modifications persistent dans `stub-server/stub-data.json`. Le format 
 }
 ```
 
+**Note importante sur le stub-server**: Tous les tests utilisent le stub-server de ce dépôt. Les projets dépendants (comme `OpenPro.Backend`) configurent leur `OPENPRO_BASE_URL` pour pointer vers le stub-server lancé depuis ce dépôt. Le stub-server ne doit jamais être dupliqué dans d'autres projets.
+
 ## Critères de succès (MVP)
 - Wrapper publié (localement) et utilisable dans React et Astro.
 - Opérations clés fonctionnelles avec mocks + testées en sandbox manuelle via le playground.
-- Documentation claire: README, exemples d’usage, guide Astro.
+- Documentation claire: README, exemples d'usage, guide Astro.
 
 ## Risques & contraintes
 - Exposition de la clé en front: recommander proxy/back pour la prod.

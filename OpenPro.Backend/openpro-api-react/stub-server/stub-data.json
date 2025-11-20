@@ -14908,25 +14908,6 @@
               }
             ]
           }
-        },
-        {
-          "idTypeTarif": 1001,
-          "debut": "2026-01-01",
-          "fin": "2026-12-31",
-          "ouvert": true,
-          "dureeMin": 1,
-          "dureeMax": 30,
-          "arriveeAutorisee": true,
-          "departAutorise": true,
-          "tarifPax": {
-            "listeTarifPaxOccupation": [
-              {
-                "type": "base",
-                "nbPers": 2,
-                "prix": 101
-              }
-            ]
-          }
         }
       ]
     },
@@ -14947,25 +14928,6 @@
                 "type": "base",
                 "nbPers": 2,
                 "prix": 94
-              }
-            ]
-          }
-        },
-        {
-          "idTypeTarif": 1001,
-          "debut": "2026-01-01",
-          "fin": "2026-12-31",
-          "ouvert": true,
-          "dureeMin": 1,
-          "dureeMax": 30,
-          "arriveeAutorisee": true,
-          "departAutorise": true,
-          "tarifPax": {
-            "listeTarifPaxOccupation": [
-              {
-                "type": "base",
-                "nbPers": 2,
-                "prix": 113
               }
             ]
           }
@@ -15026,59 +14988,6 @@
               }
             ]
           }
-        },
-        {
-          "idTypeTarif": 1001,
-          "debut": "2026-01-01",
-          "fin": "2026-12-31",
-          "ouvert": true,
-          "dureeMin": 1,
-          "dureeMax": 30,
-          "arriveeAutorisee": true,
-          "departAutorise": true,
-          "tarifPax": {
-            "listeTarifPaxOccupation": [
-              {
-                "type": "occupation",
-                "nbPers": 1,
-                "prix": 120
-              },
-              {
-                "type": "occupation",
-                "nbPers": 2,
-                "prix": 156
-              },
-              {
-                "type": "occupation",
-                "nbPers": 3,
-                "prix": 168
-              },
-              {
-                "type": "occupation",
-                "nbPers": 4,
-                "prix": 174
-              }
-            ]
-          }
-        },
-        {
-          "idTypeTarif": 1003,
-          "debut": "2026-01-01",
-          "fin": "2026-12-31",
-          "ouvert": true,
-          "dureeMin": 1,
-          "dureeMax": 30,
-          "arriveeAutorisee": true,
-          "departAutorise": true,
-          "tarifPax": {
-            "listeTarifPaxOccupation": [
-              {
-                "type": "pension_complete",
-                "nbPers": 2,
-                "prix": 216
-              }
-            ]
-          }
         }
       ]
     },
@@ -15099,25 +15008,6 @@
                 "type": "base",
                 "nbPers": 4,
                 "prix": 350
-              }
-            ]
-          }
-        },
-        {
-          "idTypeTarif": 1101,
-          "debut": "2026-01-01",
-          "fin": "2026-12-31",
-          "ouvert": true,
-          "dureeMin": 1,
-          "dureeMax": 30,
-          "arriveeAutorisee": true,
-          "departAutorise": true,
-          "tarifPax": {
-            "listeTarifPaxOccupation": [
-              {
-                "type": "base",
-                "nbPers": 4,
-                "prix": 420
               }
             ]
           }
