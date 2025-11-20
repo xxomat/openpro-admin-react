@@ -79,8 +79,15 @@ export function BookingOverlay({
         const gridRect = gridElement.getBoundingClientRect();
         const nameRect = nameCell.getBoundingClientRect();
         
-        const top = nameRect.top - gridRect.top;
-        const height = nameRect.height;
+        // Centrer verticalement en alignant les centres
+        // Centre vertical de la ligne : top_line + height_line/2
+        // Centre vertical du rectangle : top_rect + height_rect/2
+        // Pour aligner : top_rect + height_rect/2 = top_line + height_line/2
+        // Donc : top_rect = top_line + height_line/2 - height_rect/2
+        const height = nameRect.height * 0.8; // 80% de la hauteur de la cellule
+        const lineTop = nameRect.top - gridRect.top;
+        const lineCenter = lineTop + nameRect.height / 2;
+        const top = lineCenter - height / 2;
 
         let left: number;
         let width: number;
@@ -162,7 +169,7 @@ export function BookingOverlay({
             top: `${rect.top}px`,
             height: `${rect.height}px`,
             background: darkTheme.bookingBg,
-            borderRadius: 2,
+            borderRadius: 8,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
