@@ -8,7 +8,6 @@
  */
 
 import React from 'react';
-import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
 import type { Supplier, Accommodation, RateType } from '../types';
 import { loadAccommodations, loadSupplierData } from '../services/dataLoader';
 import { updateSupplierDataStates } from './utils/supplierDataUtils';
@@ -66,7 +65,7 @@ export interface UseSupplierDataReturn {
   loadInitialData: (suppliers: Supplier[], startDate: Date, endDate: Date) => Promise<void>;
 }
 
-export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataReturn {
+export function useSupplierData(): UseSupplierDataReturn {
   const [accommodations, setAccommodations] = React.useState<Record<number, Accommodation[]>>({});
   const [stockBySupplierAndAccommodation, setStockBySupplierAndAccommodation] = React.useState<
     Record<number, Record<number, Record<string, number>>>
@@ -117,8 +116,8 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
       setLoading(true);
       setError(null);
       
-      const accommodationsList = await loadAccommodations(client, idFournisseur, controller.signal);
-      const data = await loadSupplierData(client, idFournisseur, accommodationsList, startDate, endDate, controller.signal);
+      const accommodationsList = await loadAccommodations(idFournisseur, controller.signal);
+      const data = await loadSupplierData(idFournisseur, accommodationsList, startDate, endDate, controller.signal);
       
       updateSupplierDataStates({
         idFournisseur,
@@ -145,7 +144,7 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, []);
 
   /**
    * Charge les données initiales pour tous les fournisseurs
@@ -173,10 +172,10 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
         if (cancelled || controller.signal.aborted) return;
         
         try {
-          const accommodationsList = await loadAccommodations(client, supplier.idFournisseur, controller.signal);
+          const accommodationsList = await loadAccommodations(supplier.idFournisseur, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
-          const data = await loadSupplierData(client, supplier.idFournisseur, accommodationsList, startDate, endDate, controller.signal);
+          const data = await loadSupplierData(supplier.idFournisseur, accommodationsList, startDate, endDate, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
           updateSupplierDataStates({
@@ -221,7 +220,7 @@ export function useSupplierData(client: ClientByRole<'admin'>): UseSupplierDataR
         setLoading(false);
       }
     }
-  }, [client]);
+  }, []);
 
   return {
     accommodations,

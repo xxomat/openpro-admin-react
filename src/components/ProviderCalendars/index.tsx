@@ -8,7 +8,6 @@
  */
 
 import React from 'react';
-import { createOpenProClient } from '@openpro-api-react/client';
 import type { Supplier } from './types';
 import { ActionButtons } from './components/ActionButtons';
 import { AccommodationList } from './components/AccommodationList';
@@ -17,7 +16,8 @@ import { DateRangeControls } from './components/DateRangeControls';
 import { RateTypeSelector } from './components/RateTypeSelector';
 import { SelectionSummary } from './components/SelectionSummary';
 import { SupplierTabs } from './components/SupplierTabs';
-import { defaultSuppliers, baseUrl, apiKey } from './config';
+import { AdminFooter } from './components/AdminFooter';
+import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
@@ -35,12 +35,7 @@ export function ProviderCalendars(): React.ReactElement {
     return formatDate(endDate);
   });
 
-  const client = React.useMemo(
-    () => createOpenProClient('admin', { baseUrl, apiKey }),
-    []
-  );
-
-  const supplierData = useSupplierData(client);
+  const supplierData = useSupplierData();
 
   const activeSupplier = suppliers[activeIdx];
   const startDate = React.useMemo(() => {
@@ -301,6 +296,7 @@ export function ProviderCalendars(): React.ReactElement {
         </div>
       )}
 
+      <AdminFooter />
     </div>
   );
 }
