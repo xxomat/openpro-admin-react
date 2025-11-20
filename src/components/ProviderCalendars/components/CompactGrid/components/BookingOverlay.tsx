@@ -92,40 +92,42 @@ export function BookingOverlay({
         let left: number;
         let width: number;
 
+        // Trouver la première cellule de date pour connaître la position de départ des colonnes de dates
+        const firstDateCell = gridElement.querySelector(`[data-date="${formatDate(allDays[0])}"]`) as HTMLElement;
+        if (!firstDateCell) continue;
+        const firstDateRect = firstDateCell.getBoundingClientRect();
+        const firstDateLeft = firstDateRect.left - gridRect.left; // Position de la première colonne de dates
+
         if (arrivalCell && departureCell) {
           const arrivalRect = arrivalCell.getBoundingClientRect();
           const departureRect = departureCell.getBoundingClientRect();
-          // Commencer au milieu de la cellule d'arrivée
-          left = arrivalRect.left - gridRect.left + arrivalRect.width / 2;
-          // Terminer au milieu de la cellule de départ
-          width = (departureRect.left - gridRect.left + departureRect.width / 2) - left;
+          // Commencer à 60% de la cellule d'arrivée
+          const calculatedLeft = arrivalRect.left - gridRect.left + arrivalRect.width * 0.6;
+          // S'assurer que le rectangle ne commence jamais avant la première colonne de dates
+          left = Math.max(calculatedLeft, firstDateLeft);
+          // Terminer à 20% de la cellule de départ
+          width = (departureRect.left - gridRect.left + departureRect.width * 0.2) - left;
         } else if (arrivalCell) {
           // Date d'arrivée visible, date de départ après la plage
           const arrivalRect = arrivalCell.getBoundingClientRect();
-          left = arrivalRect.left - gridRect.left + arrivalRect.width / 2;
+          const calculatedLeft = arrivalRect.left - gridRect.left + arrivalRect.width * 0.6;
+          // S'assurer que le rectangle ne commence jamais avant la première colonne de dates
+          left = Math.max(calculatedLeft, firstDateLeft);
           // Aller jusqu'à la fin de la grille
           width = gridRect.width - left;
         } else if (departureCell) {
           // Date d'arrivée avant la plage, date de départ visible
           const departureRect = departureCell.getBoundingClientRect();
-          // Commencer au début de la première colonne de dates
-          const firstDateCell = gridElement.querySelector(`[data-date="${formatDate(allDays[0])}"]`) as HTMLElement;
-          if (firstDateCell) {
-            const firstDateRect = firstDateCell.getBoundingClientRect();
-            left = firstDateRect.left - gridRect.left;
-          } else {
-            left = 200; // Largeur de la colonne nom
-          }
-          // Terminer au milieu de la cellule de départ
-          width = (departureRect.left - gridRect.left + departureRect.width / 2) - left;
+          // Commencer au début de la première colonne de dates (pas avant)
+          left = firstDateLeft;
+          // Terminer à 20% de la cellule de départ
+          width = (departureRect.left - gridRect.left + departureRect.width * 0.2) - left;
         } else {
-          // Les deux dates sont hors plage, couvrir toute la plage
-          const firstDateCell = gridElement.querySelector(`[data-date="${formatDate(allDays[0])}"]`) as HTMLElement;
+          // Les deux dates sont hors plage, couvrir toute la plage à partir de la première colonne de dates
           const lastDateCell = gridElement.querySelector(`[data-date="${formatDate(allDays[allDays.length - 1])}"]`) as HTMLElement;
-          if (firstDateCell && lastDateCell) {
-            const firstDateRect = firstDateCell.getBoundingClientRect();
+          if (lastDateCell) {
             const lastDateRect = lastDateCell.getBoundingClientRect();
-            left = firstDateRect.left - gridRect.left;
+            left = firstDateLeft;
             width = (lastDateRect.right - gridRect.left) - left;
           } else {
             continue;
@@ -159,38 +161,58 @@ export function BookingOverlay({
         zIndex: 2
       }}
     >
-      {rects.map((rect, idx) => (
-        <div
-          key={`${rect.booking.idDossier}-${idx}`}
-          style={{
-            position: 'absolute',
-            left: `${rect.left}px`,
-            width: `${rect.width}px`,
-            top: `${rect.top}px`,
-            height: `${rect.height}px`,
-            background: darkTheme.bookingBg,
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'column',
-            gap: 2,
-            pointerEvents: 'none',
-            fontSize: 11,
-            fontWeight: 500,
-            color: 'white'
-          }}
-        >
-          {rect.booking.clientNom && (
-            <div>{rect.booking.clientNom}</div>
-          )}
-          {rect.booking.montantTotal != null && (
-            <div style={{ fontSize: 10, opacity: 0.9 }}>
-              {Math.round(rect.booking.montantTotal)}€
-            </div>
-          )}
-        </div>
-      ))}
+      {rects.map((rect, idx) => {
+        // Trouver le nom de l'hébergement
+        const accommodation = accommodations.find(acc => acc.idHebergement === rect.booking.idHebergement);
+        const nomHebergement = accommodation?.nomHebergement || '';
+        
+        // Extraire seulement le nom de famille (dernier mot du nom complet)
+        const clientNomFamille = rect.booking.clientNom 
+          ? rect.booking.clientNom.split(' ').pop() || rect.booking.clientNom
+          : '';
+        
+        // Format du nombre de personnes : "2p." ou "4p."
+        const nbPersonnesText = rect.booking.nbPersonnes != null ? `${rect.booking.nbPersonnes}p.` : '';
+        
+        // Construire le texte complet sur une ligne
+        const parts: string[] = [];
+        if (clientNomFamille) parts.push(clientNomFamille);
+        if (nbPersonnesText) parts.push(nbPersonnesText);
+        if (nomHebergement) parts.push(nomHebergement);
+        if (rect.booking.montantTotal != null) parts.push(`${Math.round(rect.booking.montantTotal)}€`);
+        
+        const displayText = parts.join(' • ');
+        
+        return (
+          <div
+            key={`${rect.booking.idDossier}-${idx}`}
+            style={{
+              position: 'absolute',
+              left: `${rect.left}px`,
+              width: `${rect.width}px`,
+              top: `${rect.top}px`,
+              height: `${rect.height}px`,
+              background: darkTheme.bookingBg,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'white',
+              padding: '0 6px',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+            title={displayText}
+          >
+            {displayText}
+          </div>
+        );
+      })}
     </div>
   );
 }
