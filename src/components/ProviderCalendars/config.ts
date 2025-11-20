@@ -1,15 +1,14 @@
 /**
  * Configuration et constantes pour ProviderCalendars
  * 
- * Ce fichier contient la configuration de l'application, incluant les URLs
- * de l'API, les clés API, et les fournisseurs par défaut. Les valeurs peuvent
+ * Ce fichier contient la configuration de l'application, incluant l'URL
+ * du backend et les fournisseurs par défaut. Les valeurs peuvent
  * être surchargées via les variables d'environnement.
  */
 
 import type { Supplier } from './types';
 
-export const baseUrl = import.meta.env.PUBLIC_OPENPRO_BASE_URL || 'http://localhost:3000';
-export const apiKey = import.meta.env.PUBLIC_OPENPRO_API_KEY || 'dev-key';
+export const backendUrl = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
 
 // Configure default suppliers for DEV if not provided via env
 const suppliersFromEnv = (() => {
