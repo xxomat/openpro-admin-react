@@ -23,7 +23,7 @@ export interface EditingCell {
 /**
  * Hook pour gérer l'édition des cellules
  * 
- * @param selectedDates - Dates actuellement sélectionnées
+ * @param selectedCells - Cellules actuellement sélectionnées (format: "accId|dateStr")
  * @param ratesByAccommodation - Map des tarifs par hébergement et date
  * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date
  * @param selectedRateTypeId - ID du type de tarif sélectionné
@@ -32,7 +32,7 @@ export interface EditingCell {
  * @returns État d'édition et gestionnaires
  */
 export function useGridEditing(
-  selectedDates: Set<string>,
+  selectedCells: Set<string>,
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>,
   dureeMinByAccommodation: Record<number, Record<string, number | null>>,
   selectedRateTypeId: number | null,
@@ -59,7 +59,8 @@ export function useGridEditing(
 
   // Gestionnaire pour démarrer l'édition d'une cellule (prix)
   const handleCellClick = React.useCallback((accId: number, dateStr: string) => {
-    if (selectedDates.size === 0 || !selectedDates.has(dateStr)) {
+    const cellKey = `${accId}|${dateStr}`;
+    if (selectedCells.size === 0 || !selectedCells.has(cellKey)) {
       return;
     }
     if (editingDureeMinCell) {
@@ -71,11 +72,12 @@ export function useGridEditing(
       : undefined;
     setEditingCell({ accId, dateStr });
     setEditingValue(currentPrice != null ? String(Math.round(currentPrice)) : '');
-  }, [selectedDates, ratesByAccommodation, editingDureeMinCell, selectedRateTypeId]);
+  }, [selectedCells, ratesByAccommodation, editingDureeMinCell, selectedRateTypeId]);
 
   // Gestionnaire pour démarrer l'édition d'une cellule (durée minimale)
   const handleDureeMinClick = React.useCallback((accId: number, dateStr: string) => {
-    if (selectedDates.size === 0 || !selectedDates.has(dateStr)) {
+    const cellKey = `${accId}|${dateStr}`;
+    if (selectedCells.size === 0 || !selectedCells.has(cellKey)) {
       return;
     }
     if (editingCell) {
@@ -85,7 +87,7 @@ export function useGridEditing(
     const currentDureeMin = dureeMinByAccommodation[accId]?.[dateStr];
     setEditingDureeMinCell({ accId, dateStr });
     setEditingDureeMinValue(currentDureeMin != null && currentDureeMin > 0 ? String(currentDureeMin) : '');
-  }, [selectedDates, dureeMinByAccommodation, editingCell]);
+  }, [selectedCells, dureeMinByAccommodation, editingCell]);
 
   // Gestionnaire pour valider l'édition (prix)
   const handleEditSubmit = React.useCallback(() => {

@@ -36,10 +36,12 @@ export interface CompactGridProps {
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
   /** Map des réservations par hébergement */
   bookingsByAccommodation: Record<number, BookingDisplay[]>;
-  /** Set des dates sélectionnées au format YYYY-MM-DD */
-  selectedDates: Set<string>;
-  /** Callback pour mettre à jour la sélection de dates */
-  onSelectedDatesChange: (dates: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  /** Set des cellules sélectionnées au format "accId|dateStr" */
+  selectedCells: Set<string>;
+  /** Callback pour mettre à jour la sélection de cellules */
+  onSelectedCellsChange: (cells: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  /** Map du stock par hébergement et date (pour filtrer la sélection) */
+  stockByAccommodation: Record<number, Record<string, number>>;
   /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
   /** Set des identifiants de durées minimales modifiées (format: "accId-dateStr") */
@@ -60,8 +62,8 @@ export function CompactGrid({
   ratesByAccommodation,
   dureeMinByAccommodation,
   bookingsByAccommodation,
-  selectedDates,
-  onSelectedDatesChange,
+  selectedCells,
+  onSelectedCellsChange,
   modifiedRates,
   modifiedDureeMin,
   onRateUpdate,
@@ -99,7 +101,7 @@ export function CompactGrid({
     handleEditCancel,
     handleDureeMinCancel
   } = useGridEditing(
-    selectedDates,
+    selectedCells,
     ratesByAccommodation,
     dureeMinByAccommodation,
     selectedRateTypeId,
@@ -110,28 +112,52 @@ export function CompactGrid({
   // Hook pour gérer le drag
   const {
     draggingState,
-    draggingDates,
+    draggingCells,
     justFinishedDragRef,
     handleMouseDown
   } = useGridDrag(
-    onSelectedDatesChange,
+    onSelectedCellsChange,
     getDateFromElement,
     getDateRange,
-    editingCell
+    editingCell,
+    accommodations,
+    stockByAccommodation
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
+  // Sélectionne uniquement les cellules avec stock >= 1
   const handleHeaderClick = React.useCallback((dateStr: string) => {
-    onSelectedDatesChange((prev: Set<string>) => {
+    onSelectedCellsChange((prev: Set<string>) => {
       const newSet = new Set(prev);
-      if (newSet.has(dateStr)) {
-        newSet.delete(dateStr);
-      } else {
-        newSet.add(dateStr);
+      
+      // Vérifier si toutes les cellules de cette colonne sont sélectionnées
+      let allSelected = true;
+      for (const acc of accommodations) {
+        const cellKey = `${acc.idHebergement}|${dateStr}`;
+        const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
+        if (stock >= 1 && !newSet.has(cellKey)) {
+          allSelected = false;
+          break;
+        }
       }
+      
+      // Si toutes sont sélectionnées, désélectionner toutes
+      // Sinon, sélectionner toutes celles avec stock >= 1
+      for (const acc of accommodations) {
+        const cellKey = `${acc.idHebergement}|${dateStr}`;
+        const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
+        if (stock >= 1) {
+          if (allSelected) {
+            newSet.delete(cellKey);
+          } else {
+            newSet.add(cellKey);
+          }
+        }
+      }
+      
       return newSet;
     });
-  }, [onSelectedDatesChange]);
+  }, [onSelectedCellsChange, accommodations, stockByAccommodation]);
 
   // Gestionnaire pour convertir le scroll vertical en scroll horizontal
   // Utilisation d'un useEffect avec addEventListener pour pouvoir utiliser { passive: false }
@@ -165,7 +191,7 @@ export function CompactGrid({
         } else if (editingDureeMinCell) {
           handleDureeMinCancel();
         } else {
-          onSelectedDatesChange(new Set());
+          onSelectedCellsChange(new Set());
         }
       }
     };
@@ -174,7 +200,7 @@ export function CompactGrid({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingCell, editingDureeMinCell, onSelectedDatesChange, handleEditCancel, handleDureeMinCancel]);
+  }, [editingCell, editingDureeMinCell, onSelectedCellsChange, handleEditCancel, handleDureeMinCancel]);
 
   return (
     <>
@@ -242,8 +268,20 @@ export function CompactGrid({
         </div>
         {allDays.map((day, idx) => {
           const dateStr = formatDate(day);
-          const isSelected = selectedDates.has(dateStr);
-          const isDragging = draggingDates.has(dateStr);
+          // Une colonne est considérée sélectionnée si toutes les cellules avec stock >= 1 sont sélectionnées
+          const isSelected = accommodations.length > 0 && accommodations.every(acc => {
+            const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
+            if (stock < 1) return true; // Ignorer les cellules sans stock
+            const cellKey = `${acc.idHebergement}|${dateStr}`;
+            return selectedCells.has(cellKey);
+          });
+          // Une colonne est en drag si au moins une cellule avec stock >= 1 est en drag
+          const isDragging = accommodations.some(acc => {
+            const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
+            if (stock < 1) return false;
+            const cellKey = `${acc.idHebergement}|${dateStr}`;
+            return draggingCells.has(cellKey);
+          });
           
           return (
             <GridHeaderCell
@@ -299,8 +337,9 @@ export function CompactGrid({
                   ? priceMap[dateStr]?.[selectedRateTypeId] 
                   : undefined;
                 const dureeMin = dureeMinMap[dateStr] ?? null;
-                const isSelected = selectedDates.has(dateStr);
-                const isDragging = draggingDates.has(dateStr);
+                const cellKey = `${acc.idHebergement}|${dateStr}`;
+                const isSelected = selectedCells.has(cellKey);
+                const isDragging = draggingCells.has(cellKey);
                 const isModified = selectedRateTypeId !== null 
                   ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
                   : false;
@@ -331,6 +370,7 @@ export function CompactGrid({
                     justFinishedDragRef={justFinishedDragRef}
                     onCellClick={handleCellClick}
                     onDureeMinClick={handleDureeMinClick}
+                    onMouseDown={handleMouseDown}
                     setEditingValue={setEditingValue}
                     setEditingDureeMinValue={setEditingDureeMinValue}
                     onEditSubmit={handleEditSubmit}

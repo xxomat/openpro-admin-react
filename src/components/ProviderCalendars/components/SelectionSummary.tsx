@@ -13,8 +13,8 @@ import { darkTheme } from '../utils/theme';
  * Props du composant SelectionSummary
  */
 export interface SelectionSummaryProps {
-  /** Set des dates sélectionnées au format YYYY-MM-DD */
-  selectedDates: Set<string>;
+  /** Set des cellules sélectionnées au format "accId|dateStr" */
+  selectedCells: Set<string>;
   /** Liste des hébergements sélectionnés */
   selectedAccommodations: Accommodation[];
   /** ID du type de tarif sélectionné */
@@ -29,38 +29,54 @@ export interface SelectionSummaryProps {
  * Composant pour le résumé de sélection
  */
 export function SelectionSummary({
-  selectedDates,
+  selectedCells,
   selectedAccommodations,
   selectedRateTypeId,
   ratesByAccommodation,
   modifiedRates
 }: SelectionSummaryProps): React.ReactElement {
   const summaryText = React.useMemo(() => {
-    if (selectedDates.size === 0 || selectedAccommodations.length === 0) return '';
+    if (selectedCells.size === 0 || selectedAccommodations.length === 0) return '';
     
-    const sortedDates = Array.from(selectedDates).sort();
-    const sortedAccommodations = [...selectedAccommodations].sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement));
+    // Grouper les cellules par date
+    const cellsByDate = new Map<string, Array<{ accId: number; accName: string }>>();
+    for (const cellKey of selectedCells) {
+      const [accIdStr, dateStr] = cellKey.split('|');
+      const accId = parseInt(accIdStr, 10);
+      if (isNaN(accId) || !dateStr) continue;
+      
+      const acc = selectedAccommodations.find(a => a.idHebergement === accId);
+      if (!acc) continue;
+      
+      if (!cellsByDate.has(dateStr)) {
+        cellsByDate.set(dateStr, []);
+      }
+      cellsByDate.get(dateStr)!.push({ accId, accName: acc.nomHebergement });
+    }
+    
+    const sortedDates = Array.from(cellsByDate.keys()).sort();
     
     const lines: string[] = [];
     for (const dateStr of sortedDates) {
-      const accommodationParts = sortedAccommodations.map(acc => {
+      const cells = cellsByDate.get(dateStr)!;
+      const accommodationParts = cells.map(({ accId, accName }) => {
         const price = selectedRateTypeId !== null
-          ? ratesByAccommodation[acc.idHebergement]?.[dateStr]?.[selectedRateTypeId]
+          ? ratesByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId]
           : undefined;
         const isModified = selectedRateTypeId !== null
-          ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
+          ? modifiedRates.has(`${accId}-${dateStr}-${selectedRateTypeId}`)
           : false;
         const priceStr = price != null 
           ? `${Math.round(price)}€${isModified ? '*' : ''}` 
           : '-';
-        return `${acc.nomHebergement} - ${priceStr}`;
+        return `${accName} - ${priceStr}`;
       });
       const lineParts = [dateStr, ...accommodationParts];
       lines.push(lineParts.join(', '));
     }
     
     return lines.join('\n');
-  }, [selectedDates, selectedAccommodations, selectedRateTypeId, ratesByAccommodation, modifiedRates]);
+  }, [selectedCells, selectedAccommodations, selectedRateTypeId, ratesByAccommodation, modifiedRates]);
 
   return (
     <div style={{ marginTop: 16 }}>

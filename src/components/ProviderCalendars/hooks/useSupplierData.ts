@@ -34,7 +34,7 @@ export interface UseSupplierDataReturn {
   
   // États de sélection
   selectedAccommodationsBySupplier: Record<number, Set<number>>;
-  selectedDatesBySupplier: Record<number, Set<string>>;
+  selectedCellsBySupplier: Record<number, Set<string>>; // Format: "accId-dateStr"
   
   // États de modification
   modifiedRatesBySupplier: Record<number, Set<string>>;
@@ -56,7 +56,7 @@ export interface UseSupplierDataReturn {
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
   setSelectedRateTypeIdBySupplier: React.Dispatch<React.SetStateAction<Record<number, number | null>>>;
   setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
-  setSelectedDatesBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
+  setSelectedCellsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setModifiedRatesBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setModifiedDureeMinBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -95,7 +95,7 @@ export function useSupplierData(): UseSupplierDataReturn {
   >({});
   const [selectedRateTypeIdBySupplier, setSelectedRateTypeIdBySupplier] = React.useState<Record<number, number | null>>({});
   const [selectedAccommodationsBySupplier, setSelectedAccommodationsBySupplier] = React.useState<Record<number, Set<number>>>({});
-  const [selectedDatesBySupplier, setSelectedDatesBySupplier] = React.useState<Record<number, Set<string>>>({});
+  const [selectedCellsBySupplier, setSelectedCellsBySupplier] = React.useState<Record<number, Set<string>>>({}); // Format: "accId-dateStr"
   const [modifiedRatesBySupplier, setModifiedRatesBySupplier] = React.useState<Record<number, Set<string>>>({});
   const [modifiedDureeMinBySupplier, setModifiedDureeMinBySupplier] = React.useState<Record<number, Set<string>>>({});
   const [loading, setLoading] = React.useState(false);
@@ -241,7 +241,7 @@ export function useSupplierData(): UseSupplierDataReturn {
     rateTypesBySupplier,
     selectedRateTypeIdBySupplier,
     selectedAccommodationsBySupplier,
-    selectedDatesBySupplier,
+    selectedCellsBySupplier,
     modifiedRatesBySupplier,
     modifiedDureeMinBySupplier,
     loading,
@@ -257,7 +257,7 @@ export function useSupplierData(): UseSupplierDataReturn {
     setRateTypesBySupplier,
     setSelectedRateTypeIdBySupplier,
     setSelectedAccommodationsBySupplier,
-    setSelectedDatesBySupplier,
+    setSelectedCellsBySupplier,
     setModifiedRatesBySupplier,
     setModifiedDureeMinBySupplier,
     setLoading,

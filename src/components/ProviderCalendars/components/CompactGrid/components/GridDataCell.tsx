@@ -51,6 +51,8 @@ export interface GridDataCellProps {
   onCellClick: (accId: number, dateStr: string) => void;
   /** Callback appelé quand l'utilisateur clique sur la durée minimale pour l'éditer */
   onDureeMinClick: (accId: number, dateStr: string) => void;
+  /** Callback appelé quand l'utilisateur appuie sur la souris pour démarrer un drag */
+  onMouseDown: (e: React.MouseEvent, dateStr: string, accId: number) => void;
   /** Setter pour la valeur en cours d'édition du prix */
   setEditingValue: React.Dispatch<React.SetStateAction<string>>;
   /** Setter pour la valeur en cours d'édition de la durée minimale */
@@ -93,7 +95,8 @@ export function GridDataCell({
   onEditSubmit,
   onEditDureeMinSubmit,
   onEditCancel,
-  onEditDureeMinCancel
+  onEditDureeMinCancel,
+  onMouseDown
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
   
@@ -123,6 +126,7 @@ export function GridDataCell({
       key={`${accId}-${dateStr}`}
       data-date={dateStr}
       data-acc-id={accId}
+      onMouseDown={(e) => onMouseDown(e, dateStr, accId)}
       onClick={(e) => {
         if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
           e.preventDefault();

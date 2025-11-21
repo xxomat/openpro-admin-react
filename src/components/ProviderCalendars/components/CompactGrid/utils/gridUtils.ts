@@ -27,6 +27,27 @@ export function getDateFromElement(element: HTMLElement): string | null {
 }
 
 /**
+ * Obtient l'ID de l'hébergement à partir d'un élément DOM
+ * 
+ * Cherche un attribut data-acc-id ou remonte dans le DOM pour trouver l'hébergement.
+ * 
+ * @param element - Élément DOM à partir duquel extraire l'ID
+ * @returns L'ID de l'hébergement ou null si non trouvé
+ */
+export function getAccIdFromElement(element: HTMLElement): number | null {
+  let current: HTMLElement | null = element;
+  while (current) {
+    const accIdAttr = current.getAttribute('data-acc-id');
+    if (accIdAttr) {
+      const accId = parseInt(accIdAttr, 10);
+      if (!isNaN(accId)) return accId;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
+/**
  * Calcule la plage de dates entre deux dates
  * 
  * @param startDateStr - Date de début au format YYYY-MM-DD
