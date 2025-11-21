@@ -7,7 +7,7 @@
 
 import type { Accommodation, SupplierData } from '../../components/ProviderCalendars/types';
 
-const BACKEND_BASE_URL = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
+const BACKEND_BASE_URL = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:8787';
 
 /**
  * Récupère la liste des hébergements pour un fournisseur
