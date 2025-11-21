@@ -124,6 +124,11 @@ export function ProviderCalendars(): React.ReactElement {
     return supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.dureeMinBySupplierAndAccommodation]);
 
+  const bookingsByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    return supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+  }, [activeSupplier, supplierData.bookingsBySupplierAndAccommodation]);
+
   // Fonction pour mettre à jour les prix localement
   const handleRateUpdate = React.useCallback((newPrice: number) => {
     if (!activeSupplier || selectedRateTypeId === null) return;
@@ -407,6 +412,7 @@ export function ProviderCalendars(): React.ReactElement {
                 stockByAccommodation={stockByAccommodation}
                 ratesByAccommodation={ratesByAccommodation}
                 dureeMinByAccommodation={dureeMinByAccommodation}
+                bookingsByAccommodation={bookingsByAccommodation}
                 selectedDates={selectedDates}
                 onSelectedDatesChange={setSelectedDates}
                 modifiedRates={modifiedRates}

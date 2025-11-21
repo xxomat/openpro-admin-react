@@ -97,6 +97,7 @@ export function GridDataCell({
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
   
+  // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
   let bgColor: string;
   if (isDragging) {
     bgColor = darkTheme.selectionDraggingBg;
@@ -121,6 +122,7 @@ export function GridDataCell({
     <div
       key={`${accId}-${dateStr}`}
       data-date={dateStr}
+      data-acc-id={accId}
       onClick={(e) => {
         if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
           e.preventDefault();
@@ -183,7 +185,8 @@ export function GridDataCell({
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
-          {selectedRateTypeId !== null ? (
+          {/* Afficher le prix seulement si le stock est disponible */}
+          {stock > 0 && selectedRateTypeId !== null ? (
             price != null ? (
               <span style={{ userSelect: 'none' }}>
                 {`${Math.round(price)}€`}
@@ -195,7 +198,8 @@ export function GridDataCell({
               <span style={{ userSelect: 'none', color: darkTheme.textTertiary }}>-</span>
             )
           ) : null}
-          {isEditingDureeMin ? (
+          {/* Afficher la durée minimale seulement si le stock est disponible */}
+          {stock > 0 && isEditingDureeMin ? (
             <input
               type="number"
               value={editingDureeMinValue}
@@ -228,7 +232,7 @@ export function GridDataCell({
               step="1"
               placeholder="-"
             />
-          ) : (
+          ) : stock > 0 ? (
             <span 
               onClick={(e) => {
                 if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
@@ -252,7 +256,7 @@ export function GridDataCell({
                 <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
               )}
             </span>
-          )}
+          ) : null}
         </div>
       )}
     </div>

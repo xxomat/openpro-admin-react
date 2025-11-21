@@ -37,6 +37,9 @@ export const darkTheme = {
   warning: '#eab308',
   info: '#3b82f6',
   infoBg: 'rgba(59, 130, 246, 0.15)',
+  // Couleurs de réservation
+  bookingBg: '#1e3a8a', // Bleu foncé
+  bookingBorder: '#1e40af',
   
   // Couleurs de sélection
   selectionBg: 'rgba(59, 130, 246, 0.2)',

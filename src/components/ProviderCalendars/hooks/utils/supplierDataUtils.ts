@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { SupplierData } from '../../types';
+import type { SupplierData, BookingDisplay } from '../../types';
 import type { RateType } from '../../types';
 
 /**
@@ -27,6 +27,7 @@ export interface UpdateSupplierDataParams {
   setDureeMinByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
+  setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
   setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
   setSelectedRateTypeIdBySupplier: React.Dispatch<React.SetStateAction<Record<number, number | null>>>;
   setModifiedRatesBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
@@ -51,6 +52,7 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
     setDureeMinByAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,
+    setBookingsBySupplierAndAccommodation,
     setSelectedAccommodationsBySupplier,
     setSelectedRateTypeIdBySupplier,
     setModifiedRatesBySupplier,
@@ -83,6 +85,10 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   setDureeMinByAccommodation(prev => ({
     ...prev,
     [idFournisseur]: data.dureeMin
+  }));
+  setBookingsBySupplierAndAccommodation(prev => ({
+    ...prev,
+    [idFournisseur]: data.bookings
   }));
   setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypeLabels }));
   setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypesList }));
