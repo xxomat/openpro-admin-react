@@ -32,8 +32,13 @@ export function BookingModal({
 }: BookingModalProps): React.ReactElement | null {
   if (!isOpen) return null;
 
+  // Trier les récapitulatifs par ordre alphabétique du nom d'hébergement
+  const sortedSummaries = [...bookingSummaries].sort((a, b) => 
+    a.accName.localeCompare(b.accName)
+  );
+
   // Calculer le prix total de toutes les réservations
-  const totalPrice = bookingSummaries.reduce((sum, summary) => sum + summary.totalPrice, 0);
+  const totalPrice = sortedSummaries.reduce((sum, summary) => sum + summary.totalPrice, 0);
 
   return (
     <>
@@ -110,13 +115,13 @@ export function BookingModal({
 
           {/* Content */}
           <div style={{ padding: '24px', flex: 1 }}>
-            {bookingSummaries.length === 0 ? (
+            {sortedSummaries.length === 0 ? (
               <p style={{ color: darkTheme.textSecondary, textAlign: 'center' }}>
                 Aucune réservation à afficher
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                {bookingSummaries.map((summary) => (
+                {sortedSummaries.map((summary) => (
                   <div
                     key={summary.accId}
                     style={{
@@ -241,7 +246,7 @@ export function BookingModal({
             )}
 
             {/* Total général */}
-            {bookingSummaries.length > 0 && (
+            {sortedSummaries.length > 0 && (
               <div
                 style={{
                   marginTop: 24,

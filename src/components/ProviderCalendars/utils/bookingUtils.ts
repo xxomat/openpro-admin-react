@@ -40,6 +40,9 @@ export interface BookingSummary {
  * 
  * @param dates - Tableau de dates triées au format YYYY-MM-DD
  * @returns Tableau de plages de dates consécutives
+ * 
+ * Note: endDate représente la date de départ (lendemain de la dernière date sélectionnée)
+ *       nights représente le nombre de dates sélectionnées (nombre de nuits)
  */
 export function findConsecutiveDateRanges(dates: string[]): DateRange[] {
   if (dates.length === 0) return [];
@@ -49,6 +52,7 @@ export function findConsecutiveDateRanges(dates: string[]): DateRange[] {
   
   let currentStart = sortedDates[0];
   let currentEnd = sortedDates[0];
+  let currentDates: string[] = [sortedDates[0]]; // Garder trace des dates de la plage
   
   for (let i = 1; i < sortedDates.length; i++) {
     const currentDate = new Date(sortedDates[i]);
@@ -58,39 +62,32 @@ export function findConsecutiveDateRanges(dates: string[]): DateRange[] {
     // Vérifier si la date actuelle est consécutive à la précédente
     if (formatDate(currentDate) === formatDate(previousDate)) {
       currentEnd = sortedDates[i];
+      currentDates.push(sortedDates[i]);
     } else {
       // Fin de la plage actuelle, commencer une nouvelle plage
-      const start = new Date(currentStart + 'T00:00:00');
-      const end = new Date(currentEnd + 'T00:00:00');
-      // Le nombre de nuits = nombre de jours entre start et end
-      // Exemple: 21/11 à 23/11 = 2 nuits (on dort la nuit du 21 au 22, et du 22 au 23)
-      const timeDiff = end.getTime() - start.getTime();
-      const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
-      const nights = Math.max(0, daysDiff);
+      // endDate = date de départ = lendemain de la dernière date sélectionnée
+      const endDate = addDays(new Date(currentEnd + 'T00:00:00'), 1);
+      const nights = currentDates.length; // Nombre de dates = nombre de nuits
       
       ranges.push({
         startDate: currentStart,
-        endDate: currentEnd,
+        endDate: formatDate(endDate), // Date de départ
         nights
       });
       
       currentStart = sortedDates[i];
       currentEnd = sortedDates[i];
+      currentDates = [sortedDates[i]];
     }
   }
   
   // Ajouter la dernière plage
-  const start = new Date(currentStart + 'T00:00:00');
-  const end = new Date(currentEnd + 'T00:00:00');
-  // Le nombre de nuits = nombre de jours entre start et end
-  // Exemple: 21/11 à 23/11 = 2 nuits (on dort la nuit du 21 au 22, et du 22 au 23)
-  const timeDiff = end.getTime() - start.getTime();
-  const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
-  const nights = Math.max(0, daysDiff);
+  const endDate = addDays(new Date(currentEnd + 'T00:00:00'), 1);
+  const nights = currentDates.length; // Nombre de dates = nombre de nuits
   
   ranges.push({
     startDate: currentStart,
-    endDate: currentEnd,
+    endDate: formatDate(endDate), // Date de départ
     nights
   });
   
@@ -181,8 +178,26 @@ export function generateBookingSummaries(
     const pricesByRange = new Map<string, number>();
     let totalPrice = 0;
     
+    // Calculer le prix directement à partir des dates sélectionnées
+    // (plus simple que d'utiliser calculatePriceForRange avec la nouvelle logique)
     for (const range of dateRanges) {
-      const price = calculatePriceForRange(range.startDate, range.endDate, ratesByDate);
+      // Calculer le prix pour les dates de cette plage
+      // On récupère les dates de la plage en parcourant de startDate à endDate - 1 jour
+      const start = new Date(range.startDate + 'T00:00:00');
+      const end = new Date(range.endDate + 'T00:00:00');
+      const endExclusive = addDays(end, -1); // endDate - 1 jour (dernière date de séjour)
+      
+      let price = 0;
+      let current = new Date(start);
+      while (current <= endExclusive) {
+        const dateStr = formatDate(current);
+        const rate = ratesByDate[dateStr];
+        if (rate !== undefined && rate !== null) {
+          price += rate;
+        }
+        current = addDays(current, 1);
+      }
+      
       const rangeKey = `${range.startDate}-${range.endDate}`;
       pricesByRange.set(rangeKey, price);
       totalPrice += price;
@@ -204,19 +219,36 @@ export function generateBookingSummaries(
  * Vérifie si la sélection est valide pour la réservation
  * 
  * La sélection est valide si :
- * - Pour chaque hébergement, les dates sélectionnées sont consécutives
- * - Cas spécial : si un hébergement n'a qu'une seule date sélectionnée, c'est valide
+ * - Pour chaque hébergement, les dates sélectionnées sont consécutives (ou une seule date)
+ * - ET la durée de la sélection est supérieure ou égale à la durée minimale de séjour de chaque date
  * 
  * @param selectedCells - Set de cellules sélectionnées (format: "accId|dateStr")
+ * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date (format: Record<accId, Record<dateStr, dureeMin>>)
+ * @param selectedAccommodations - Set des IDs d'hébergements sélectionnés dans le filtre (optionnel, si non fourni, tous les hébergements sont considérés)
  * @returns true si la sélection est valide pour afficher le bouton Réserver
  */
-export function isValidBookingSelection(selectedCells: Set<string>): boolean {
+export function isValidBookingSelection(
+  selectedCells: Set<string>,
+  dureeMinByAccommodation?: Record<number, Record<string, number | null>>,
+  selectedAccommodations?: Set<number>
+): boolean {
   if (selectedCells.size === 0) return false;
+  
+  // Filtrer les cellules selon les hébergements sélectionnés dans le filtre
+  const filteredCells = selectedAccommodations && selectedAccommodations.size > 0
+    ? Array.from(selectedCells).filter(cellKey => {
+        const [accIdStr] = cellKey.split('|');
+        const accId = parseInt(accIdStr, 10);
+        return !isNaN(accId) && selectedAccommodations.has(accId);
+      })
+    : Array.from(selectedCells);
+  
+  if (filteredCells.length === 0) return false;
   
   // Grouper les dates par hébergement
   const datesByAccommodation = new Map<number, string[]>();
   
-  for (const cellKey of selectedCells) {
+  for (const cellKey of filteredCells) {
     const [accIdStr, dateStr] = cellKey.split('|');
     const accId = parseInt(accIdStr, 10);
     if (isNaN(accId) || !dateStr) continue;
@@ -227,12 +259,20 @@ export function isValidBookingSelection(selectedCells: Set<string>): boolean {
     datesByAccommodation.get(accId)!.push(dateStr);
   }
   
-  // Vérifier que pour chaque hébergement, les dates sont consécutives
-  for (const dates of datesByAccommodation.values()) {
+  // Vérifier que pour chaque hébergement, les dates sont consécutives ET respectent les durées minimales
+  for (const [accId, dates] of datesByAccommodation.entries()) {
     if (dates.length === 0) continue;
     
-    // Cas spécial : une seule date = valide
+    // Cas spécial : une seule date = valide pour la consécutivité
     if (dates.length === 1) {
+      // Vérifier quand même la durée minimale si elle existe
+      if (dureeMinByAccommodation) {
+        const dureeMin = dureeMinByAccommodation[accId]?.[dates[0]];
+        // Si dureeMin est définie et > 0, la durée de sélection (1 nuit) doit être >= dureeMin
+        if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0 && 1 < dureeMin) {
+          return false;
+        }
+      }
       continue;
     }
     
@@ -246,13 +286,30 @@ export function isValidBookingSelection(selectedCells: Set<string>): boolean {
     
     // Vérifier que la plage unique couvre toutes les dates sélectionnées
     const range = ranges[0];
-    const start = new Date(range.startDate + 'T00:00:00');
-    const end = new Date(range.endDate + 'T00:00:00');
-    const expectedDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    // Le nombre de jours attendus doit correspondre au nombre de dates sélectionnées
-    if (expectedDays !== dates.length) {
+    // endDate est maintenant la date de départ (lendemain de la dernière date)
+    // Donc le nombre de nuits (range.nights) doit correspondre au nombre de dates sélectionnées
+    if (range.nights !== dates.length) {
       return false;
+    }
+    
+    // Calculer la durée de la sélection (nombre de nuits)
+    // range.nights représente maintenant le nombre de dates sélectionnées = nombre de nuits
+    const selectionDuration = range.nights;
+    
+    // Vérifier que la durée de sélection respecte la durée minimale de chaque date
+    if (dureeMinByAccommodation) {
+      const dureeMinMap = dureeMinByAccommodation[accId];
+      if (dureeMinMap) {
+        for (const dateStr of dates) {
+          const dureeMin = dureeMinMap[dateStr];
+          // Si dureeMin est définie et > 0, la durée de sélection doit être >= dureeMin
+          if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
+            if (selectionDuration < dureeMin) {
+              return false;
+            }
+          }
+        }
+      }
     }
   }
   
@@ -264,11 +321,13 @@ export function isValidBookingSelection(selectedCells: Set<string>): boolean {
  * 
  * @param accId - ID de l'hébergement
  * @param selectedCells - Set de cellules sélectionnées (format: "accId|dateStr")
+ * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date (format: Record<accId, Record<dateStr, dureeMin>>)
  * @returns true si la sélection pour cet hébergement est valide
  */
 export function isValidBookingSelectionForAccommodation(
   accId: number,
-  selectedCells: Set<string>
+  selectedCells: Set<string>,
+  dureeMinByAccommodation?: Record<number, Record<string, number | null>>
 ): boolean {
   // Extraire les dates pour cet hébergement
   const dates: string[] = [];
@@ -285,8 +344,16 @@ export function isValidBookingSelectionForAccommodation(
   
   if (dates.length === 0) return false;
   
-  // Cas spécial : une seule date = valide
+  // Cas spécial : une seule date = valide pour la consécutivité
   if (dates.length === 1) {
+    // Vérifier quand même la durée minimale si elle existe
+    if (dureeMinByAccommodation) {
+      const dureeMin = dureeMinByAccommodation[accId]?.[dates[0]];
+      // Si dureeMin est définie et > 0, la durée de sélection (1 nuit) doit être >= dureeMin
+      if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0 && 1 < dureeMin) {
+        return false;
+      }
+    }
     return true;
   }
   
@@ -300,11 +367,32 @@ export function isValidBookingSelectionForAccommodation(
   
   // Vérifier que la plage unique couvre toutes les dates sélectionnées
   const range = ranges[0];
-  const start = new Date(range.startDate + 'T00:00:00');
-  const end = new Date(range.endDate + 'T00:00:00');
-  const expectedDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  // endDate est maintenant la date de départ (lendemain de la dernière date)
+  // Donc le nombre de nuits (range.nights) doit correspondre au nombre de dates sélectionnées
+  if (range.nights !== dates.length) {
+    return false;
+  }
   
-  // Le nombre de jours attendus doit correspondre au nombre de dates sélectionnées
-  return expectedDays === dates.length;
+  // Calculer la durée de la sélection (nombre de nuits)
+  // range.nights représente maintenant le nombre de dates sélectionnées = nombre de nuits
+  const selectionDuration = range.nights;
+  
+  // Vérifier que la durée de sélection respecte la durée minimale de chaque date
+  if (dureeMinByAccommodation) {
+    const dureeMinMap = dureeMinByAccommodation[accId];
+    if (dureeMinMap) {
+      for (const dateStr of dates) {
+        const dureeMin = dureeMinMap[dateStr];
+        // Si dureeMin est définie et > 0, la durée de sélection doit être >= dureeMin
+        if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
+          if (selectionDuration < dureeMin) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  
+  return true;
 }
 

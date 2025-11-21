@@ -58,6 +58,8 @@ export function useGridDrag(
   const handleMouseDown = React.useCallback((e: React.MouseEvent, dateStr: string, accId?: number) => {
     if (editingCell) return;
     if (e.button !== 0) return;
+    // Ne pas gérer le drag si CTRL est pressé (sera géré par l'édition)
+    if (e.ctrlKey || e.metaKey) return;
     
     setDraggingState({
       startDate: dateStr,

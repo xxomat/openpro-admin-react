@@ -23,9 +23,9 @@ export function AdminFooter(): React.ReactElement {
       }}
     >
       <div>
-        OpenPro.Admin - Backend API:{' '}
+        OpenPro.Admin - Backend API:
         <a
-          href={backendUrl}
+          href="http://localhost:3000/health"
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -34,7 +34,7 @@ export function AdminFooter(): React.ReactElement {
             cursor: 'pointer'
           }}
         >
-          {backendUrl}
+          http://localhost:3000/health
         </a>
       </div>
     </footer>

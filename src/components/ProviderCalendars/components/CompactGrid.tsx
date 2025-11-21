@@ -47,9 +47,9 @@ export interface CompactGridProps {
   /** Set des identifiants de durées minimales modifiées (format: "accId-dateStr") */
   modifiedDureeMin: Set<string>;
   /** Callback appelé quand un prix est mis à jour */
-  onRateUpdate: (newPrice: number) => void;
+  onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** Callback appelé quand une durée minimale est mise à jour */
-  onDureeMinUpdate: (newDureeMin: number | null) => void;
+  onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
 }

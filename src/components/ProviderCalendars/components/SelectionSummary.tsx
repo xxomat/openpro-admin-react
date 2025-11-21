@@ -24,6 +24,8 @@ export interface SelectionSummaryProps {
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
   /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
+  /** Map des durées minimales par hébergement et date */
+  dureeMinByAccommodation: Record<number, Record<string, number | null>>;
 }
 
 /**
@@ -34,7 +36,8 @@ export function SelectionSummary({
   selectedAccommodations,
   selectedRateTypeId,
   ratesByAccommodation,
-  modifiedRates
+  modifiedRates,
+  dureeMinByAccommodation
 }: SelectionSummaryProps): React.ReactElement {
   const summaryText = React.useMemo(() => {
     if (selectedCells.size === 0 || selectedAccommodations.length === 0) return '';
@@ -77,7 +80,7 @@ export function SelectionSummary({
     
     // Ajouter un résumé par hébergement avec statut de validité
     for (const [accId, { accName, dates }] of accommodationsMap.entries()) {
-      const isValid = isValidBookingSelectionForAccommodation(accId, selectedCells);
+      const isValid = isValidBookingSelectionForAccommodation(accId, selectedCells, dureeMinByAccommodation);
       const status = isValid ? '✓ VALIDE' : '✗ INVALIDE';
       const datesStr = dates.sort().join(', ');
       lines.push(`${accName} (${status}): ${datesStr}`);
@@ -105,7 +108,7 @@ export function SelectionSummary({
     }
     
     return lines.join('\n');
-  }, [selectedCells, selectedAccommodations, selectedRateTypeId, ratesByAccommodation, modifiedRates]);
+  }, [selectedCells, selectedAccommodations, selectedRateTypeId, ratesByAccommodation, modifiedRates, dureeMinByAccommodation]);
 
   return (
     <div style={{ marginTop: 16 }}>

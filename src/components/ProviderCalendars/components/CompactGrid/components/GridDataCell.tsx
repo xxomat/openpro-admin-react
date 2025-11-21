@@ -48,9 +48,9 @@ export interface GridDataCellProps {
   /** Référence pour détecter si un drag vient de se terminer */
   justFinishedDragRef: React.MutableRefObject<boolean>;
   /** Callback appelé quand l'utilisateur clique sur la cellule pour éditer le prix */
-  onCellClick: (accId: number, dateStr: string) => void;
+  onCellClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur clique sur la durée minimale pour l'éditer */
-  onDureeMinClick: (accId: number, dateStr: string) => void;
+  onDureeMinClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur appuie sur la souris pour démarrer un drag */
   onMouseDown: (e: React.MouseEvent, dateStr: string, accId: number) => void;
   /** Setter pour la valeur en cours d'édition du prix */
@@ -126,13 +126,24 @@ export function GridDataCell({
       key={`${accId}-${dateStr}`}
       data-date={dateStr}
       data-acc-id={accId}
-      onMouseDown={(e) => onMouseDown(e, dateStr, accId)}
+      onMouseDown={(e) => {
+        // Ne pas démarrer le drag si CTRL est pressé (sera géré par l'édition)
+        if (e.ctrlKey || e.metaKey) {
+          return;
+        }
+        onMouseDown(e, dateStr, accId);
+      }}
       onClick={(e) => {
         if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
           e.preventDefault();
           return;
         }
-        onCellClick(accId, dateStr);
+        // CTRL+clic : ne pas gérer ici, sera géré par les handlers spécifiques (prix/durée min)
+        if (e.ctrlKey || e.metaKey) {
+          return;
+        }
+        // Clic normal : basculer la sélection (géré par useGridDrag via onMouseDown)
+        // On ne fait rien ici car le drag handler s'en occupe
       }}
       style={{
         padding: '8px 4px',
@@ -192,7 +203,23 @@ export function GridDataCell({
           {/* Afficher le prix seulement si le stock est disponible */}
           {stock > 0 && selectedRateTypeId !== null ? (
             price != null ? (
-              <span style={{ userSelect: 'none' }}>
+              <span 
+                onMouseDown={(e) => {
+                  // Empêcher le drag de se déclencher
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.stopPropagation();
+                  // CTRL+clic : éditer toute la sélection
+                  const editAllSelection = e.ctrlKey || e.metaKey;
+                  onCellClick(accId, dateStr, editAllSelection);
+                }}
+                style={{ userSelect: 'none', cursor: isSelected ? 'pointer' : 'default' }}
+              >
                 {`${Math.round(price)}€`}
                 {isModified && (
                   <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
@@ -238,13 +265,19 @@ export function GridDataCell({
             />
           ) : stock > 0 ? (
             <span 
+              onMouseDown={(e) => {
+                // Empêcher le drag de se déclencher
+                e.stopPropagation();
+              }}
               onClick={(e) => {
                 if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
                   e.preventDefault();
                   return;
                 }
                 e.stopPropagation();
-                onDureeMinClick(accId, dateStr);
+                // CTRL+clic : éditer toute la sélection
+                const editAllSelection = e.ctrlKey || e.metaKey;
+                onDureeMinClick(accId, dateStr, editAllSelection);
               }}
               style={{ 
                 fontSize: 10, 

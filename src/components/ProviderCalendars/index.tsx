@@ -133,20 +133,36 @@ export function ProviderCalendars(): React.ReactElement {
   }, [activeSupplier, supplierData.bookingsBySupplierAndAccommodation]);
 
   // Fonction pour mettre à jour les prix localement
-  const handleRateUpdate = React.useCallback((newPrice: number) => {
+  const handleRateUpdate = React.useCallback((
+    newPrice: number,
+    editAllSelection: boolean = false,
+    editingCell: { accId: number; dateStr: string } | null = null
+  ) => {
     if (!activeSupplier || selectedRateTypeId === null) return;
     const modifications = new Set<string>();
     supplierData.setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
       const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
       
-      // Appliquer le prix à toutes les cellules sélectionnées pour le type tarif sélectionné
-      // Format de selectedCells: "accId|dateStr"
-      for (const cellKey of selectedCells) {
-        const [accIdStr, dateStr] = cellKey.split('|');
-        const accId = parseInt(accIdStr, 10);
-        if (isNaN(accId) || !dateStr) continue;
-        
+      if (editAllSelection && editingCell) {
+        // CTRL+clic : appliquer à toute la sélection
+        for (const cellKey of selectedCells) {
+          const [accIdStr, dateStr] = cellKey.split('|');
+          const accId = parseInt(accIdStr, 10);
+          if (isNaN(accId) || !dateStr) continue;
+          
+          if (!supplierDataState[accId]) {
+            supplierDataState[accId] = {};
+          }
+          if (!supplierDataState[accId][dateStr]) {
+            supplierDataState[accId][dateStr] = {};
+          }
+          supplierDataState[accId][dateStr][selectedRateTypeId] = newPrice;
+          modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
+        }
+      } else if (editingCell) {
+        // Clic normal : appliquer seulement à la cellule en cours d'édition
+        const { accId, dateStr } = editingCell;
         if (!supplierDataState[accId]) {
           supplierDataState[accId] = {};
         }
@@ -171,22 +187,51 @@ export function ProviderCalendars(): React.ReactElement {
   }, [selectedCells, activeSupplier, selectedRateTypeId, supplierData]);
 
   // Fonction pour mettre à jour la durée minimale localement
-  const handleDureeMinUpdate = React.useCallback((newDureeMin: number | null) => {
+  const handleDureeMinUpdate = React.useCallback((
+    newDureeMin: number | null,
+    editAllSelection: boolean = false,
+    editingCell: { accId: number; dateStr: string } | null = null
+  ) => {
     if (!activeSupplier) return;
     const modifications = new Set<string>();
     supplierData.setDureeMinByAccommodation(prev => {
       const updated = { ...prev };
-      const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
+      // Créer une copie profonde de l'état du fournisseur pour que React détecte le changement
+      const existingState = updated[activeSupplier.idFournisseur] ?? {};
+      const supplierDataState: Record<number, Record<string, number | null>> = {};
       
-      // Appliquer la durée minimale à toutes les cellules sélectionnées
-      // Format de selectedCells: "accId|dateStr"
-      for (const cellKey of selectedCells) {
-        const [accIdStr, dateStr] = cellKey.split('|');
+      // Copier toutes les données existantes
+      for (const [accIdStr, datesMap] of Object.entries(existingState)) {
         const accId = parseInt(accIdStr, 10);
-        if (isNaN(accId) || !dateStr) continue;
-        
+        if (!isNaN(accId)) {
+          supplierDataState[accId] = { ...datesMap };
+        }
+      }
+      
+      if (editAllSelection && editingCell) {
+        // CTRL+clic : appliquer à toute la sélection
+        for (const cellKey of selectedCells) {
+          const [accIdStr, dateStr] = cellKey.split('|');
+          const accId = parseInt(accIdStr, 10);
+          if (isNaN(accId) || !dateStr) continue;
+          
+          if (!supplierDataState[accId]) {
+            supplierDataState[accId] = {};
+          } else {
+            // Créer une copie de l'objet dates pour cet hébergement
+            supplierDataState[accId] = { ...supplierDataState[accId] };
+          }
+          supplierDataState[accId][dateStr] = newDureeMin;
+          modifications.add(`${accId}-${dateStr}`);
+        }
+      } else if (editingCell) {
+        // Clic normal : appliquer seulement à la cellule en cours d'édition
+        const { accId, dateStr } = editingCell;
         if (!supplierDataState[accId]) {
           supplierDataState[accId] = {};
+        } else {
+          // Créer une copie de l'objet dates pour cet hébergement
+          supplierDataState[accId] = { ...supplierDataState[accId] };
         }
         supplierDataState[accId][dateStr] = newDureeMin;
         modifications.add(`${accId}-${dateStr}`);
@@ -376,9 +421,11 @@ export function ProviderCalendars(): React.ReactElement {
 
   // Vérifier si la sélection est valide pour la réservation
   // Pour chaque hébergement, les dates doivent être consécutives (ou une seule date)
+  // ET la durée de la sélection doit être >= à la durée minimale de chaque date
+  // La validation ne considère que les hébergements sélectionnés dans le filtre
   const hasValidBookingSelection = React.useMemo(() => {
-    return isValidBookingSelection(selectedCells);
-  }, [selectedCells]);
+    return isValidBookingSelection(selectedCells, dureeMinByAccommodation, selectedAccommodations);
+  }, [selectedCells, dureeMinByAccommodation, selectedAccommodations]);
 
   // Générer les récapitulatifs de réservation
   const bookingSummaries = React.useMemo(() => {
@@ -495,6 +542,7 @@ export function ProviderCalendars(): React.ReactElement {
             selectedRateTypeId={selectedRateTypeId}
             ratesByAccommodation={ratesByAccommodation}
             modifiedRates={modifiedRates}
+            dureeMinByAccommodation={dureeMinByAccommodation}
           />
         </div>
       )}
