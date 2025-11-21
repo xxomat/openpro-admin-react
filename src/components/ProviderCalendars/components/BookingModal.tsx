@@ -6,9 +6,49 @@
  */
 
 import React from 'react';
+import PhoneInput from 'react-phone-number-input';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 import type { BookingSummary } from '../utils/bookingUtils';
 import { formatDateDisplay } from '../utils/dateUtils';
 import { darkTheme } from '../utils/theme';
+import 'react-phone-number-input/style.css';
+
+/**
+ * Liste des nationalités disponibles
+ */
+const NATIONALITIES = [
+  'Française',
+  'Allemande',
+  'Anglaise',
+  'Espagnole',
+  'Italienne',
+  'Belge',
+  'Suisse',
+  'Néerlandaise',
+  'Portugaise',
+  'Autrichienne',
+  'Suédoise',
+  'Norvégienne',
+  'Danoise',
+  'Finlandaise',
+  'Polonaise',
+  'Tchèque',
+  'Grecque',
+  'Roumaine',
+  'Hongroise',
+  'Américaine',
+  'Canadienne',
+  'Brésilienne',
+  'Argentine',
+  'Mexicaine',
+  'Japonaise',
+  'Chinoise',
+  'Indienne',
+  'Australienne',
+  'Néo-Zélandaise',
+  'Sud-Africaine',
+  'Autre'
+];
 
 /**
  * Données du dossier client (basé sur BookingCustomer de l'API)
@@ -67,7 +107,7 @@ export function BookingModal({
     codePostal: '',
     ville: '',
     pays: 'France',
-    nationalite: '',
+    nationalite: 'Française',
     societe: '',
     siret: '',
     tva: '',
@@ -78,6 +118,77 @@ export function BookingModal({
 
   // État pour la checkbox "Client professionnel"
   const [isProfessionalClient, setIsProfessionalClient] = React.useState(false);
+
+  // État pour les erreurs de validation
+  const [validationErrors, setValidationErrors] = React.useState<Partial<Record<keyof ClientData, string>>>({});
+
+  // Fonctions de validation
+  const validateNom = React.useCallback((value: string): string | null => {
+    if (!value || !value.trim()) return null; // La présence est gérée par isFormValid
+    // Lettres uniquement (avec accents et caractères spéciaux)
+    const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/;
+    if (!regex.test(value)) {
+      return 'Le nom ne doit contenir que des lettres, espaces, tirets et apostrophes';
+    }
+    return null;
+  }, []);
+
+  const validatePrenom = React.useCallback((value: string): string | null => {
+    if (!value || !value.trim()) return null; // La présence est gérée par isFormValid
+    // Lettres uniquement (avec accents et caractères spéciaux)
+    const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/;
+    if (!regex.test(value)) {
+      return 'Le prénom ne doit contenir que des lettres, espaces, tirets et apostrophes';
+    }
+    return null;
+  }, []);
+
+  const validateEmail = React.useCallback((value: string): string | null => {
+    if (!value || !value.trim()) return null; // La présence n'est pas obligatoire pour l'email
+    // Validation email standard
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!regex.test(value)) {
+      return 'Format d\'email invalide';
+    }
+    return null;
+  }, []);
+
+  const validateVille = React.useCallback((value: string): string | null => {
+    if (!value || !value.trim()) return null; // La présence est gérée par isFormValid
+    // Lettres et tirets uniquement
+    const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s-]+$/;
+    if (!regex.test(value)) {
+      return 'La ville ne doit contenir que des lettres, espaces et tirets';
+    }
+    return null;
+  }, []);
+
+  const validateTelephone = React.useCallback((value: string | undefined): string | null => {
+    if (!value || !value.trim()) return null; // La présence est gérée par isFormValid
+    // Utiliser la validation de react-phone-number-input
+    if (!isValidPhoneNumber(value)) {
+      return 'Format de numéro de téléphone invalide';
+    }
+    return null;
+  }, []);
+
+  // Fonction pour valider un champ
+  const validateField = React.useCallback((field: keyof ClientData, value: string): string | null => {
+    switch (field) {
+      case 'nom':
+        return validateNom(value);
+      case 'prenom':
+        return validatePrenom(value);
+      case 'email':
+        return validateEmail(value);
+      case 'ville':
+        return validateVille(value);
+      case 'telephone':
+        return validateTelephone(value);
+      default:
+        return null;
+    }
+  }, [validateNom, validatePrenom, validateEmail, validateVille, validateTelephone]);
 
   // Empêcher la propagation de la touche Escape quand la modale est ouverte
   React.useEffect(() => {
@@ -105,9 +216,52 @@ export function BookingModal({
   // Calculer le prix total de toutes les réservations
   const totalPrice = sortedSummaries.reduce((sum, summary) => sum + summary.totalPrice, 0);
 
-  const handleClientDataChange = React.useCallback((field: keyof ClientData, value: string | boolean) => {
-    setClientData(prev => ({ ...prev, [field]: value }));
-  }, []);
+  const handleClientDataChange = React.useCallback((field: keyof ClientData, value: string | boolean | undefined) => {
+    setClientData(prev => {
+      const processedValue = value === undefined ? '' : value;
+      const newData = { ...prev, [field]: processedValue };
+      
+      // Valider le champ si c'est une chaîne
+      if (typeof processedValue === 'string') {
+        const error = validateField(field, processedValue);
+        setValidationErrors(prevErrors => {
+          if (error) {
+            return { ...prevErrors, [field]: error };
+          } else {
+            const { [field]: _, ...rest } = prevErrors;
+            return rest;
+          }
+        });
+      }
+      
+      return newData;
+    });
+  }, [validateField]);
+
+  // Validation des champs obligatoires et de leur format
+  const isFormValid = React.useMemo(() => {
+    // Champs obligatoires de base
+    const hasNom = Boolean(clientData.nom && clientData.nom.trim());
+    const hasPrenom = Boolean(clientData.prenom && clientData.prenom.trim());
+    const hasTelephone = Boolean(clientData.telephone && clientData.telephone.trim());
+    const hasAdresse = Boolean(clientData.adresse && clientData.adresse.trim());
+    const hasCodePostal = Boolean(clientData.codePostal && clientData.codePostal.trim());
+    const hasVille = Boolean(clientData.ville && clientData.ville.trim());
+
+    // Vérifier qu'il n'y a pas d'erreurs de validation
+    const hasNoValidationErrors = Object.keys(validationErrors).length === 0;
+
+    // Champs obligatoires si client professionnel
+    let hasProfessionalFields = true;
+    if (isProfessionalClient) {
+      const hasSociete = Boolean(clientData.societe && clientData.societe.trim());
+      const hasSiret = Boolean(clientData.siret && clientData.siret.trim());
+      const hasTva = Boolean(clientData.tva && clientData.tva.trim());
+      hasProfessionalFields = hasSociete && hasSiret && hasTva;
+    }
+
+    return hasNom && hasPrenom && hasTelephone && hasAdresse && hasCodePostal && hasVille && hasProfessionalFields && hasNoValidationErrors;
+  }, [clientData, isProfessionalClient, validationErrors]);
 
   if (!isOpen) return null;
 
@@ -418,7 +572,7 @@ export function BookingModal({
                       width: '100%',
                       padding: '8px 12px',
                       backgroundColor: darkTheme.bgPrimary,
-                      border: `1px solid ${darkTheme.borderColor}`,
+                      border: `1px solid ${validationErrors.nom ? '#ef4444' : darkTheme.borderColor}`,
                       borderRadius: 6,
                       color: darkTheme.textPrimary,
                       fontSize: 13,
@@ -426,6 +580,11 @@ export function BookingModal({
                     }}
                     placeholder="Nom"
                   />
+                  {validationErrors.nom && (
+                    <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>
+                      {validationErrors.nom}
+                    </div>
+                  )}
                 </div>
 
                 {/* Prénom */}
@@ -438,7 +597,7 @@ export function BookingModal({
                       width: '100%',
                       padding: '8px 12px',
                       backgroundColor: darkTheme.bgPrimary,
-                      border: `1px solid ${darkTheme.borderColor}`,
+                      border: `1px solid ${validationErrors.prenom ? '#ef4444' : darkTheme.borderColor}`,
                       borderRadius: 6,
                       color: darkTheme.textPrimary,
                       fontSize: 13,
@@ -446,6 +605,11 @@ export function BookingModal({
                     }}
                     placeholder="Prénom"
                   />
+                  {validationErrors.prenom && (
+                    <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>
+                      {validationErrors.prenom}
+                    </div>
+                  )}
                 </div>
 
                 {/* Email */}
@@ -458,7 +622,7 @@ export function BookingModal({
                       width: '100%',
                       padding: '8px 12px',
                       backgroundColor: darkTheme.bgPrimary,
-                      border: `1px solid ${darkTheme.borderColor}`,
+                      border: `1px solid ${validationErrors.email ? '#ef4444' : darkTheme.borderColor}`,
                       borderRadius: 6,
                       color: darkTheme.textPrimary,
                       fontSize: 13,
@@ -466,26 +630,62 @@ export function BookingModal({
                     }}
                     placeholder="email@example.com"
                   />
+                  {validationErrors.email && (
+                    <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>
+                      {validationErrors.email}
+                    </div>
+                  )}
                 </div>
 
                 {/* Téléphone */}
                 <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-                  <input
-                    type="tel"
-                    value={clientData.telephone || ''}
-                    onChange={(e) => handleClientDataChange('telephone', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: darkTheme.bgPrimary,
-                      border: `1px solid ${darkTheme.borderColor}`,
-                      borderRadius: 6,
-                      color: darkTheme.textPrimary,
-                      fontSize: 13,
-                      boxSizing: 'border-box'
+                  <PhoneInput
+                    international
+                    defaultCountry="FR"
+                    value={clientData.telephone || undefined}
+                    onChange={(value) => {
+                      handleClientDataChange('telephone', value || '');
                     }}
-                    placeholder="+33 6 12 34 56 78"
+                    className={validationErrors.telephone ? 'phone-input-error' : 'phone-input'}
+                    style={{
+                      '--PhoneInputCountryFlag-borderColor': darkTheme.borderColor,
+                      '--PhoneInputCountryFlag-height': '20px',
+                    } as React.CSSProperties}
                   />
+                  <style>{`
+                    .phone-input .PhoneInputInput {
+                      width: 100%;
+                      padding: 8px 12px;
+                      background-color: ${darkTheme.bgPrimary};
+                      border: 1px solid ${darkTheme.borderColor};
+                      border-radius: 6px;
+                      color: ${darkTheme.textPrimary};
+                      font-size: 13px;
+                      box-sizing: border-box;
+                    }
+                    .phone-input .PhoneInputInput:focus {
+                      outline: none;
+                      border-color: ${darkTheme.buttonPrimaryBg};
+                    }
+                    .phone-input-error .PhoneInputInput {
+                      border-color: #ef4444;
+                    }
+                    .phone-input .PhoneInputCountry {
+                      margin-right: 8px;
+                    }
+                    .phone-input .PhoneInputCountrySelect {
+                      background-color: ${darkTheme.bgPrimary};
+                      color: ${darkTheme.textPrimary};
+                      border: 1px solid ${darkTheme.borderColor};
+                      border-radius: 6px;
+                      padding: 4px 8px;
+                    }
+                  `}</style>
+                  {validationErrors.telephone && (
+                    <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>
+                      {validationErrors.telephone}
+                    </div>
+                  )}
                 </div>
 
                 {/* Adresse */}
@@ -533,7 +733,7 @@ export function BookingModal({
                       placeholder="75001"
                     />
                   </div>
-                  <div style={{ width: '100%', minWidth: 0 }}>
+                  <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                     <input
                       type="text"
                       value={clientData.ville || ''}
@@ -542,7 +742,7 @@ export function BookingModal({
                         width: '100%',
                         padding: '8px 12px',
                         backgroundColor: darkTheme.bgPrimary,
-                        border: `1px solid ${darkTheme.borderColor}`,
+                        border: `1px solid ${validationErrors.ville ? '#ef4444' : darkTheme.borderColor}`,
                         borderRadius: 6,
                         color: darkTheme.textPrimary,
                         fontSize: 13,
@@ -550,6 +750,11 @@ export function BookingModal({
                       }}
                       placeholder="Paris"
                     />
+                    {validationErrors.ville && (
+                      <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>
+                        {validationErrors.ville}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -575,9 +780,8 @@ export function BookingModal({
 
                 {/* Nationalité */}
                 <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-                  <input
-                    type="text"
-                    value={clientData.nationalite || ''}
+                  <select
+                    value={clientData.nationalite || 'Française'}
                     onChange={(e) => handleClientDataChange('nationalite', e.target.value)}
                     style={{
                       width: '100%',
@@ -587,10 +791,16 @@ export function BookingModal({
                       borderRadius: 6,
                       color: darkTheme.textPrimary,
                       fontSize: 13,
+                      cursor: 'pointer',
                       boxSizing: 'border-box'
                     }}
-                    placeholder="Française"
-                  />
+                  >
+                    {NATIONALITIES.map((nationality) => (
+                      <option key={nationality} value={nationality}>
+                        {nationality}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Checkbox Client professionnel */}
@@ -722,26 +932,33 @@ export function BookingModal({
           >
             <button
               onClick={() => {
+                if (!isFormValid) return;
                 // TODO: Implémenter la logique de réservation
                 console.log('Réservation confirmée', { bookingSummaries, clientData });
                 onClose();
               }}
+              disabled={!isFormValid}
               style={{
                 padding: '10px 20px',
-                backgroundColor: darkTheme.buttonPrimaryBg,
-                color: darkTheme.buttonText,
+                backgroundColor: isFormValid ? darkTheme.buttonPrimaryBg : darkTheme.bgTertiary,
+                color: isFormValid ? darkTheme.buttonText : darkTheme.textTertiary,
                 border: 'none',
                 borderRadius: 6,
                 fontSize: 14,
                 fontWeight: 500,
-                cursor: 'pointer',
-                boxShadow: darkTheme.shadowSm
+                cursor: isFormValid ? 'pointer' : 'not-allowed',
+                boxShadow: darkTheme.shadowSm,
+                opacity: isFormValid ? 1 : 0.6
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryHover;
+                if (isFormValid) {
+                  e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryHover;
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryBg;
+                if (isFormValid) {
+                  e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryBg;
+                }
               }}
             >
               Confirmer la réservation
