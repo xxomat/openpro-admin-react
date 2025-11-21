@@ -17,11 +17,13 @@ import { RateTypeSelector } from './components/RateTypeSelector';
 import { SelectionSummary } from './components/SelectionSummary';
 import { SupplierTabs } from './components/SupplierTabs';
 import { AdminFooter } from './components/AdminFooter';
+import { BookingModal } from './components/BookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
 import { saveBulkUpdates, type BulkUpdateRequest } from '../../services/api/backendClient';
+import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
@@ -36,6 +38,7 @@ export function ProviderCalendars(): React.ReactElement {
     return formatDate(endDate);
   });
   const [saving, setSaving] = React.useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = React.useState(false);
 
   const supplierData = useSupplierData();
 
@@ -371,6 +374,27 @@ export function ProviderCalendars(): React.ReactElement {
     }));
   }, [activeSupplier, supplierData]);
 
+  // Vérifier si la sélection est valide pour la réservation
+  // Pour chaque hébergement, les dates doivent être consécutives (ou une seule date)
+  const hasValidBookingSelection = React.useMemo(() => {
+    return isValidBookingSelection(selectedCells);
+  }, [selectedCells]);
+
+  // Générer les récapitulatifs de réservation
+  const bookingSummaries = React.useMemo(() => {
+    if (!activeSupplier || !selectedRateTypeId || selectedCells.size === 0) return [];
+    
+    const accommodations = (supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
+      .filter(acc => selectedAccommodations.has(acc.idHebergement));
+    
+    return generateBookingSummaries(
+      selectedCells,
+      accommodations,
+      ratesByAccommodation,
+      selectedRateTypeId
+    );
+  }, [selectedCells, selectedAccommodations, activeSupplier, ratesByAccommodation, selectedRateTypeId, supplierData]);
+
   return (
     <div style={{ 
       padding: '16px', 
@@ -430,13 +454,39 @@ export function ProviderCalendars(): React.ReactElement {
             </>
           )}
           
-          <ActionButtons
-            loading={supplierData.loading || saving}
-            modifiedRatesCount={modifiedRates.size}
-            modifiedDureeMinCount={modifiedDureeMin.size}
-            onRefresh={handleRefreshData}
-            onSave={handleSave}
-          />
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
+            {hasValidBookingSelection && (
+              <button
+                onClick={() => setIsBookingModalOpen(true)}
+                style={{
+                  padding: '10px 20px',
+                  background: darkTheme.buttonPrimaryBg,
+                  color: darkTheme.buttonText,
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  boxShadow: darkTheme.shadowSm
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = darkTheme.buttonPrimaryHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = darkTheme.buttonPrimaryBg;
+                }}
+              >
+                Réserver
+              </button>
+            )}
+            <ActionButtons
+              loading={supplierData.loading || saving}
+              modifiedRatesCount={modifiedRates.size}
+              modifiedDureeMinCount={modifiedDureeMin.size}
+              onRefresh={handleRefreshData}
+              onSave={handleSave}
+            />
+          </div>
           
           <SelectionSummary
             selectedCells={selectedCells}
@@ -450,6 +500,13 @@ export function ProviderCalendars(): React.ReactElement {
       )}
 
       <AdminFooter />
+
+      {/* Modale de réservation */}
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        bookingSummaries={bookingSummaries}
+      />
     </div>
   );
 }

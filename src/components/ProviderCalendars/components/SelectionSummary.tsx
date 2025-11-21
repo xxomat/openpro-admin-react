@@ -8,6 +8,7 @@
 import React from 'react';
 import type { Accommodation } from '../types';
 import { darkTheme } from '../utils/theme';
+import { isValidBookingSelectionForAccommodation } from '../utils/bookingUtils';
 
 /**
  * Props du composant SelectionSummary
@@ -56,7 +57,35 @@ export function SelectionSummary({
     
     const sortedDates = Array.from(cellsByDate.keys()).sort();
     
+    // Grouper les hébergements pour afficher leur statut de validité
+    const accommodationsMap = new Map<number, { accName: string; dates: string[] }>();
+    for (const cellKey of selectedCells) {
+      const [accIdStr, dateStr] = cellKey.split('|');
+      const accId = parseInt(accIdStr, 10);
+      if (isNaN(accId) || !dateStr) continue;
+      
+      const acc = selectedAccommodations.find(a => a.idHebergement === accId);
+      if (!acc) continue;
+      
+      if (!accommodationsMap.has(accId)) {
+        accommodationsMap.set(accId, { accName: acc.nomHebergement, dates: [] });
+      }
+      accommodationsMap.get(accId)!.dates.push(dateStr);
+    }
+    
     const lines: string[] = [];
+    
+    // Ajouter un résumé par hébergement avec statut de validité
+    for (const [accId, { accName, dates }] of accommodationsMap.entries()) {
+      const isValid = isValidBookingSelectionForAccommodation(accId, selectedCells);
+      const status = isValid ? '✓ VALIDE' : '✗ INVALIDE';
+      const datesStr = dates.sort().join(', ');
+      lines.push(`${accName} (${status}): ${datesStr}`);
+    }
+    
+    lines.push(''); // Ligne vide pour séparer
+    
+    // Ajouter le détail par date
     for (const dateStr of sortedDates) {
       const cells = cellsByDate.get(dateStr)!;
       const accommodationParts = cells.map(({ accId, accName }) => {
