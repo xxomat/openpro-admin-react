@@ -145,11 +145,16 @@ export function ProviderCalendars(): React.ReactElement {
       const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
       
       if (editAllSelection && editingCell) {
-        // CTRL+clic : appliquer à toute la sélection
+        // CTRL+clic : appliquer à toute la sélection, mais uniquement aux hébergements visibles (sélectionnés dans le filtre)
         for (const cellKey of selectedCells) {
           const [accIdStr, dateStr] = cellKey.split('|');
           const accId = parseInt(accIdStr, 10);
           if (isNaN(accId) || !dateStr) continue;
+          
+          // Filtrer : ne modifier que les hébergements sélectionnés dans le filtre
+          if (selectedAccommodations.size > 0 && !selectedAccommodations.has(accId)) {
+            continue;
+          }
           
           if (!supplierDataState[accId]) {
             supplierDataState[accId] = {};
@@ -184,7 +189,7 @@ export function ProviderCalendars(): React.ReactElement {
       }
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedCells, activeSupplier, selectedRateTypeId, supplierData]);
+  }, [selectedCells, selectedAccommodations, activeSupplier, selectedRateTypeId, supplierData]);
 
   // Fonction pour mettre à jour la durée minimale localement
   const handleDureeMinUpdate = React.useCallback((
@@ -209,11 +214,16 @@ export function ProviderCalendars(): React.ReactElement {
       }
       
       if (editAllSelection && editingCell) {
-        // CTRL+clic : appliquer à toute la sélection
+        // CTRL+clic : appliquer à toute la sélection, mais uniquement aux hébergements visibles (sélectionnés dans le filtre)
         for (const cellKey of selectedCells) {
           const [accIdStr, dateStr] = cellKey.split('|');
           const accId = parseInt(accIdStr, 10);
           if (isNaN(accId) || !dateStr) continue;
+          
+          // Filtrer : ne modifier que les hébergements sélectionnés dans le filtre
+          if (selectedAccommodations.size > 0 && !selectedAccommodations.has(accId)) {
+            continue;
+          }
           
           if (!supplierDataState[accId]) {
             supplierDataState[accId] = {};
@@ -248,7 +258,7 @@ export function ProviderCalendars(): React.ReactElement {
       }
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedCells, activeSupplier, supplierData]);
+  }, [selectedCells, selectedAccommodations, activeSupplier, supplierData]);
 
   // Fonction pour sauvegarder les modifications
   const handleSave = React.useCallback(async () => {
