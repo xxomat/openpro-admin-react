@@ -383,8 +383,6 @@ export function ProviderCalendars(): React.ReactElement {
         }))
       };
       
-      console.log('Sending bulk data:', JSON.stringify(bulkData, null, 2));
-      
       // Envoyer les modifications au backend
       await saveBulkUpdates(activeSupplier.idFournisseur, bulkData);
       
@@ -401,7 +399,6 @@ export function ProviderCalendars(): React.ReactElement {
       });
     } catch (error) {
       // Gérer les erreurs (affichage d'un message d'erreur)
-      console.error('Erreur lors de la sauvegarde:', error);
       supplierData.setError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);

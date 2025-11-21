@@ -213,7 +213,6 @@ export function useSupplierData(): UseSupplierDataReturn {
         } catch (error: unknown) {
           if (!isCancellationError(error) && !controller.signal.aborted) {
             const errorMessage = getErrorMessage(error, `Erreur lors du chargement des données pour ${supplier.nom}`);
-            console.error(`Erreur lors du chargement des données pour ${supplier.nom}:`, error);
             // On continue le chargement pour les autres fournisseurs même si un échoue
           }
         }
