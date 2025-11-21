@@ -115,7 +115,6 @@ export function BookingModal({
     <>
       {/* Overlay */}
       <div
-        onClick={onClose}
         style={{
           position: 'fixed',
           top: 0,
@@ -721,28 +720,6 @@ export function BookingModal({
               gap: 12
             }}
           >
-            <button
-              onClick={onClose}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: darkTheme.buttonSecondaryBg,
-                color: darkTheme.buttonText,
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: 'pointer',
-                boxShadow: darkTheme.shadowSm
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = darkTheme.buttonSecondaryHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = darkTheme.buttonSecondaryBg;
-              }}
-            >
-              Fermer
-            </button>
             <button
               onClick={() => {
                 // TODO: Implémenter la logique de réservation
