@@ -61,3 +61,14 @@ export function getDaysInRange(startDate: Date, endDate: Date): Date[] {
   return days;
 }
 
+/**
+ * Formate une date au format DD/MM/YYYY pour l'affichage
+ * 
+ * @param dateStr - Date au format YYYY-MM-DD
+ * @returns Date formatée au format DD/MM/YYYY
+ */
+export function formatDateDisplay(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+}
+

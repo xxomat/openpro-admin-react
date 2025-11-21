@@ -11,6 +11,7 @@ import type { Accommodation, BookingDisplay } from '../../../types';
 import { formatDate } from '../../../utils/dateUtils';
 import { filterBookingsByDateRange } from '../utils/gridUtils';
 import { darkTheme } from '../../../utils/theme';
+import { BookingTooltip } from './BookingTooltip';
 
 /**
  * Props du composant BookingOverlay
@@ -48,6 +49,19 @@ export function BookingOverlay({
     top: number;
     height: number;
   }>>([]);
+
+  // État pour le tooltip
+  const [tooltipState, setTooltipState] = React.useState<{
+    booking: BookingDisplay | null;
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({
+    booking: null,
+    x: 0,
+    y: 0,
+    visible: false
+  });
 
   // Calculer les positions en mesurant le DOM
   React.useEffect(() => {
@@ -147,6 +161,35 @@ export function BookingOverlay({
     setRects(newRects);
   }, [accommodations, allDays, bookingsByAccommodation, startDate, endDate, gridRef]);
 
+  // Gérer le survol de la souris
+  const handleMouseEnter = React.useCallback((booking: BookingDisplay, event: React.MouseEvent) => {
+    setTooltipState({
+      booking,
+      x: event.clientX,
+      y: event.clientY,
+      visible: true
+    });
+  }, []);
+
+  const handleMouseMove = React.useCallback((event: React.MouseEvent) => {
+    if (tooltipState.visible && tooltipState.booking) {
+      setTooltipState(prev => ({
+        ...prev,
+        x: event.clientX,
+        y: event.clientY
+      }));
+    }
+  }, [tooltipState.visible, tooltipState.booking]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    setTooltipState({
+      booking: null,
+      x: 0,
+      y: 0,
+      visible: false
+    });
+  }, []);
+
   if (!gridRef.current) return <></>;
 
   return (
@@ -197,7 +240,7 @@ export function BookingOverlay({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
               fontSize: 13,
               fontWeight: 500,
               color: 'white',
@@ -205,14 +248,28 @@ export function BookingOverlay({
               textAlign: 'center',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              textOverflow: 'ellipsis',
+              cursor: 'pointer'
             }}
+            onMouseEnter={(e) => handleMouseEnter(rect.booking, e)}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
             title={displayText}
           >
             {displayText}
           </div>
         );
       })}
+      
+      {/* Tooltip */}
+      {tooltipState.booking && (
+        <BookingTooltip
+          booking={tooltipState.booking}
+          x={tooltipState.x}
+          y={tooltipState.y}
+          visible={tooltipState.visible}
+        />
+      )}
     </div>
   );
 }

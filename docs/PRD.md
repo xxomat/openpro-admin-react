@@ -1066,6 +1066,132 @@ A définir
 		└───────────────────────────────────────────────
 		```
 
+##### Tooltip des réservations — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Un tooltip contextuel s'affiche au survol des rectangles bleus de réservation.
+	- Le tooltip affiche un résumé condensé mais complet de toutes les données du dossier de réservation.
+	- Le tooltip suit la position de la souris pour rester visible pendant le survol.
+
+2. **Déclenchement du tooltip**
+	- **Affichage** : Le tooltip s'affiche lorsque la souris entre dans la zone d'un rectangle de réservation (`onMouseEnter`).
+	- **Suivi de la souris** : Le tooltip suit la position de la souris pendant le survol (`onMouseMove`).
+	- **Masquage** : Le tooltip se masque automatiquement lorsque la souris quitte le rectangle (`onMouseLeave`).
+	- **Positionnement** : Le tooltip utilise `position: fixed` pour rester visible même lors du scroll.
+
+3. **Contenu du tooltip**
+	Le tooltip affiche les informations organisées en sections :
+
+	**Section 1 - Référence** (en haut, en gras, avec séparateur)
+	- Réf: {reference} ou "Non renseigné"
+
+	**Section 2 - Client** (avec icônes)
+	- {civilite} {prenom} {nom} (en gras)
+	- 📧 {email} ou "Non renseigné"
+	- 📞 {telephone} ou "Non renseigné"
+
+	**Section Adresse** (affichée conditionnellement si au moins un champ est présent)
+	- 📍 {adresse}, {codePostal} {ville}, {pays}
+	- Format: adresse complète formatée avec séparateurs, affichée directement après l'icône sans texte "Adresse"
+
+	**Section Entreprise** (affichée conditionnellement si au moins un champ est présent)
+	- 🏢 Entreprise
+	- Société: {societe}
+	- SIRET: {siret}
+	- TVA: {tva}
+
+	**Section Remarques** (affichée conditionnellement si présent)
+	- 📝 {remarques}
+	- Texte multiligne avec gestion du retour à la ligne, affichée directement après l'icône sans texte "Remarques"
+
+	**Section 3 - Dates et séjour**
+	- 📅 Arrivée: {dateArrivee formatée DD/MM/YYYY}
+	- 📅 Départ: {dateDepart formatée DD/MM/YYYY}
+	- 🌙 {nbNuits} nuits • 👥 {nbPersonnes} personnes
+
+	**Section 4 - Paiement et tarif** (avec séparateur supérieur)
+	- 💰 {montantTotal}€ {devise} • 🏷️ {typeTarifLibelle}
+	- Format: prix et type de tarif sur la même ligne, séparés par "•"
+	- Le type de tarif n'est affiché que s'il est présent et différent de "Non renseigné"
+
+4. **Format d'affichage**
+	- **Icônes emoji** : Utilisation d'icônes emoji (📧, 📞, 📅, 🌙, 👥, 💰, 🏷️, 📍, 📝, 🏢) pour améliorer la lisibilité et l'identification rapide des sections.
+	- **Affichage compact** : Les sections Adresse et Remarques affichent uniquement l'icône suivie directement du contenu, sans texte de label supplémentaire.
+	- **Affichage horizontal** : Le prix et le type de tarif sont affichés sur la même ligne, séparés par "•" pour optimiser l'espace.
+	- **Séparateurs visuels** : Bordures entre les sections principales (référence et paiement) pour structurer l'information.
+	- **Gestion des valeurs manquantes** : Affichage de "Non renseigné" pour les champs optionnels absents.
+	- **Format de date** : Conversion de "YYYY-MM-DD" vers "DD/MM/YYYY" pour l'affichage.
+
+5. **Style visuel**
+	- **Fond** : Fond sombre (`darkTheme.bgPrimary`) cohérent avec le thème de l'application.
+	- **Bordure** : Bordure fine (`darkTheme.borderColor`) avec coins arrondis (`borderRadius: 8px`).
+	- **Ombre** : Ombre portée (`boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'`) pour donner de la profondeur.
+	- **Espacement** : Espacement généreux entre les sections (`gap: 12px` pour les sections principales, `gap: 4px` ou `gap: 6px` pour les sous-éléments).
+	- **Largeur** : Largeur minimale de 250px, largeur maximale de 350px pour une lecture confortable.
+	- **Z-index** : `zIndex: 1000` pour s'afficher au-dessus de tous les autres éléments.
+
+6. **Données affichées**
+	- **Référence** : `reference` du dossier
+	- **Client** : `clientCivilite`, `clientNom` (construit à partir de `prenom` et `nom`), `clientEmail`, `clientTelephone`
+	- **Adresse** : `clientAdresse`, `clientCodePostal`, `clientVille`, `clientPays` (affichée seulement si au moins un champ est présent)
+	- **Entreprise** : `clientSociete`, `clientSiret`, `clientTva` (affichée seulement si au moins un champ est présent)
+	- **Remarques** : `clientRemarques` (affichée seulement si présent et non vide)
+	- **Dates** : `dateArrivee`, `dateDepart` (formatées en DD/MM/YYYY), `nbNuits`, `nbPersonnes`
+	- **Paiement** : `montantTotal`, `devise`, `typeTarifLibelle`
+
+	**Données stockées mais non affichées dans le tooltip** :
+	- `clientDateNaissance` - Stocké dans le backend mais non affiché pour garder le tooltip condensé
+	- `clientNationalite` - Stocké dans le backend mais non affiché
+	- `clientProfession` - Stocké dans le backend mais non affiché
+	- `clientLangue` - Stocké dans le backend mais non affiché
+	- `clientNewsletter` - Stocké dans le backend mais non affiché
+	- `clientCgvAcceptees` - Stocké dans le backend mais non affiché
+
+7. **Comportement interactif**
+	- **Curseur** : Le curseur change en `pointer` au survol des rectangles pour indiquer l'interactivité.
+	- **Pointer events** : Les rectangles individuels ont `pointerEvents: 'auto'` pour permettre le survol, tandis que le conteneur parent garde `pointerEvents: 'none'` pour ne pas bloquer les interactions avec les cellules sous-jacentes.
+	- **Performance** : Le tooltip est rendu conditionnellement uniquement lorsqu'il est visible pour optimiser les performances.
+
+8. **Cas limites**
+	- **Valeurs manquantes** : Tous les champs optionnels affichent "Non renseigné" s'ils sont absents.
+	- **Dates invalides** : Si une date est absente, afficher "Non renseigné" à la place.
+	- **Montant manquant** : Si le montant est absent, afficher "?€" avec la devise par défaut "EUR".
+	- **Tooltip hors écran** : Le tooltip peut dépasser les bords de l'écran si la souris est proche d'un bord (comportement standard des tooltips).
+
+9. **Implémentation technique**
+	- **Composant** : `BookingTooltip` - Composant React dédié pour l'affichage du tooltip.
+	- **Gestion d'état** : État `tooltipState` dans `BookingOverlay` pour gérer l'affichage et la position du tooltip.
+	- **Événements** : Gestionnaires `onMouseEnter`, `onMouseMove`, et `onMouseLeave` sur les rectangles de réservation.
+	- **Utilitaires** : Fonction `formatDateDisplay()` dans `dateUtils.ts` pour convertir les dates au format d'affichage.
+
+10. **Exemple visuel du tooltip**
+	```
+	┌─────────────────────────────────────┐
+	│ Réf: RES-2025-001                    │
+	│ ──────────────────────────────────── │
+	│                                      │
+	│ M. Pierre Martin                    │
+	│ 📧 pierre.martin@example.com         │
+	│ 📞 +33612345678                      │
+	│                                      │
+	│ 📍 123 Rue de la République, 75001 Paris, France
+	│                                      │
+	│ 🏢 Entreprise                        │
+	│ Société: Acme Corp                  │
+	│ SIRET: 12345678901234               │
+	│ TVA: FR12345678901                  │
+	│                                      │
+	│ 📝 Client VIP, préfère chambre calme │
+	│                                      │
+	│ 📅 Arrivée: 15/06/2025               │
+	│ 📅 Départ: 22/06/2025                │
+	│ 🌙 7 nuits • 👥 2 personnes          │
+	│                                      │
+	│ ──────────────────────────────────── │
+	│ 💰 588€ EUR • 🏷️ Tarif public      │
+	└─────────────────────────────────────┘
+	```
+
 ##### Masquage du prix et de la durée minimale pour les jours sans stock — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
