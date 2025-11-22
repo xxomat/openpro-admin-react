@@ -277,13 +277,20 @@ export function CompactGrid({
         </div>
         {allDays.map((day, idx) => {
           const dateStr = formatDate(day);
-          // Une colonne est considérée sélectionnée si toutes les cellules non occupées sont sélectionnées
-          const isSelected = accommodations.length > 0 && accommodations.every(acc => {
-            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-            if (isBooked) return true; // Ignorer les dates occupées pour la sélection de colonne
-            const cellKey = `${acc.idHebergement}|${dateStr}`;
-            return selectedCells.has(cellKey);
-          });
+          // Une colonne est considérée sélectionnée si :
+          // - Il y a au moins une cellule non occupée
+          // - ET toutes les cellules non occupées sont sélectionnées
+          // Si toutes les cellules sont occupées, la colonne n'est pas sélectionnée
+          const nonBookedAccommodations = accommodations.filter(acc => 
+            !(bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false)
+          );
+          
+          const isSelected = accommodations.length > 0 
+            && nonBookedAccommodations.length > 0 // Au moins une cellule non occupée
+            && nonBookedAccommodations.every(acc => {
+              const cellKey = `${acc.idHebergement}|${dateStr}`;
+              return selectedCells.has(cellKey);
+            });
           // Une colonne est en drag si au moins une cellule non occupée est en drag
           const isDragging = accommodations.some(acc => {
             const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
