@@ -43,6 +43,8 @@ export interface GridDataCellProps {
   isWeekend: boolean;
   /** Indique si le jour n'est pas réservable (durée minimale > longueur de la plage de disponibilité) */
   isNonReservable: boolean;
+  /** Indique si cette date est occupée par une réservation */
+  isBooked: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** État du drag (pour empêcher les clics pendant le drag) */
@@ -88,6 +90,7 @@ export function GridDataCell({
   editingDureeMinValue,
   isWeekend,
   isNonReservable,
+  isBooked,
   selectedRateTypeId,
   draggingState,
   justFinishedDragRef,
@@ -134,6 +137,12 @@ export function GridDataCell({
       data-date={dateStr}
       data-acc-id={accId}
       onMouseDown={(e) => {
+        // Ne pas démarrer le drag si la date est occupée par une réservation
+        if (isBooked) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         // Ne pas démarrer le drag si CTRL est pressé (sera géré par l'édition)
         if (e.ctrlKey || e.metaKey) {
           return;
@@ -167,13 +176,13 @@ export function GridDataCell({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: isSelected ? 'pointer' : 'default',
+        cursor: isBooked ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
         // Les jours avec stock à 0 ont toujours une opacité de 0.5, même s'ils sont des weekends
         // Les jours non réservables ont une opacité normale (1.0)
         opacity: !isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7)),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
+      title={`${dateStr} — ${isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')} (stock: ${stock})`}
     >
       {isEditing ? (
         <input

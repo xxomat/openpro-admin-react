@@ -54,6 +54,8 @@ export interface CompactGridProps {
   selectedRateTypeId: number | null;
   /** Map des jours non réservables par hébergement (clé: idHebergement, valeur: Set des dates non réservables) */
   nonReservableDaysByAccommodation: Record<number, Set<string>>;
+  /** Map des dates occupées par réservation par hébergement (clé: idHebergement, valeur: Set des dates occupées) */
+  bookedDatesByAccommodation: Record<number, Set<string>>;
 }
 
 export function CompactGrid({
@@ -71,7 +73,8 @@ export function CompactGrid({
   onRateUpdate,
   onDureeMinUpdate,
   selectedRateTypeId,
-  nonReservableDaysByAccommodation
+  nonReservableDaysByAccommodation,
+  bookedDatesByAccommodation
 }: CompactGridProps): React.ReactElement {
   const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -124,18 +127,22 @@ export function CompactGrid({
     getDateRange,
     editingCell,
     accommodations,
-    stockByAccommodation
+    stockByAccommodation,
+    bookedDatesByAccommodation
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
-  // Sélectionne toutes les cellules, même avec stock à 0
+  // Sélectionne toutes les cellules non occupées par une réservation
   const handleHeaderClick = React.useCallback((dateStr: string) => {
     onSelectedCellsChange((prev: Set<string>) => {
       const newSet = new Set(prev);
       
-      // Vérifier si toutes les cellules de cette colonne sont sélectionnées
+      // Vérifier si toutes les cellules non occupées de cette colonne sont sélectionnées
       let allSelected = true;
       for (const acc of accommodations) {
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        if (isBooked) continue; // Ignorer les dates occupées
+        
         const cellKey = `${acc.idHebergement}|${dateStr}`;
         if (!newSet.has(cellKey)) {
           allSelected = false;
@@ -143,9 +150,12 @@ export function CompactGrid({
         }
       }
       
-      // Si toutes sont sélectionnées, désélectionner toutes
-      // Sinon, sélectionner toutes (même avec stock à 0)
+      // Si toutes les cellules non occupées sont sélectionnées, désélectionner toutes
+      // Sinon, sélectionner toutes les cellules non occupées
       for (const acc of accommodations) {
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        if (isBooked) continue; // Ne pas sélectionner les dates occupées
+        
         const cellKey = `${acc.idHebergement}|${dateStr}`;
         if (allSelected) {
           newSet.delete(cellKey);
@@ -156,7 +166,7 @@ export function CompactGrid({
       
       return newSet;
     });
-  }, [onSelectedCellsChange, accommodations]);
+  }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation]);
 
   // Gestionnaire pour convertir le scroll vertical en scroll horizontal
   // Utilisation d'un useEffect avec addEventListener pour pouvoir utiliser { passive: false }
@@ -267,13 +277,17 @@ export function CompactGrid({
         </div>
         {allDays.map((day, idx) => {
           const dateStr = formatDate(day);
-          // Une colonne est considérée sélectionnée si toutes les cellules sont sélectionnées
+          // Une colonne est considérée sélectionnée si toutes les cellules non occupées sont sélectionnées
           const isSelected = accommodations.length > 0 && accommodations.every(acc => {
+            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+            if (isBooked) return true; // Ignorer les dates occupées pour la sélection de colonne
             const cellKey = `${acc.idHebergement}|${dateStr}`;
             return selectedCells.has(cellKey);
           });
-          // Une colonne est en drag si au moins une cellule est en drag
+          // Une colonne est en drag si au moins une cellule non occupée est en drag
           const isDragging = accommodations.some(acc => {
+            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+            if (isBooked) return false; // Ignorer les dates occupées
             const cellKey = `${acc.idHebergement}|${dateStr}`;
             return draggingCells.has(cellKey);
           });
@@ -343,6 +357,7 @@ export function CompactGrid({
                 const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                 const isNonReservable = (nonReservableDaysByAccommodation[acc.idHebergement] ?? new Set<string>()).has(dateStr);
+                const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
 
                 return (
                   <GridDataCell
@@ -362,6 +377,7 @@ export function CompactGrid({
                     editingDureeMinValue={editingDureeMinValue}
                     isWeekend={isWeekend}
                     isNonReservable={isNonReservable}
+                    isBooked={isBooked}
                     selectedRateTypeId={selectedRateTypeId}
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}

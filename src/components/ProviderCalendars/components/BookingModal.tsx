@@ -58,6 +58,8 @@ export interface BookingModalProps {
   idFournisseur: number;
   /** Callback appelé après création réussie d'une réservation */
   onBookingCreated?: () => void;
+  /** Callback appelé pour vider la sélection de dates après création réussie */
+  onSelectionClear?: () => void;
 }
 
 /**
@@ -68,7 +70,8 @@ export function BookingModal({
   onClose,
   bookingSummaries,
   idFournisseur,
-  onBookingCreated
+  onBookingCreated,
+  onSelectionClear
 }: BookingModalProps): React.ReactElement | null {
   // Utiliser le hook pour gérer la logique du formulaire
   const {
@@ -141,9 +144,13 @@ export function BookingModal({
       // Attendre que toutes les réservations soient créées
       await Promise.all(createPromises);
       
-      // Succès : rafraîchir les données et fermer la modale
+      // Succès : rafraîchir les données, vider la sélection et fermer la modale
       if (onBookingCreated) {
         onBookingCreated();
+      }
+      // Vider la sélection de dates après création réussie
+      if (onSelectionClear) {
+        onSelectionClear();
       }
       onClose();
     } catch (error) {
@@ -152,7 +159,7 @@ export function BookingModal({
     } finally {
       setIsCreating(false);
     }
-  }, [isAllFormsValid, isCreating, sortedSummaries, clientDataByAccommodation, idFournisseur, onBookingCreated, onClose]);
+  }, [isAllFormsValid, isCreating, sortedSummaries, clientDataByAccommodation, idFournisseur, onBookingCreated, onSelectionClear, onClose]);
 
   // Empêcher la propagation de la touche Escape quand la modale est ouverte
   React.useEffect(() => {

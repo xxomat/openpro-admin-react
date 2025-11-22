@@ -44,7 +44,8 @@ export function useGridDrag(
   getDateRange: (startDateStr: string, endDateStr: string) => string[],
   editingCell: { accId: number; dateStr: string } | null,
   accommodations: Array<{ idHebergement: number }>,
-  stockByAccommodation: Record<number, Record<string, number>>
+  stockByAccommodation: Record<number, Record<string, number>>,
+  bookedDatesByAccommodation: Record<number, Set<string>>
 ): {
   draggingState: DraggingState | null;
   draggingCells: Set<string>;
@@ -96,21 +97,26 @@ export function useGridDrag(
     });
   }, [getDateFromElement]);
 
-  // Fonction helper pour générer les cellules d'une plage de dates (sans filtrage par stock)
-  // Permet de sélectionner tous les jours, même avec stock à 0
+  // Fonction helper pour générer les cellules d'une plage de dates
+  // Exclut les dates occupées par une réservation
   const generateCellsForDateRange = React.useCallback((startDateStr: string, endDateStr: string): string[] => {
     const dateRange = getDateRange(startDateStr, endDateStr);
     const cells: string[] = [];
     
     for (const dateStr of dateRange) {
       for (const acc of accommodations) {
-        // Permettre la sélection de toutes les cellules, même avec stock à 0
-        cells.push(`${acc.idHebergement}|${dateStr}`);
+        // Vérifier si cette date est occupée par une réservation
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        
+        // Ne pas inclure les dates occupées (toutes les autres dates sont sélectionnables, même avec stock à 0)
+        if (!isBooked) {
+          cells.push(`${acc.idHebergement}|${dateStr}`);
+        }
       }
     }
     
     return cells;
-  }, [getDateRange, accommodations]);
+  }, [getDateRange, accommodations, bookedDatesByAccommodation]);
 
   // Gestionnaire pour terminer le drag
   const handleMouseUp = React.useCallback((e: MouseEvent) => {
@@ -130,17 +136,23 @@ export function useGridDrag(
         const accId = elementUnderCursor ? getAccIdFromElement(elementUnderCursor) : null;
         
         if (accId !== null) {
-          // Clic sur une cellule spécifique : basculer cette cellule (même avec stock à 0)
-          const cellKey = `${accId}|${prev.startDate}`;
-          onSelectedCellsChange((prevSelected: Set<string>) => {
-            const newSet = new Set(prevSelected);
-            if (newSet.has(cellKey)) {
-              newSet.delete(cellKey);
-            } else {
-              newSet.add(cellKey);
-            }
-            return newSet;
-          });
+          // Vérifier si cette date est occupée par une réservation
+          const isBooked = bookedDatesByAccommodation[accId]?.has(prev.startDate) ?? false;
+          
+          // Ne pas permettre la sélection si la date est occupée
+          if (!isBooked) {
+            // Clic sur une cellule spécifique : basculer cette cellule (si non occupée)
+            const cellKey = `${accId}|${prev.startDate}`;
+            onSelectedCellsChange((prevSelected: Set<string>) => {
+              const newSet = new Set(prevSelected);
+              if (newSet.has(cellKey)) {
+                newSet.delete(cellKey);
+              } else {
+                newSet.add(cellKey);
+              }
+              return newSet;
+            });
+          }
         } else {
           // Clic sur un header : basculer toutes les cellules pour cette date (même avec stock à 0)
           const cellsForDate = generateCellsForDateRange(prev.startDate, prev.startDate);
@@ -188,7 +200,7 @@ export function useGridDrag(
       
       return null;
     });
-  }, [generateCellsForDateRange, onSelectedCellsChange]);
+  }, [generateCellsForDateRange, onSelectedCellsChange, bookedDatesByAccommodation]);
 
   // Effet pour gérer les événements globaux de souris pendant le drag
   React.useEffect(() => {

@@ -96,6 +96,12 @@ export function ProviderCalendars(): React.ReactElement {
     });
   }, [activeSupplier, supplierData]);
 
+  // Fonction pour vider la sélection de dates
+  const handleClearSelection = React.useCallback(() => {
+    if (!activeSupplier) return;
+    setSelectedCells(new Set<string>());
+  }, [activeSupplier, setSelectedCells]);
+
   // Obtenir les modifications pour le fournisseur actif
   const modifiedRates = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
@@ -569,6 +575,44 @@ export function ProviderCalendars(): React.ReactElement {
     return count;
   }, [availableDatesByAccommodation]);
 
+  // Calculer toutes les dates occupées par réservation, groupées par hébergement
+  const bookedDatesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) {
+      return {} as Record<number, Set<string>>;
+    }
+
+    const result: Record<number, Set<string>> = {};
+
+    // Parcourir toutes les réservations pour chaque hébergement
+    for (const [accIdStr, bookings] of Object.entries(bookingsByAccommodation)) {
+      const accId = parseInt(accIdStr, 10);
+      if (isNaN(accId) || !Array.isArray(bookings)) continue;
+
+      if (!result[accId]) {
+        result[accId] = new Set<string>();
+      }
+
+      for (const booking of bookings) {
+        // Calculer toutes les dates occupées (du dateArrivee inclus au dateDepart exclus)
+        const startDate = new Date(booking.dateArrivee);
+        const endDate = new Date(booking.dateDepart);
+        let currentDate = new Date(startDate);
+
+        // Le jour de départ est exclu car c'est le jour où on quitte (dernière nuit = dateDepart - 1 jour)
+        while (currentDate < endDate) {
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
+          result[accId].add(dateStr);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+    }
+
+    return result;
+  }, [activeSupplier, bookingsByAccommodation]);
+
   // Fonction pour ouvrir (réactiver) les dates non disponibles
   // Définie après unavailableDatesCount et unavailableDatesByAccommodation pour éviter l'erreur d'initialisation
   const handleOpenUnavailable = React.useCallback(async () => {
@@ -729,6 +773,7 @@ export function ProviderCalendars(): React.ReactElement {
                 onDureeMinUpdate={handleDureeMinUpdate}
                 selectedRateTypeId={selectedRateTypeId}
                 nonReservableDaysByAccommodation={nonReservableDaysByAccommodation}
+                bookedDatesByAccommodation={bookedDatesByAccommodation}
               />
             </>
           )}
@@ -792,6 +837,7 @@ export function ProviderCalendars(): React.ReactElement {
         bookingSummaries={bookingSummaries}
         idFournisseur={activeSupplier?.idFournisseur ?? 0}
         onBookingCreated={handleRefreshData}
+        onSelectionClear={handleClearSelection}
       />
     </div>
   );

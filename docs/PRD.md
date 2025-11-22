@@ -398,6 +398,22 @@ A définir
 
 7. **Champ d'affichage du résumé de sélection (pour tests)**
 	- Un **champ texte en lecture seule** (`textarea`) doit être affiché sous le calendrier pour afficher un résumé formaté de la sélection.
+	- **Restriction de sélection pour les dates occupées** :
+		- Les dates occupées par une réservation ne doivent **pas** être sélectionnables (ni par clic, ni par drag).
+		- Une date est considérée comme occupée si elle appartient à la période d'une réservation : du jour d'arrivée inclus au jour de départ exclus.
+		- Exemple : Pour une réservation avec `dateArrivee = "2025-06-15"` et `dateDepart = "2025-06-22"`, les dates occupées sont : 15, 16, 17, 18, 19, 20, 21 (le 22 est exclu car c'est le jour de départ).
+		- Cette restriction s'applique à **toutes** les réservations, quelle que soit la plateforme d'origine (Booking.com, Directe, OpenPro, Xotelia, etc.).
+		- Cette restriction s'applique également aux réservations Direct en attente de synchronisation (`isPendingSync: true`) et aux réservations obsolètes (`isObsolete: true`).
+		- **Style visuel** : Les cellules occupées par une réservation doivent afficher un curseur `not-allowed` au survol pour indiquer qu'elles ne sont pas sélectionnables.
+
+	- **Restriction de sélection pour les dates occupées** :
+		- Les dates occupées par une réservation ne doivent **pas** être sélectionnables (ni par clic, ni par drag).
+		- Une date est considérée comme occupée si elle appartient à la période d'une réservation : du jour d'arrivée inclus au jour de départ exclus.
+		- Exemple : Pour une réservation avec `dateArrivee = "2025-06-15"` et `dateDepart = "2025-06-22"`, les dates occupées sont : 15, 16, 17, 18, 19, 20, 21 (le 22 est exclu car c'est le jour de départ).
+		- Cette restriction s'applique à **toutes** les réservations, quelle que soit la plateforme d'origine (Booking.com, Directe, OpenPro, Xotelia, etc.).
+		- Cette restriction s'applique également aux réservations Direct en attente de synchronisation (`isPendingSync: true`) et aux réservations obsolètes (`isObsolete: true`).
+		- **Style visuel** : Les cellules occupées par une réservation doivent afficher un curseur `not-allowed` au survol pour indiquer qu'elles ne sont pas sélectionnables.
+
 	- **Format du résumé** : une ligne par date sélectionnée, au format `Date, H1 - T1, H2 - T2, H3 - T3, ...` où :
 		- `Date` : date au format `"YYYY-MM-DD"` (ex: "2024-03-15").
 		- `H1, H2, H3, ...` : noms des hébergements (`nomHebergement`) affichés dans la grille, triés par ordre alphabétique.
