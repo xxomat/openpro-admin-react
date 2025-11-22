@@ -1017,7 +1017,7 @@ A définir
 	- **Couleur de fond** : Chaque plateforme de réservation a une couleur distincte pour faciliter l'identification visuelle :
 		- **Booking.com** : `#003580` (bleu foncé, contraste ~8.6:1 avec texte blanc)
 		- **Directe** : `#059669` (vert émeraude foncé, contraste ~4.7:1 avec texte blanc)
-		- **OpenPro** : `#7c3aed` (violet foncé, contraste ~5.2:1 avec texte blanc)
+		- **OpenPro** : `#c2410c` (orange foncé, contraste ~6.1:1 avec texte blanc)
 		- **Xotelia** : `#dc2626` (rouge foncé, contraste ~5.1:1 avec texte blanc)
 		- **Unknown** : `#64748b` (gris moyen, contraste ~4.5:1 avec texte blanc)
 	- La couleur est déterminée par la propriété `plateformeReservation` de chaque réservation via la fonction `getBookingColor()` du thème.

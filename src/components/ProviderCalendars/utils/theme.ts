@@ -84,7 +84,7 @@ export type Theme = typeof darkTheme;
 export const bookingPlatformColors = {
   'Booking.com': '#003580', // Bleu foncé (contraste ~8.6:1)
   'Directe': '#059669',     // Vert émeraude foncé (contraste ~4.7:1)
-  'OpenPro': '#7c3aed',      // Violet foncé (contraste ~5.2:1)
+  'OpenPro': '#c2410c',      // Orange foncé (contraste ~6.1:1)
   'Xotelia': '#dc2626',      // Rouge foncé (contraste ~5.1:1)
   'Unknown': '#64748b',      // Gris moyen (contraste ~4.5:1)
 } as const;
