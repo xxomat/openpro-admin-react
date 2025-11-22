@@ -7,6 +7,7 @@
 
 import React from 'react';
 import type { BookingDisplay } from '../../../types';
+import { PlateformeReservation } from '../../../types';
 import { darkTheme } from '../../../utils/theme';
 import { formatDateDisplay } from '../../../utils/dateUtils';
 
@@ -30,6 +31,10 @@ export function BookingTooltip({
 
   // Section 1 - Référence
   const reference = booking.reference || 'Non renseigné';
+  
+  // Plateforme de réservation (afficher seulement si différente de Unknown)
+  const plateformeReservation = booking.plateformeReservation;
+  const showPlateforme = plateformeReservation && plateformeReservation !== PlateformeReservation.Unknown;
 
   // Section 2 - Client
   const clientParts: string[] = [];
@@ -90,6 +95,14 @@ export function BookingTooltip({
         {/* Section Référence */}
         <div style={{ fontWeight: 600, fontSize: 14, color: darkTheme.textPrimary, borderBottom: `1px solid ${darkTheme.borderColor}`, paddingBottom: 8 }}>
           Réf: {reference}
+          {showPlateforme && (
+            <>
+              <span style={{ margin: '0 8px', color: darkTheme.textSecondary, fontWeight: 400 }}>•</span>
+              <span style={{ fontSize: 12, color: darkTheme.textSecondary, fontWeight: 400 }}>
+                {plateformeReservation}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Section Client */}

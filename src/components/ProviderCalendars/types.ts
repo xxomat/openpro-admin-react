@@ -6,6 +6,17 @@
  * hébergements, et autres structures de données.
  */
 
+/**
+ * Enum pour les plateformes de réservation
+ */
+export enum PlateformeReservation {
+  BookingCom = 'Booking.com',
+  Directe = 'Directe',
+  OpenPro = 'OpenPro',
+  Xotelia = 'Xotelia',
+  Unknown = 'Unknown'
+}
+
 export type Supplier = { 
   idFournisseur: number; 
   nom: string 
@@ -53,6 +64,7 @@ export type BookingDisplay = {
   typeTarifLibelle?: string; // Libellé du type de tarif
   devise?: string; // Devise du paiement (EUR, etc.)
   dateCreation?: string; // Date de création du dossier
+  plateformeReservation: PlateformeReservation; // Plateforme d'origine de la réservation (Unknown si non renseignée)
 };
 
 export type SupplierData = {
