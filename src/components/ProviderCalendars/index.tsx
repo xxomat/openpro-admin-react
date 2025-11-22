@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import type { Supplier } from './types';
+import type { Supplier, BookingDisplay } from './types';
+import { PlateformeReservation } from './types';
 import { ActionButtons } from './components/ActionButtons';
 import { AccommodationList } from './components/AccommodationList';
 import { CompactGrid } from './components/CompactGrid';
@@ -86,12 +87,22 @@ export function ProviderCalendars(): React.ReactElement {
     });
   }, [activeSupplier, supplierData]);
 
+  // État pour la réservation sélectionnée (uniquement Directe)
+  const [selectedBookingId, setSelectedBookingId] = React.useState<number | null>(null);
+
   // Fonction pour mettre à jour la sélection de cellules du fournisseur actif
+  // Vide automatiquement la sélection de réservation quand des dates sont sélectionnées
   const setSelectedCells = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedCellsBySupplier(prev => {
       const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
+      
+      // Si la nouvelle sélection n'est pas vide, vider la sélection de réservation
+      if (newSet.size > 0) {
+        setSelectedBookingId(null);
+      }
+      
       return { ...prev, [activeSupplier.idFournisseur]: newSet };
     });
   }, [activeSupplier, supplierData]);
@@ -101,6 +112,29 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return;
     setSelectedCells(new Set<string>());
   }, [activeSupplier, setSelectedCells]);
+
+  // Fonction pour gérer le clic sur une réservation
+  const handleBookingClick = React.useCallback((booking: BookingDisplay) => {
+    // Vérifier que la réservation est Directe (sécurité supplémentaire)
+    if (booking.plateformeReservation !== PlateformeReservation.Directe) {
+      return; // Ne pas sélectionner les réservations non Directe
+    }
+
+    // Si la réservation cliquée est déjà sélectionnée, désélectionner
+    if (booking.idDossier === selectedBookingId) {
+      setSelectedBookingId(null);
+    } else {
+      // Sinon, sélectionner cette réservation ET vider la sélection de dates
+      setSelectedBookingId(booking.idDossier);
+      // Vider la sélection de dates directement (sans passer par setSelectedCells pour éviter la récursion)
+      if (activeSupplier) {
+        supplierData.setSelectedCellsBySupplier(prev => ({
+          ...prev,
+          [activeSupplier.idFournisseur]: new Set<string>()
+        }));
+      }
+    }
+  }, [selectedBookingId, activeSupplier, supplierData]);
 
   // Obtenir les modifications pour le fournisseur actif
   const modifiedRates = React.useMemo(() => {
@@ -774,6 +808,8 @@ export function ProviderCalendars(): React.ReactElement {
                 selectedRateTypeId={selectedRateTypeId}
                 nonReservableDaysByAccommodation={nonReservableDaysByAccommodation}
                 bookedDatesByAccommodation={bookedDatesByAccommodation}
+                selectedBookingId={selectedBookingId}
+                onBookingClick={handleBookingClick}
               />
             </>
           )}

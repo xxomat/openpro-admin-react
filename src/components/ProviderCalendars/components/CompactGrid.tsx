@@ -56,6 +56,10 @@ export interface CompactGridProps {
   nonReservableDaysByAccommodation: Record<number, Set<string>>;
   /** Map des dates occupées par réservation par hébergement (clé: idHebergement, valeur: Set des dates occupées) */
   bookedDatesByAccommodation: Record<number, Set<string>>;
+  /** ID de la réservation sélectionnée (uniquement Directe) */
+  selectedBookingId?: number | null;
+  /** Callback appelé quand l'utilisateur clique sur une réservation Directe */
+  onBookingClick?: (booking: BookingDisplay) => void;
 }
 
 export function CompactGrid({
@@ -74,7 +78,9 @@ export function CompactGrid({
   onDureeMinUpdate,
   selectedRateTypeId,
   nonReservableDaysByAccommodation,
-  bookedDatesByAccommodation
+  bookedDatesByAccommodation,
+  selectedBookingId,
+  onBookingClick
 }: CompactGridProps): React.ReactElement {
   const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -413,6 +419,8 @@ export function CompactGrid({
         startDate={startDate}
         endDate={endDate}
         gridRef={gridRef}
+        selectedBookingId={selectedBookingId}
+        onBookingClick={onBookingClick}
       />
     </div>
     </>

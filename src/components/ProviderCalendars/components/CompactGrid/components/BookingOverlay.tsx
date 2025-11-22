@@ -31,6 +31,10 @@ export interface BookingOverlayProps {
   endDate: Date;
   /** Ref vers le conteneur de la grille */
   gridRef: React.RefObject<HTMLDivElement>;
+  /** ID de la réservation sélectionnée (uniquement Directe) */
+  selectedBookingId?: number | null;
+  /** Callback appelé quand l'utilisateur clique sur une réservation Directe */
+  onBookingClick?: (booking: BookingDisplay) => void;
 }
 
 /**
@@ -42,7 +46,9 @@ export function BookingOverlay({
   bookingsByAccommodation,
   startDate,
   endDate,
-  gridRef
+  gridRef,
+  selectedBookingId,
+  onBookingClick
 }: BookingOverlayProps): React.ReactElement {
   const [rects, setRects] = React.useState<Array<{
     booking: BookingDisplay;
@@ -232,10 +238,25 @@ export function BookingOverlay({
         const isPendingSync = rect.booking.isPendingSync === true;
         const isDirecte = rect.booking.plateformeReservation === PlateformeReservation.Directe;
         const isObsolete = rect.booking.isObsolete === true;
+        const isSelected = selectedBookingId !== null && selectedBookingId !== undefined && rect.booking.idDossier === selectedBookingId;
+        const isClickable = isDirecte; // Seules les réservations Directe sont cliquables
         
-        // Style de bordure pour les réservations Direct en latence
-        const borderStyle = isPendingSync && isDirecte 
+        // Style de bordure pour les réservations Direct en latence (si non sélectionnée)
+        const pendingSyncBorderStyle = isPendingSync && isDirecte && !isSelected
           ? '3px dashed rgba(255, 255, 255, 0.8)' 
+          : undefined;
+        
+        // Style de bordure pour les réservations sélectionnées
+        const selectedBorderStyle = isSelected
+          ? '4px solid rgba(255, 255, 255, 0.9)'
+          : undefined;
+        
+        // Priorité : bordure de sélection > bordure de latence
+        const borderStyle = selectedBorderStyle || pendingSyncBorderStyle;
+        
+        // Ombre portée pour les réservations sélectionnées
+        const boxShadow = isSelected
+          ? '0 2px 8px rgba(0, 0, 0, 0.3)'
           : undefined;
         
         // Style de hachuré pour les réservations obsolètes
@@ -245,6 +266,17 @@ export function BookingOverlay({
         
         // Opacité réduite pour les réservations obsolètes
         const opacity = isObsolete ? 0.6 : 1;
+        
+        // Curseur : pointer pour les réservations Directe, default pour les autres
+        const cursor = isClickable ? 'pointer' : 'default';
+        
+        // Gestionnaire de clic (uniquement pour les réservations Directe)
+        const handleClick = isClickable && onBookingClick
+          ? (e: React.MouseEvent) => {
+              e.stopPropagation(); // Empêcher la propagation du clic
+              onBookingClick(rect.booking);
+            }
+          : undefined;
         
         return (
           <div
@@ -271,12 +303,14 @@ export function BookingOverlay({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              cursor: 'pointer',
-              opacity
+              cursor,
+              opacity,
+              boxShadow
             }}
             onMouseEnter={(e) => handleMouseEnter(rect.booking, e)}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
+            onClick={handleClick}
             title={displayText}
           >
             {displayText}

@@ -1239,6 +1239,91 @@ A définir
 		└───────────────────────────────────────────────
 		```
 
+##### Sélection d'une réservation Directe — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'utilisateur peut sélectionner une réservation en cliquant sur son rectangle dans la grille de calendrier.
+	- **Restriction importante** : Seules les réservations **Directe** (`plateformeReservation === PlateformeReservation.Directe`) peuvent être sélectionnées.
+	- Les réservations des autres plateformes (Booking.com, OpenPro, Xotelia, etc.) ne sont pas sélectionnables.
+	- Une seule réservation peut être sélectionnée à la fois.
+
+2. **Comportement de sélection**
+	- **Clic sur une réservation Directe non sélectionnée** : Sélectionne cette réservation et désélectionne toute réservation précédemment sélectionnée.
+	- **Clic sur une réservation Directe déjà sélectionnée** : Désélectionne cette réservation.
+	- **Clic sur une réservation non Directe** : Aucune action (la réservation reste non sélectionnable).
+	- **Clic en dehors d'une réservation** : La sélection actuelle est maintenue (pas de désélection automatique).
+
+3. **Indicateur visuel de sélection**
+	- Les réservations Directe sélectionnées doivent avoir un **style visuel distinctif** pour indiquer leur état de sélection.
+	- **Style proposé** :
+		- Une bordure plus épaisse (ex: `4px solid rgba(255, 255, 255, 0.9)`)
+		- Optionnel : Une ombre portée légère (`boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'`)
+		- Le fond reste vert émeraude (`#059669`) pour les réservations Directe
+	- Les réservations non sélectionnées conservent leur style normal (avec ou sans bordure selon leur statut de synchronisation).
+
+4. **Gestion de l'état de sélection**
+	- L'état de la réservation sélectionnée est stocké dans le composant parent (`ProviderCalendars`).
+	- **Identifiant de réservation** : Utiliser `booking.idDossier` comme identifiant unique pour la réservation sélectionnée.
+	- **État** : `selectedBookingId: number | null`
+		- `null` : Aucune réservation sélectionnée
+		- `number` : ID de la réservation Directe sélectionnée (`idDossier`)
+
+5. **Interactions utilisateur**
+	- **Curseur** : Les réservations Directe affichent un curseur `pointer` au survol pour indiquer qu'elles sont cliquables.
+	- Les réservations non Directe affichent un curseur `default` pour indiquer qu'elles ne sont pas interactives.
+	- **Feedback visuel au survol** : Optionnel, peut ajouter un léger effet de survol (ex: opacité légèrement augmentée) pour les réservations Directe.
+
+6. **Exclusion mutuelle avec la sélection de dates**
+	- **Sélection d'une réservation** : Lorsqu'une réservation Directe est sélectionnée, toute sélection de dates existante est automatiquement annulée (vidée).
+	- **Sélection de dates** : Lorsque l'utilisateur sélectionne une ou plusieurs dates (par clic, drag, ou clic sur un header), toute réservation sélectionnée est automatiquement désélectionnée.
+	- Cette exclusion mutuelle garantit qu'une seule "sélection active" existe à la fois dans l'interface :
+		- Soit une réservation est sélectionnée (pour des actions sur la réservation)
+		- Soit des dates sont sélectionnées (pour créer une nouvelle réservation ou modifier des tarifs)
+	- **Comportement** :
+		- Clic sur une réservation Directe → Sélectionne la réservation + Vide la sélection de dates
+		- Clic sur une date (ou drag de dates) → Sélectionne les dates + Désélectionne la réservation
+		- Clic sur un header de colonne → Sélectionne/désélectionne la colonne + Désélectionne la réservation
+
+7. **Intégration avec les autres fonctionnalités**
+	- La sélection d'une réservation permet d'activer ultérieurement des actions spécifiques (ex: suppression, modification).
+	- La réservation sélectionnée peut être utilisée par d'autres composants ou boutons d'action dans l'interface.
+
+7. **Détails d'implémentation**
+
+	7.1. **Composant BookingOverlay**
+		- Ajouter une prop `selectedBookingId?: number | null` pour recevoir l'ID de la réservation sélectionnée.
+		- Ajouter une prop `onBookingClick?: (booking: BookingDisplay) => void` pour le callback de clic.
+		- Modifier chaque rectangle de réservation pour :
+			- Vérifier si la réservation est Directe (`booking.plateformeReservation === PlateformeReservation.Directe`).
+			- Si Directe : Ajouter un gestionnaire `onClick` qui appelle `onBookingClick(booking)`.
+			- Si Directe : Appliquer le style visuel de sélection si `booking.idDossier === selectedBookingId`.
+			- Si Directe : Afficher un curseur `pointer` au survol.
+			- Si non Directe : Ne pas ajouter de gestionnaire de clic et afficher un curseur `default`.
+
+	7.2. **Composant ProviderCalendars (index.tsx)**
+		- Créer un état `selectedBookingId: number | null` avec `React.useState<number | null>(null)`.
+		- Créer une fonction `handleBookingClick` qui :
+			- Vérifie si la réservation est Directe (déjà vérifié dans BookingOverlay).
+			- Si la réservation cliquée est déjà sélectionnée (`booking.idDossier === selectedBookingId`), désélectionne (`setSelectedBookingId(null)`).
+			- Sinon, sélectionne la nouvelle réservation (`setSelectedBookingId(booking.idDossier)`) **ET vide la sélection de dates** (`setSelectedCells(new Set<string>())`).
+		- Modifier tous les gestionnaires de sélection de dates (`setSelectedCells`, `handleHeaderClick`, etc.) pour désélectionner la réservation (`setSelectedBookingId(null)`) lorsque des dates sont sélectionnées.
+		- Passer `selectedBookingId` et `onBookingClick={handleBookingClick}` à `CompactGrid`, qui les passera à `BookingOverlay`.
+
+	7.3. **Filtrage des réservations cliquables**
+		- Dans `BookingOverlay`, vérifier `booking.plateformeReservation === PlateformeReservation.Directe` avant d'ajouter le gestionnaire de clic.
+		- Les réservations non Directe ne doivent pas déclencher d'action au clic.
+
+8. **Cas limites**
+	- **Réservation Directe en attente de synchronisation** : Peut être sélectionnée normalement.
+	- **Réservation Directe obsolète** : Peut être sélectionnée normalement (mais probablement pas supprimable).
+	- **Plusieurs réservations Directe chevauchantes** : Chaque rectangle est cliquable indépendamment, seule la réservation cliquée est sélectionnée.
+	- **Réservation Directe partiellement visible** : Peut être sélectionnée même si elle est partiellement hors de la plage affichée.
+
+9. **Performance**
+	- La vérification du type de plateforme doit être effectuée lors du rendu de chaque rectangle.
+	- L'état de sélection ne nécessite pas de recalcul des positions des rectangles.
+	- Le style conditionnel de sélection est appliqué uniquement aux rectangles Directe.
+
 ##### Tooltip des réservations — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
