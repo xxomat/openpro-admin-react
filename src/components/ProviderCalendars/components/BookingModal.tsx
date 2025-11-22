@@ -133,7 +133,7 @@ export function BookingModal({
             borderRadius: 12,
             border: `1px solid ${darkTheme.borderColor}`,
             maxWidth: sortedSummaries.length === 1 ? 500 : Math.min(450 * sortedSummaries.length + 32 + (sortedSummaries.length > 1 ? 16 * (sortedSummaries.length - 1) : 0), 1400), // 450px par hébergement + padding + gap
-            width: 'fit-content', // S'adapte au contenu
+            width: sortedSummaries.length === 1 ? 'auto' : 'fit-content', // S'adapte au contenu
             maxHeight: '90vh',
             overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
@@ -212,9 +212,7 @@ export function BookingModal({
                           backgroundColor: darkTheme.bgTertiary,
                           borderRadius: 8,
                           border: `1px solid ${darkTheme.borderColor}`,
-                          width: '450px', // Largeur fixe pour le récapitulatif + formulaire
-                          minWidth: '450px',
-                          maxWidth: '450px',
+                          width: 'auto', // S'adapte au contenu (le ClientForm de 300px fixera le minimum naturellement)
                           display: 'flex',
                           flexDirection: 'column',
                           flexShrink: 0, // Empêche la colonne de rétrécir
@@ -245,15 +243,18 @@ export function BookingModal({
                               padding: '12px',
                               backgroundColor: darkTheme.bgSecondary,
                               borderRadius: 6,
-                              border: `1px solid ${darkTheme.borderColorLight}`
+                              border: `1px solid ${darkTheme.borderColorLight}`,
+                              width: '100%', // S'adapte à la largeur de la colonne parente
+                              boxSizing: 'border-box'
                             }}
                           >
                             <div
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: '1fr 1fr 1fr',
+                                gridTemplateColumns: 'auto auto auto', // Colonnes qui s'adaptent au contenu
                                 gap: 12,
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                justifyContent: 'space-between' // Répartit l'espace entre les colonnes
                               }}
                             >
                               <div>
