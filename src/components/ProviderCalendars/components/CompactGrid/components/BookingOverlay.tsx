@@ -9,6 +9,7 @@
 
 import React from 'react';
 import type { Accommodation, BookingDisplay } from '../../../types';
+import { PlateformeReservation } from '../../../types';
 import { formatDate } from '../../../utils/dateUtils';
 import { filterBookingsByDateRange } from '../utils/gridUtils';
 import { darkTheme, getBookingColor } from '../../../utils/theme';
@@ -227,6 +228,24 @@ export function BookingOverlay({
         
         const displayText = parts.join(' • ');
         
+        // Déterminer les styles conditionnels
+        const isPendingSync = rect.booking.isPendingSync === true;
+        const isDirecte = rect.booking.plateformeReservation === PlateformeReservation.Directe;
+        const isObsolete = rect.booking.isObsolete === true;
+        
+        // Style de bordure pour les réservations Direct en latence
+        const borderStyle = isPendingSync && isDirecte 
+          ? '3px dashed rgba(255, 255, 255, 0.8)' 
+          : undefined;
+        
+        // Style de hachuré pour les réservations obsolètes
+        const backgroundImage = isObsolete
+          ? 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px)'
+          : undefined;
+        
+        // Opacité réduite pour les réservations obsolètes
+        const opacity = isObsolete ? 0.6 : 1;
+        
         return (
           <div
             key={`${rect.booking.idDossier}-${idx}`}
@@ -237,6 +256,8 @@ export function BookingOverlay({
               top: `${rect.top}px`,
               height: `${rect.height}px`,
               background: getBookingColor(rect.booking.plateformeReservation),
+              backgroundImage,
+              border: borderStyle,
               borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
@@ -250,7 +271,8 @@ export function BookingOverlay({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              opacity
             }}
             onMouseEnter={(e) => handleMouseEnter(rect.booking, e)}
             onMouseMove={handleMouseMove}

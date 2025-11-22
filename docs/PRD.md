@@ -1022,6 +1022,10 @@ A définir
 		- **Unknown** : `#64748b` (gris moyen, contraste ~4.5:1 avec texte blanc)
 	- La couleur est déterminée par la propriété `plateformeReservation` de chaque réservation via la fonction `getBookingColor()` du thème.
 	- Toutes les couleurs respectent le ratio de contraste WCAG AA minimum de 4.5:1 avec le texte blanc pour garantir une bonne lisibilité.
+	- **Réservations obsolètes** : Les réservations Direct avec `isObsolete: true` sont affichées avec :
+		- Un pattern de hachurage : `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px)`
+		- Une opacité réduite à 0.6 pour indiquer visuellement leur statut obsolète
+		- Le style est appliqué via `backgroundImage` et `opacity` dans le composant `BookingOverlay`
 	- **Bordures** : Bordures arrondies avec `borderRadius: 8px`.
 	- **Z-index** : `zIndex: 2` pour s'afficher au-dessus des cellules de la grille (`zIndex: 1`).
 	- **Pointer events** : `pointerEvents: 'none'` pour ne pas bloquer les interactions avec les cellules sous-jacentes.
@@ -1053,6 +1057,12 @@ A définir
 	- **Positionnement** : Utilisation de `position: absolute` avec des positions calculées dynamiquement.
 	- **Performance** : Utilisation de `useMemo` pour calculer les positions des rectangles uniquement lorsque les données changent.
 	- **Intégration** : Le composant `BookingOverlay` est intégré dans `CompactGrid` et reçoit les données de réservation via les props.
+	- **Gestion des réservations obsolètes** :
+		- Le flag `isObsolete` est fourni par le backend dans les réponses de `/api/suppliers/:idFournisseur/supplier-data`
+		- Les réservations obsolètes sont détectées dynamiquement côté backend (non stockées en DB)
+		- Le frontend affiche simplement le flag tel que reçu du backend
+		- Le style hachuré est appliqué conditionnellement basé sur `rect.booking.isObsolete === true`
+		- Aucune logique métier côté frontend, uniquement l'affichage visuel
 
 10. **Exemples visuels**
 	- **Rectangle de réservation standard** :

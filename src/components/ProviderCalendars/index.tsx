@@ -20,6 +20,7 @@ import { AdminFooter } from './components/AdminFooter';
 import { BookingModal } from './components/BookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
+import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
 import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
 import { saveBulkUpdates, type BulkUpdateRequest } from '../../services/api/backendClient';
@@ -410,6 +411,14 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return;
     await supplierData.refreshSupplierData(activeSupplier.idFournisseur, startDate, endDate);
   }, [activeSupplier, startDate, endDate, supplierData]);
+
+  // Poller l'état de synchronisation des réservations Direct toutes les 30 secondes
+  // et déclencher un refresh automatique si l'état change
+  useSyncStatusPolling(
+    activeSupplier?.idFournisseur ?? null,
+    handleRefreshData,
+    30000 // 30 secondes
+  );
 
   // Chargement initial des données pour tous les fournisseurs au montage du composant
   // Les données sont chargées pour 1 an, mais l'affichage est limité à [startDate; endDate]
