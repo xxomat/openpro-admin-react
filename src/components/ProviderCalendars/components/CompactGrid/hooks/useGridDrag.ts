@@ -96,22 +96,21 @@ export function useGridDrag(
     });
   }, [getDateFromElement]);
 
-  // Fonction helper pour générer les cellules d'une plage de dates avec filtrage par stock
+  // Fonction helper pour générer les cellules d'une plage de dates (sans filtrage par stock)
+  // Permet de sélectionner tous les jours, même avec stock à 0
   const generateCellsForDateRange = React.useCallback((startDateStr: string, endDateStr: string): string[] => {
     const dateRange = getDateRange(startDateStr, endDateStr);
     const cells: string[] = [];
     
     for (const dateStr of dateRange) {
       for (const acc of accommodations) {
-        const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
-        if (stock >= 1) {
-          cells.push(`${acc.idHebergement}|${dateStr}`);
-        }
+        // Permettre la sélection de toutes les cellules, même avec stock à 0
+        cells.push(`${acc.idHebergement}|${dateStr}`);
       }
     }
     
     return cells;
-  }, [getDateRange, accommodations, stockByAccommodation]);
+  }, [getDateRange, accommodations]);
 
   // Gestionnaire pour terminer le drag
   const handleMouseUp = React.useCallback((e: MouseEvent) => {
@@ -125,28 +124,25 @@ export function useGridDrag(
       if (!prev.isDragging || distance < 5) {
         justFinishedDragRef.current = true;
         
-        // Clic simple : basculer la sélection de toutes les cellules avec stock >= 1 pour cette date
+        // Clic simple : basculer la sélection de toutes les cellules pour cette date (même avec stock à 0)
         // Si on a cliqué sur une cellule spécifique (pas un header), on peut aussi basculer juste cette cellule
         const elementUnderCursor = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement;
         const accId = elementUnderCursor ? getAccIdFromElement(elementUnderCursor) : null;
         
         if (accId !== null) {
-          // Clic sur une cellule spécifique : basculer uniquement cette cellule si elle a du stock
-          const stock = stockByAccommodation[accId]?.[prev.startDate] ?? 0;
-          if (stock >= 1) {
-            const cellKey = `${accId}|${prev.startDate}`;
-            onSelectedCellsChange((prevSelected: Set<string>) => {
-              const newSet = new Set(prevSelected);
-              if (newSet.has(cellKey)) {
-                newSet.delete(cellKey);
-              } else {
-                newSet.add(cellKey);
-              }
-              return newSet;
-            });
-          }
+          // Clic sur une cellule spécifique : basculer cette cellule (même avec stock à 0)
+          const cellKey = `${accId}|${prev.startDate}`;
+          onSelectedCellsChange((prevSelected: Set<string>) => {
+            const newSet = new Set(prevSelected);
+            if (newSet.has(cellKey)) {
+              newSet.delete(cellKey);
+            } else {
+              newSet.add(cellKey);
+            }
+            return newSet;
+          });
         } else {
-          // Clic sur un header : basculer toutes les cellules avec stock >= 1 pour cette date
+          // Clic sur un header : basculer toutes les cellules pour cette date (même avec stock à 0)
           const cellsForDate = generateCellsForDateRange(prev.startDate, prev.startDate);
           onSelectedCellsChange((prevSelected: Set<string>) => {
             const newSet = new Set(prevSelected);
@@ -169,7 +165,7 @@ export function useGridDrag(
         return null;
       }
       
-      // Drag : sélectionner toutes les cellules avec stock >= 1 dans la plage
+      // Drag : sélectionner toutes les cellules dans la plage (même avec stock à 0)
       const cellsInRange = generateCellsForDateRange(prev.startDate, prev.currentDate);
       const isReplaceMode = e.ctrlKey || e.metaKey;
       
@@ -192,7 +188,7 @@ export function useGridDrag(
       
       return null;
     });
-  }, [generateCellsForDateRange, onSelectedCellsChange, stockByAccommodation]);
+  }, [generateCellsForDateRange, onSelectedCellsChange]);
 
   // Effet pour gérer les événements globaux de souris pendant le drag
   React.useEffect(() => {

@@ -886,6 +886,145 @@ A définir
 		6. Met à jour l'état de chargement (`setSaving(false)`).
 	- La fonction doit gérer les erreurs et afficher des messages appropriés.
 
+##### Bouton "Ouvrir" pour réactiver les dates non disponibles — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Lorsqu'une sélection de cellules contient au moins une date avec stock à 0 (indisponible), un bouton "Ouvrir" doit apparaître dans la barre d'actions.
+	- Ce bouton permet de remettre le stock à 1 pour toutes les dates non disponibles (stock = 0) présentes dans la sélection actuelle.
+	- Les dates avec stock > 0 dans la sélection ne sont pas modifiées.
+
+2. **Conditions d'affichage**
+	- **Bouton "Ouvrir" visible** : Uniquement si la sélection contient au moins une cellule avec stock à 0.
+	- **Position** : Le bouton doit apparaître à côté du bouton "Sauvegarder" dans le composant `ActionButtons`, à gauche des autres boutons.
+	- **Style** : Bouton d'action secondaire (couleur différente du bouton "Sauvegarder") avec icône ou texte explicite.
+	- **Texte du bouton** : "Ouvrir (X dates)" où X est le nombre de dates non disponibles sélectionnées.
+
+3. **Comportement fonctionnel**
+	- **Clic sur "Ouvrir"** :
+		- Identifier toutes les cellules sélectionnées avec stock à 0.
+		- Grouper ces cellules par hébergement (`idHebergement`).
+		- Pour chaque hébergement, créer un payload de mise à jour du stock contenant uniquement les dates avec stock à 0.
+		- Envoyer une requête au backend pour mettre à jour le stock à 1 pour ces dates spécifiques.
+		- **Cas limites** :
+			- Si une date a déjà un stock à 1, elle est ignorée (ne fait pas partie des dates avec stock à 0).
+			- Toutes les dates valides (format YYYY-MM-DD) peuvent être créées ou mises à jour dans OpenPro via l'API. Il n'existe pas de cas d'erreur pour une "date qui n'existe pas" car l'API OpenPro crée automatiquement les entrées de stock pour les dates valides.
+		- En cas de succès, rafraîchir les données pour refléter les changements de stock.
+		- En cas d'erreur, afficher un message d'erreur à l'utilisateur.
+
+4. **Détails d'implémentation**
+
+	4.1. **Détection des dates non disponibles dans la sélection**
+		- Dans `ProviderCalendars/index.tsx`, créer un `useMemo` qui :
+			- Parcourt toutes les cellules de `selectedCells`.
+			- Pour chaque cellule (`accId|dateStr`), vérifie le stock via `stockByAccommodation[accId]?.[dateStr] ?? 0`.
+			- Retourne un objet `Record<number, Set<string>>` (hébergement → dates avec stock à 0) contenant uniquement les dates non disponibles sélectionnées.
+
+	4.2. **Comptage des dates non disponibles**
+		- Calculer le nombre total de dates non disponibles sélectionnées pour déterminer l'affichage du bouton et le texte du bouton (ex: "Ouvrir (5 dates)").
+
+	4.3. **Composant ActionButtons**
+		- Ajouter une prop `unavailableDatesCount?: number` au composant `ActionButtons`.
+		- Ajouter une prop `onOpenUnavailable?: () => void` pour le callback du clic.
+		- Afficher conditionnellement le bouton "Ouvrir" si `unavailableDatesCount > 0`.
+		- Le bouton doit avoir un style distinct (ex: couleur orange/jaune pour différencier de "Sauvegarder").
+
+	4.4. **Fonction de mise à jour du stock**
+		- Utiliser la fonction `updateStock()` dans `backendClient.ts` qui appelle `POST /api/suppliers/:idFournisseur/accommodations/:idHebergement/stock` du backend.
+
+	4.5. **Handler d'ouverture**
+		- Dans `ProviderCalendars/index.tsx`, créer une fonction `handleOpenUnavailable()` qui :
+			- Récupère les dates non disponibles groupées par hébergement (via le `useMemo` de détection).
+			- Pour chaque hébergement, construit un payload avec les dates à mettre à jour (stock = 1).
+			- Appelle `updateStock()` pour chaque hébergement.
+			- Gère les erreurs (affichage d'un message si une mise à jour échoue).
+			- Appelle `handleRefreshData()` en cas de succès complet pour rafraîchir l'affichage.
+
+5. **Gestion des erreurs**
+	- **Erreur partielle** : Si certaines mises à jour réussissent et d'autres échouent, afficher un message d'erreur indiquant quelles dates n'ont pas pu être mises à jour.
+	- **Erreur totale** : Si toutes les mises à jour échouent, afficher un message d'erreur global.
+	- **État de chargement** : Le bouton "Ouvrir" doit être désactivé pendant la mise à jour du stock.
+
+6. **Expérience utilisateur**
+	- Le bouton "Ouvrir" doit afficher le nombre de dates concernées (ex: "Ouvrir (5 dates)").
+	- Pendant la mise à jour, afficher un état de chargement ("Ouverture...").
+	- Après succès, la sélection peut être maintenue ou vidée (à définir selon préférence UX).
+	- Les dates réactivées apparaissent immédiatement en vert après rafraîchissement.
+
+7. **Intégration avec le système existant**
+	- Le bouton "Ouvrir" coexiste avec les boutons "Actualiser" et "Sauvegarder".
+	- La logique de mise à jour du stock doit être séparée de la logique de sauvegarde des tarifs/durées minimales.
+	- Les modifications de stock sont immédiatement persistées dans OpenPro (pas besoin de cliquer sur "Sauvegarder").
+
+##### Bouton "Fermer" pour désactiver les dates disponibles — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Lorsqu'une sélection de cellules contient au moins une date avec stock > 0 (disponible), un bouton "Fermer" doit apparaître dans la barre d'actions.
+	- Ce bouton permet de mettre le stock à 0 pour toutes les dates disponibles (stock > 0) présentes dans la sélection actuelle.
+	- Les dates avec stock à 0 dans la sélection ne sont pas modifiées.
+
+2. **Conditions d'affichage**
+	- **Bouton "Fermer" visible** : Uniquement si la sélection contient au moins une cellule avec stock > 0.
+	- **Position** : Le bouton doit apparaître entre le bouton "Actualiser" et le bouton "Ouvrir" dans le composant `ActionButtons`.
+	- **Style** : Bouton d'action avec couleur rouge pour différencier des autres boutons et indiquer une action de fermeture.
+	- **Texte du bouton** : "Fermer (X dates)" où X est le nombre de dates disponibles sélectionnées.
+
+3. **Comportement fonctionnel**
+	- **Clic sur "Fermer"** :
+		- Identifier toutes les cellules sélectionnées avec stock > 0.
+		- Grouper ces cellules par hébergement (`idHebergement`).
+		- Pour chaque hébergement, créer un payload de mise à jour du stock contenant uniquement les dates avec stock > 0.
+		- Envoyer une requête au backend pour mettre à jour le stock à 0 pour ces dates spécifiques.
+		- **Cas limites** :
+			- Si une date a déjà un stock à 0, elle est ignorée (ne fait pas partie des dates avec stock > 0).
+			- Toutes les dates valides (format YYYY-MM-DD) peuvent être mises à jour dans OpenPro via l'API. Il n'existe pas de cas d'erreur pour une "date qui n'existe pas" car l'API OpenPro crée automatiquement les entrées de stock pour les dates valides.
+		- En cas de succès, rafraîchir les données pour refléter les changements de stock.
+		- En cas d'erreur, afficher un message d'erreur à l'utilisateur.
+
+4. **Détails d'implémentation**
+
+	4.1. **Détection des dates disponibles dans la sélection**
+		- Dans `ProviderCalendars/index.tsx`, créer un `useMemo` qui :
+			- Parcourt toutes les cellules de `selectedCells`.
+			- Pour chaque cellule (`accId|dateStr`), vérifie le stock via `stockByAccommodation[accId]?.[dateStr] ?? 0`.
+			- Retourne un objet `Record<number, Set<string>>` (hébergement → dates avec stock > 0) contenant uniquement les dates disponibles sélectionnées.
+
+	4.2. **Comptage des dates disponibles**
+		- Calculer le nombre total de dates disponibles sélectionnées pour déterminer l'affichage du bouton et le texte du bouton (ex: "Fermer (5 dates)").
+
+	4.3. **Composant ActionButtons**
+		- Ajouter une prop `availableDatesCount?: number` au composant `ActionButtons`.
+		- Ajouter une prop `onCloseAvailable?: () => void` pour le callback du clic.
+		- Afficher conditionnellement le bouton "Fermer" si `availableDatesCount > 0`.
+		- Le bouton doit avoir un style distinct avec couleur rouge pour différencier des autres boutons et indiquer une action de fermeture.
+
+	4.4. **Fonction de mise à jour du stock**
+		- Utiliser la fonction `updateStock()` dans `backendClient.ts` qui appelle `POST /api/suppliers/:idFournisseur/accommodations/:idHebergement/stock` du backend.
+
+	4.5. **Handler de fermeture**
+		- Dans `ProviderCalendars/index.tsx`, créer une fonction `handleCloseAvailable()` qui :
+			- Récupère les dates disponibles groupées par hébergement (via le `useMemo` de détection).
+			- Pour chaque hébergement, construit un payload avec les dates à mettre à jour (stock = 0).
+			- Appelle `updateStock()` pour chaque hébergement.
+			- Gère les erreurs (affichage d'un message si une mise à jour échoue).
+			- Appelle `handleRefreshData()` en cas de succès complet pour rafraîchir l'affichage.
+
+5. **Gestion des erreurs**
+	- **Erreur partielle** : Si certaines mises à jour réussissent et d'autres échouent, afficher un message d'erreur indiquant quelles dates n'ont pas pu être mises à jour.
+	- **Erreur totale** : Si toutes les mises à jour échouent, afficher un message d'erreur global.
+	- **État de chargement** : Le bouton "Fermer" doit être désactivé pendant la mise à jour du stock.
+
+6. **Expérience utilisateur**
+	- Le bouton "Fermer" doit afficher le nombre de dates concernées (ex: "Fermer (5 dates)").
+	- Pendant la mise à jour, afficher un état de chargement ("Fermeture...").
+	- Après succès, la sélection peut être maintenue ou vidée (à définir selon préférence UX).
+	- Les dates fermées apparaissent immédiatement en rouge après rafraîchissement.
+
+7. **Intégration avec le système existant**
+	- Le bouton "Fermer" coexiste avec les boutons "Actualiser", "Ouvrir" et "Sauvegarder".
+	- L'ordre d'affichage recommandé des boutons : "Actualiser" → "Fermer" (si dates disponibles) → "Ouvrir" (si dates non disponibles) → "Sauvegarder" (si modifications).
+	- La logique de mise à jour du stock doit être séparée de la logique de sauvegarde des tarifs/durées minimales.
+	- Les modifications de stock sont immédiatement persistées dans OpenPro (pas besoin de cliquer sur "Sauvegarder").
+
 ##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
 
 1. **Vue d'ensemble**

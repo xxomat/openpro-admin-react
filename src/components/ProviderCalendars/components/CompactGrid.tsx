@@ -128,7 +128,7 @@ export function CompactGrid({
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
-  // Sélectionne uniquement les cellules avec stock >= 1
+  // Sélectionne toutes les cellules, même avec stock à 0
   const handleHeaderClick = React.useCallback((dateStr: string) => {
     onSelectedCellsChange((prev: Set<string>) => {
       const newSet = new Set(prev);
@@ -137,30 +137,26 @@ export function CompactGrid({
       let allSelected = true;
       for (const acc of accommodations) {
         const cellKey = `${acc.idHebergement}|${dateStr}`;
-        const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
-        if (stock >= 1 && !newSet.has(cellKey)) {
+        if (!newSet.has(cellKey)) {
           allSelected = false;
           break;
         }
       }
       
       // Si toutes sont sélectionnées, désélectionner toutes
-      // Sinon, sélectionner toutes celles avec stock >= 1
+      // Sinon, sélectionner toutes (même avec stock à 0)
       for (const acc of accommodations) {
         const cellKey = `${acc.idHebergement}|${dateStr}`;
-        const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
-        if (stock >= 1) {
-          if (allSelected) {
-            newSet.delete(cellKey);
-          } else {
-            newSet.add(cellKey);
-          }
+        if (allSelected) {
+          newSet.delete(cellKey);
+        } else {
+          newSet.add(cellKey);
         }
       }
       
       return newSet;
     });
-  }, [onSelectedCellsChange, accommodations, stockByAccommodation]);
+  }, [onSelectedCellsChange, accommodations]);
 
   // Gestionnaire pour convertir le scroll vertical en scroll horizontal
   // Utilisation d'un useEffect avec addEventListener pour pouvoir utiliser { passive: false }
@@ -271,17 +267,13 @@ export function CompactGrid({
         </div>
         {allDays.map((day, idx) => {
           const dateStr = formatDate(day);
-          // Une colonne est considérée sélectionnée si toutes les cellules avec stock >= 1 sont sélectionnées
+          // Une colonne est considérée sélectionnée si toutes les cellules sont sélectionnées
           const isSelected = accommodations.length > 0 && accommodations.every(acc => {
-            const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
-            if (stock < 1) return true; // Ignorer les cellules sans stock
             const cellKey = `${acc.idHebergement}|${dateStr}`;
             return selectedCells.has(cellKey);
           });
-          // Une colonne est en drag si au moins une cellule avec stock >= 1 est en drag
+          // Une colonne est en drag si au moins une cellule est en drag
           const isDragging = accommodations.some(acc => {
-            const stock = stockByAccommodation[acc.idHebergement]?.[dateStr] ?? 0;
-            if (stock < 1) return false;
             const cellKey = `${acc.idHebergement}|${dateStr}`;
             return draggingCells.has(cellKey);
           });

@@ -233,3 +233,67 @@ export async function createBooking(
   return res.json();
 }
 
+/**
+ * Type pour un jour de stock dans la requête de mise à jour
+ */
+export interface StockDay {
+  date: string;    // Format: YYYY-MM-DD
+  dispo: number;   // Disponibilité (généralement 0 ou 1)
+}
+
+/**
+ * Payload pour la mise à jour du stock
+ */
+export interface UpdateStockPayload {
+  jours: StockDay[];
+}
+
+/**
+ * Met à jour le stock pour un hébergement
+ * 
+ * Cette fonction permet de mettre à jour ou créer des entrées de stock
+ * dans OpenPro pour un hébergement donné. Les dates peuvent être créées
+ * si elles n'existent pas déjà dans OpenPro.
+ * 
+ * @param idFournisseur - Identifiant du fournisseur
+ * @param idHebergement - Identifiant de l'hébergement
+ * @param stockPayload - Payload contenant les jours à mettre à jour
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue en cas de succès
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ * 
+ * @example
+ * ```typescript
+ * await updateStock(47186, 1, {
+ *   jours: [
+ *     { date: '2025-06-15', dispo: 1 },
+ *     { date: '2025-06-16', dispo: 1 },
+ *     { date: '2025-06-17', dispo: 0 }
+ *   ]
+ * });
+ * ```
+ */
+export async function updateStock(
+  idFournisseur: number,
+  idHebergement: number,
+  stockPayload: UpdateStockPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/stock`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(stockPayload),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to update stock: ${errorText}`);
+  }
+}
+

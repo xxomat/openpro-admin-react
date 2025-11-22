@@ -23,7 +23,7 @@ import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
 import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
-import { saveBulkUpdates, type BulkUpdateRequest } from '../../services/api/backendClient';
+import { saveBulkUpdates, type BulkUpdateRequest, updateStock } from '../../services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
 import { getNonReservableDays } from './utils/availabilityUtils';
 
@@ -493,6 +493,186 @@ export function ProviderCalendars(): React.ReactElement {
     );
   }, [selectedCells, selectedAccommodations, activeSupplier, ratesByAccommodation, selectedRateTypeId, supplierData]);
 
+  // Détecter les dates non disponibles (stock à 0) dans la sélection
+  const unavailableDatesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier || selectedCells.size === 0) {
+      return {} as Record<number, Set<string>>;
+    }
+
+    const result: Record<number, Set<string>> = {};
+
+    for (const cellKey of selectedCells) {
+      const [accIdStr, dateStr] = cellKey.split('|');
+      const accId = parseInt(accIdStr, 10);
+      
+      if (isNaN(accId) || !dateStr) continue;
+
+      // Vérifier le stock pour cette cellule
+      const stock = stockByAccommodation[accId]?.[dateStr] ?? 0;
+      
+      // Si le stock est à 0, ajouter cette date aux dates non disponibles
+      if (stock === 0) {
+        if (!result[accId]) {
+          result[accId] = new Set<string>();
+        }
+        result[accId].add(dateStr);
+      }
+    }
+
+    return result;
+  }, [selectedCells, stockByAccommodation, activeSupplier]);
+
+  // Compter le nombre total de dates non disponibles
+  const unavailableDatesCount = React.useMemo(() => {
+    let count = 0;
+    for (const dates of Object.values(unavailableDatesByAccommodation)) {
+      count += dates.size;
+    }
+    return count;
+  }, [unavailableDatesByAccommodation]);
+
+  // Détecter les dates disponibles (stock > 0) dans la sélection
+  const availableDatesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier || selectedCells.size === 0) {
+      return {} as Record<number, Set<string>>;
+    }
+
+    const result: Record<number, Set<string>> = {};
+
+    for (const cellKey of selectedCells) {
+      const [accIdStr, dateStr] = cellKey.split('|');
+      const accId = parseInt(accIdStr, 10);
+      
+      if (isNaN(accId) || !dateStr) continue;
+
+      // Vérifier le stock pour cette cellule
+      const stock = stockByAccommodation[accId]?.[dateStr] ?? 0;
+      
+      // Si le stock est > 0, ajouter cette date aux dates disponibles
+      if (stock > 0) {
+        if (!result[accId]) {
+          result[accId] = new Set<string>();
+        }
+        result[accId].add(dateStr);
+      }
+    }
+
+    return result;
+  }, [selectedCells, stockByAccommodation, activeSupplier]);
+
+  // Compter le nombre total de dates disponibles
+  const availableDatesCount = React.useMemo(() => {
+    let count = 0;
+    for (const dates of Object.values(availableDatesByAccommodation)) {
+      count += dates.size;
+    }
+    return count;
+  }, [availableDatesByAccommodation]);
+
+  // Fonction pour ouvrir (réactiver) les dates non disponibles
+  // Définie après unavailableDatesCount et unavailableDatesByAccommodation pour éviter l'erreur d'initialisation
+  const handleOpenUnavailable = React.useCallback(async () => {
+    if (!activeSupplier || unavailableDatesCount === 0) return;
+    
+    setSaving(true);
+    supplierData.setError(null);
+    
+    const errors: string[] = [];
+    let successCount = 0;
+    
+    try {
+      // Pour chaque hébergement avec des dates non disponibles
+      for (const [accIdStr, dates] of Object.entries(unavailableDatesByAccommodation)) {
+        const accId = parseInt(accIdStr, 10);
+        if (isNaN(accId) || dates.size === 0) continue;
+        
+        try {
+          // Créer le payload pour mettre le stock à 1 pour toutes les dates non disponibles
+          const stockPayload = {
+            jours: Array.from(dates).map(dateStr => ({
+              date: dateStr,
+              dispo: 1
+            }))
+          };
+          
+          // Mettre à jour le stock dans OpenPro
+          await updateStock(activeSupplier.idFournisseur, accId, stockPayload);
+          successCount += dates.size;
+        } catch (error) {
+          const errorMsg = `Erreur pour l'hébergement ${accId}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+          errors.push(errorMsg);
+          console.error(errorMsg, error);
+        }
+      }
+      
+      if (errors.length > 0) {
+        // Si certaines mises à jour ont échoué
+        const partialError = `Certaines dates n'ont pas pu être ouvertes (${successCount}/${unavailableDatesCount} réussies). ${errors.join('; ')}`;
+        supplierData.setError(partialError);
+      } else if (successCount > 0) {
+        // Si toutes les mises à jour ont réussi, rafraîchir les données
+        await handleRefreshData();
+      }
+    } catch (error) {
+      // Gérer les erreurs globales
+      supplierData.setError(error instanceof Error ? error.message : 'Erreur lors de l\'ouverture des dates');
+    } finally {
+      setSaving(false);
+    }
+  }, [activeSupplier, unavailableDatesCount, unavailableDatesByAccommodation, supplierData, handleRefreshData]);
+
+  // Fonction pour fermer (mettre à 0) les dates disponibles
+  // Définie après availableDatesCount et availableDatesByAccommodation pour éviter l'erreur d'initialisation
+  const handleCloseAvailable = React.useCallback(async () => {
+    if (!activeSupplier || availableDatesCount === 0) return;
+    
+    setSaving(true);
+    supplierData.setError(null);
+    
+    const errors: string[] = [];
+    let successCount = 0;
+    
+    try {
+      // Pour chaque hébergement avec des dates disponibles
+      for (const [accIdStr, dates] of Object.entries(availableDatesByAccommodation)) {
+        const accId = parseInt(accIdStr, 10);
+        if (isNaN(accId) || dates.size === 0) continue;
+        
+        try {
+          // Créer le payload pour mettre le stock à 0 pour toutes les dates disponibles
+          const stockPayload = {
+            jours: Array.from(dates).map(dateStr => ({
+              date: dateStr,
+              dispo: 0
+            }))
+          };
+          
+          // Mettre à jour le stock dans OpenPro
+          await updateStock(activeSupplier.idFournisseur, accId, stockPayload);
+          successCount += dates.size;
+        } catch (error) {
+          const errorMsg = `Erreur pour l'hébergement ${accId}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+          errors.push(errorMsg);
+          console.error(errorMsg, error);
+        }
+      }
+      
+      if (errors.length > 0) {
+        // Si certaines mises à jour ont échoué
+        const partialError = `Certaines dates n'ont pas pu être fermées (${successCount}/${availableDatesCount} réussies). ${errors.join('; ')}`;
+        supplierData.setError(partialError);
+      } else if (successCount > 0) {
+        // Si toutes les mises à jour ont réussi, rafraîchir les données
+        await handleRefreshData();
+      }
+    } catch (error) {
+      // Gérer les erreurs globales
+      supplierData.setError(error instanceof Error ? error.message : 'Erreur lors de la fermeture des dates');
+    } finally {
+      setSaving(false);
+    }
+  }, [activeSupplier, availableDatesCount, availableDatesByAccommodation, supplierData, handleRefreshData]);
+
   return (
     <div style={{ 
       padding: '16px', 
@@ -582,8 +762,12 @@ export function ProviderCalendars(): React.ReactElement {
               loading={supplierData.loading || saving}
               modifiedRatesCount={modifiedRates.size}
               modifiedDureeMinCount={modifiedDureeMin.size}
+              unavailableDatesCount={unavailableDatesCount}
+              availableDatesCount={availableDatesCount}
               onRefresh={handleRefreshData}
               onSave={handleSave}
+              onOpenUnavailable={handleOpenUnavailable}
+              onCloseAvailable={handleCloseAvailable}
             />
           </div>
           
