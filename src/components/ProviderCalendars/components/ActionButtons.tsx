@@ -36,7 +36,7 @@ export function ActionButtons({
   const totalModifications = modifiedRatesCount + modifiedDureeMinCount;
 
   return (
-    <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
       <button
         onClick={onRefresh}
         disabled={loading}
