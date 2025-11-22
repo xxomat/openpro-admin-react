@@ -5,7 +5,7 @@
  * via des requêtes HTTP fetch. Le frontend n'appelle plus directement l'API OpenPro.
  */
 
-import type { Accommodation, SupplierData } from '../../components/ProviderCalendars/types';
+import type { Accommodation, SupplierData, BookingDisplay } from '../../components/ProviderCalendars/types';
 
 const BACKEND_BASE_URL = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:8787';
 
@@ -181,5 +181,55 @@ export async function saveBulkUpdates(
     const errorText = await res.text();
     throw new Error(`HTTP ${res.status}: Failed to save bulk updates: ${errorText}`);
   }
+}
+
+/**
+ * Type pour les données de création d'une réservation
+ */
+export interface CreateBookingData {
+  idHebergement: number;
+  dateArrivee: string; // Format: YYYY-MM-DD
+  dateDepart: string;  // Format: YYYY-MM-DD
+  clientNom?: string;
+  clientPrenom?: string;
+  clientEmail?: string;
+  clientTelephone?: string;
+  nbPersonnes?: number;
+  montantTotal?: number;
+  reference?: string;
+}
+
+/**
+ * Crée une nouvelle réservation locale
+ * 
+ * @param idFournisseur - Identifiant du fournisseur
+ * @param bookingData - Données de la réservation à créer
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec la réservation créée
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function createBooking(
+  idFournisseur: number,
+  bookingData: CreateBookingData,
+  signal?: AbortSignal
+): Promise<BookingDisplay> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/local-bookings`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bookingData),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to create booking: ${errorText}`);
+  }
+  
+  return res.json();
 }
 

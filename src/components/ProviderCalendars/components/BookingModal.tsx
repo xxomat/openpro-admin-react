@@ -15,6 +15,7 @@ import { formatDateDisplay } from '../utils/dateUtils';
 import { darkTheme } from '../utils/theme';
 import { useBookingForm } from './BookingModal/hooks/useBookingForm';
 import { ClientForm } from './BookingModal/components/ClientForm';
+import { createBooking } from '../../../services/api/backendClient';
 
 
 /**
@@ -53,6 +54,10 @@ export interface BookingModalProps {
   onClose: () => void;
   /** Récapitulatifs de réservation par hébergement */
   bookingSummaries: BookingSummary[];
+  /** Identifiant du fournisseur */
+  idFournisseur: number;
+  /** Callback appelé après création réussie d'une réservation */
+  onBookingCreated?: () => void;
 }
 
 /**
@@ -61,7 +66,9 @@ export interface BookingModalProps {
 export function BookingModal({
   isOpen,
   onClose,
-  bookingSummaries
+  bookingSummaries,
+  idFournisseur,
+  onBookingCreated
 }: BookingModalProps): React.ReactElement | null {
   // Utiliser le hook pour gérer la logique du formulaire
   const {
@@ -75,6 +82,77 @@ export function BookingModal({
     isFormValidForAccommodation,
     isAllFormsValid
   } = useBookingForm(bookingSummaries);
+  
+  // État pour le chargement de la création
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [creationError, setCreationError] = React.useState<string | null>(null);
+  
+  // Trier les récapitulatifs par ordre alphabétique (réutilisé plus bas)
+  const sortedSummaries = React.useMemo(() => {
+    return [...bookingSummaries].sort((a, b) => a.accName.localeCompare(b.accName));
+  }, [bookingSummaries]);
+  
+  // Fonction pour créer les réservations
+  const handleConfirmBooking = React.useCallback(async () => {
+    if (!isAllFormsValid || isCreating) return;
+    
+    setIsCreating(true);
+    setCreationError(null);
+    
+    try {
+      // Créer une réservation pour chaque hébergement
+      const createPromises = sortedSummaries.map(async (summary) => {
+        const clientData = clientDataByAccommodation.get(summary.accId);
+        if (!clientData) {
+          throw new Error(`Données client manquantes pour l'hébergement ${summary.accName}`);
+        }
+        
+        // Utiliser la première plage de dates (normalement il n'y en a qu'une seule)
+        if (summary.dateRanges.length === 0) {
+          throw new Error(`Aucune plage de dates pour l'hébergement ${summary.accName}`);
+        }
+        
+        const firstRange = summary.dateRanges[0];
+        
+        // Construire le nom complet si nécessaire
+        let clientNom = clientData.nom?.trim();
+        let clientPrenom = clientData.prenom?.trim();
+        
+        // Si on n'a qu'un seul champ rempli, essayer de l'utiliser comme nom complet
+        if (!clientNom && !clientPrenom) {
+          throw new Error(`Nom ou prénom requis pour l'hébergement ${summary.accName}`);
+        }
+        
+        // Créer la réservation
+        await createBooking(idFournisseur, {
+          idHebergement: summary.accId,
+          dateArrivee: firstRange.startDate,
+          dateDepart: firstRange.endDate,
+          clientNom,
+          clientPrenom,
+          clientEmail: clientData.email?.trim() || undefined,
+          clientTelephone: clientData.telephone?.trim() || undefined,
+          nbPersonnes: 2, // Par défaut, peut être ajusté plus tard
+          montantTotal: summary.totalPrice || undefined,
+          reference: undefined // Peut être généré automatiquement côté backend
+        });
+      });
+      
+      // Attendre que toutes les réservations soient créées
+      await Promise.all(createPromises);
+      
+      // Succès : rafraîchir les données et fermer la modale
+      if (onBookingCreated) {
+        onBookingCreated();
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error creating bookings:', error);
+      setCreationError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la création des réservations');
+    } finally {
+      setIsCreating(false);
+    }
+  }, [isAllFormsValid, isCreating, sortedSummaries, clientDataByAccommodation, idFournisseur, onBookingCreated, onClose]);
 
   // Empêcher la propagation de la touche Escape quand la modale est ouverte
   React.useEffect(() => {
@@ -93,12 +171,6 @@ export function BookingModal({
       window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [isOpen, onClose]);
-
-
-  // Trier les récapitulatifs par ordre alphabétique du nom d'hébergement
-  const sortedSummaries = React.useMemo(() => {
-    return [...bookingSummaries].sort((a, b) => a.accName.localeCompare(b.accName));
-  }, [bookingSummaries]);
 
   // Calculer le prix total de toutes les réservations
   const totalPrice = React.useMemo(() => {
@@ -461,37 +533,47 @@ export function BookingModal({
               </div>
             )}
             {sortedSummaries.length === 0 && <div />}
+            {creationError && (
+              <div
+                style={{
+                  padding: '10px',
+                  marginBottom: '10px',
+                  backgroundColor: darkTheme.errorBg,
+                  color: darkTheme.errorText,
+                  borderRadius: 6,
+                  fontSize: 13
+                }}
+              >
+                {creationError}
+              </div>
+            )}
             <button
-              onClick={() => {
-                if (!isAllFormsValid) return;
-                // TODO: Implémenter la logique de réservation
-                onClose();
-              }}
-              disabled={!isAllFormsValid}
+              onClick={handleConfirmBooking}
+              disabled={!isAllFormsValid || isCreating}
               style={{
                 padding: '10px 20px',
-                backgroundColor: isAllFormsValid ? darkTheme.buttonPrimaryBg : darkTheme.bgTertiary,
-                color: isAllFormsValid ? darkTheme.buttonText : darkTheme.textTertiary,
+                backgroundColor: (isAllFormsValid && !isCreating) ? darkTheme.buttonPrimaryBg : darkTheme.bgTertiary,
+                color: (isAllFormsValid && !isCreating) ? darkTheme.buttonText : darkTheme.textTertiary,
                 border: 'none',
                 borderRadius: 6,
                 fontSize: 14,
                 fontWeight: 500,
-                cursor: isAllFormsValid ? 'pointer' : 'not-allowed',
+                cursor: (isAllFormsValid && !isCreating) ? 'pointer' : 'not-allowed',
                 boxShadow: darkTheme.shadowSm,
-                opacity: isAllFormsValid ? 1 : 0.6
+                opacity: (isAllFormsValid && !isCreating) ? 1 : 0.6
               }}
               onMouseEnter={(e) => {
-                if (isAllFormsValid) {
+                if (isAllFormsValid && !isCreating) {
                   e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryHover;
                 }
               }}
               onMouseLeave={(e) => {
-                if (isAllFormsValid) {
+                if (isAllFormsValid && !isCreating) {
                   e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryBg;
                 }
               }}
             >
-              Confirmer la réservation
+              {isCreating ? 'Création en cours...' : 'Confirmer la réservation'}
             </button>
           </div>
         </div>

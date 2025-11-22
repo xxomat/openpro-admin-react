@@ -606,6 +606,8 @@ export function ProviderCalendars(): React.ReactElement {
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
         bookingSummaries={bookingSummaries}
+        idFournisseur={activeSupplier?.idFournisseur ?? 0}
+        onBookingCreated={handleRefreshData}
       />
     </div>
   );
