@@ -1,16 +1,17 @@
 /**
  * Composant BookingOverlay - Overlay des rectangles de réservation
  * 
- * Ce composant affiche des rectangles bleus opaques par-dessus les cellules de la grille
- * pour représenter visuellement les réservations. Il utilise des refs pour mesurer
- * les positions réelles des cellules dans le DOM.
+ * Ce composant affiche des rectangles colorés par-dessus les cellules de la grille
+ * pour représenter visuellement les réservations. Chaque plateforme de réservation
+ * a une couleur distincte. Il utilise des refs pour mesurer les positions réelles
+ * des cellules dans le DOM.
  */
 
 import React from 'react';
 import type { Accommodation, BookingDisplay } from '../../../types';
 import { formatDate } from '../../../utils/dateUtils';
 import { filterBookingsByDateRange } from '../utils/gridUtils';
-import { darkTheme } from '../../../utils/theme';
+import { darkTheme, getBookingColor } from '../../../utils/theme';
 import { BookingTooltip } from './BookingTooltip';
 
 /**
@@ -235,7 +236,7 @@ export function BookingOverlay({
               width: `${rect.width}px`,
               top: `${rect.top}px`,
               height: `${rect.height}px`,
-              background: darkTheme.bookingBg,
+              background: getBookingColor(rect.booking.plateformeReservation),
               borderRadius: 8,
               display: 'flex',
               alignItems: 'center',

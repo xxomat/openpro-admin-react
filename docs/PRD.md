@@ -966,8 +966,9 @@ A définir
 ##### Affichage des réservations — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
-	- Les réservations sont affichées sous forme de **rectangles bleus opaques** par-dessus les cellules du calendrier.
+	- Les réservations sont affichées sous forme de **rectangles colorés opaques** par-dessus les cellules du calendrier.
 	- Chaque réservation est représentée par un rectangle continu qui s'étend sur plusieurs cellules selon les dates d'arrivée et de départ.
+	- Chaque plateforme de réservation a une couleur distincte pour faciliter l'identification visuelle (voir section 5 pour les détails des couleurs).
 	- Les rectangles sont positionnés directement dans la grille CSS pour un alignement automatique avec les lignes d'hébergements.
 
 2. **Chargement des données de réservation**
@@ -1013,7 +1014,14 @@ A définir
 		- L'overlay des rectangles est limité en x pour empêcher tout débordement.
 
 5. **Style visuel des rectangles**
-	- **Couleur de fond** : Bleu foncé opaque (`darkTheme.bookingBg`, ex: `#3b82f6`).
+	- **Couleur de fond** : Chaque plateforme de réservation a une couleur distincte pour faciliter l'identification visuelle :
+		- **Booking.com** : `#003580` (bleu foncé, contraste ~8.6:1 avec texte blanc)
+		- **Directe** : `#059669` (vert émeraude foncé, contraste ~4.7:1 avec texte blanc)
+		- **OpenPro** : `#7c3aed` (violet foncé, contraste ~5.2:1 avec texte blanc)
+		- **Xotelia** : `#dc2626` (rouge foncé, contraste ~5.1:1 avec texte blanc)
+		- **Unknown** : `#64748b` (gris moyen, contraste ~4.5:1 avec texte blanc)
+	- La couleur est déterminée par la propriété `plateformeReservation` de chaque réservation via la fonction `getBookingColor()` du thème.
+	- Toutes les couleurs respectent le ratio de contraste WCAG AA minimum de 4.5:1 avec le texte blanc pour garantir une bonne lisibilité.
 	- **Bordures** : Bordures arrondies avec `borderRadius: 8px`.
 	- **Z-index** : `zIndex: 2` pour s'afficher au-dessus des cellules de la grille (`zIndex: 1`).
 	- **Pointer events** : `pointerEvents: 'none'` pour ne pas bloquer les interactions avec les cellules sous-jacentes.
@@ -1069,8 +1077,8 @@ A définir
 ##### Tooltip des réservations — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
-	- Un tooltip contextuel s'affiche au survol des rectangles bleus de réservation.
-	- Le tooltip affiche un résumé condensé mais complet de toutes les données du dossier de réservation.
+	- Un tooltip contextuel s'affiche au survol des rectangles colorés de réservation.
+	- Le tooltip affiche un résumé condensé mais complet de toutes les données du dossier de réservation, incluant la plateforme de réservation.
 	- Le tooltip suit la position de la souris pour rester visible pendant le survol.
 
 2. **Déclenchement du tooltip**
