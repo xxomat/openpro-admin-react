@@ -52,6 +52,8 @@ export interface CompactGridProps {
   onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
+  /** Map des jours non réservables par hébergement (clé: idHebergement, valeur: Set des dates non réservables) */
+  nonReservableDaysByAccommodation: Record<number, Set<string>>;
 }
 
 export function CompactGrid({
@@ -68,7 +70,8 @@ export function CompactGrid({
   modifiedDureeMin,
   onRateUpdate,
   onDureeMinUpdate,
-  selectedRateTypeId
+  selectedRateTypeId,
+  nonReservableDaysByAccommodation
 }: CompactGridProps): React.ReactElement {
   const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -347,6 +350,7 @@ export function CompactGrid({
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
                 const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                const isNonReservable = (nonReservableDaysByAccommodation[acc.idHebergement] ?? new Set<string>()).has(dateStr);
 
                 return (
                   <GridDataCell
@@ -365,6 +369,7 @@ export function CompactGrid({
                     editingValue={editingValue}
                     editingDureeMinValue={editingDureeMinValue}
                     isWeekend={isWeekend}
+                    isNonReservable={isNonReservable}
                     selectedRateTypeId={selectedRateTypeId}
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}

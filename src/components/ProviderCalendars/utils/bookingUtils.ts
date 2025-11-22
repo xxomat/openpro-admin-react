@@ -221,16 +221,21 @@ export function generateBookingSummaries(
  * La sélection est valide si :
  * - Pour chaque hébergement, les dates sélectionnées sont consécutives (ou une seule date)
  * - ET la durée de la sélection est supérieure ou égale à la durée minimale de séjour de chaque date
+ * - ET chaque date de la sélection a un tarif défini pour le type de tarif sélectionné
  * 
  * @param selectedCells - Set de cellules sélectionnées (format: "accId|dateStr")
  * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date (format: Record<accId, Record<dateStr, dureeMin>>)
  * @param selectedAccommodations - Set des IDs d'hébergements sélectionnés dans le filtre (optionnel, si non fourni, tous les hébergements sont considérés)
+ * @param ratesByAccommodation - Map des tarifs par hébergement, date et type de tarif (format: Record<accId, Record<dateStr, Record<rateTypeId, price>>>)
+ * @param selectedRateTypeId - ID du type de tarif sélectionné (null si aucun)
  * @returns true si la sélection est valide pour afficher le bouton Réserver
  */
 export function isValidBookingSelection(
   selectedCells: Set<string>,
   dureeMinByAccommodation?: Record<number, Record<string, number | null>>,
-  selectedAccommodations?: Set<number>
+  selectedAccommodations?: Set<number>,
+  ratesByAccommodation?: Record<number, Record<string, Record<number, number>>>,
+  selectedRateTypeId?: number | null
 ): boolean {
   if (selectedCells.size === 0) return false;
   
@@ -259,9 +264,26 @@ export function isValidBookingSelection(
     datesByAccommodation.get(accId)!.push(dateStr);
   }
   
-  // Vérifier que pour chaque hébergement, les dates sont consécutives ET respectent les durées minimales
+  // Vérifier que pour chaque hébergement, les dates sont consécutives ET respectent les durées minimales ET ont un tarif
   for (const [accId, dates] of datesByAccommodation.entries()) {
     if (dates.length === 0) continue;
+    
+    // Vérifier que chaque date a un tarif défini (si un type de tarif est sélectionné)
+    if (selectedRateTypeId !== null && selectedRateTypeId !== undefined && ratesByAccommodation) {
+      const ratesForAcc = ratesByAccommodation[accId];
+      if (ratesForAcc) {
+        for (const dateStr of dates) {
+          const price = ratesForAcc[dateStr]?.[selectedRateTypeId];
+          // Si le tarif n'est pas défini, la sélection n'est pas valide
+          if (price === undefined || price === null) {
+            return false;
+          }
+        }
+      } else {
+        // Pas de tarifs pour cet hébergement
+        return false;
+      }
+    }
     
     // Cas spécial : une seule date = valide pour la consécutivité
     if (dates.length === 1) {

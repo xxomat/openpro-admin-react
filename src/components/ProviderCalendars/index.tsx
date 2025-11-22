@@ -25,6 +25,7 @@ import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
 import { saveBulkUpdates, type BulkUpdateRequest } from '../../services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
+import { getNonReservableDays } from './utils/availabilityUtils';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
@@ -132,6 +133,33 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return {};
     return supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.bookingsBySupplierAndAccommodation]);
+
+  // Calculer les jours non réservables pour chaque hébergement
+  const nonReservableDaysByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    
+    const result: Record<number, Set<string>> = {};
+    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    
+    for (const acc of accommodations) {
+      const stockByDate = stockByAccommodation[acc.idHebergement] ?? {};
+      const dureeMinByDate = dureeMinByAccommodation[acc.idHebergement] ?? {};
+      const ratesByDate = ratesByAccommodation[acc.idHebergement];
+      
+      const nonReservableDays = getNonReservableDays(
+        stockByDate,
+        dureeMinByDate,
+        ratesByDate,
+        selectedRateTypeId,
+        startDate,
+        endDate
+      );
+      
+      result[acc.idHebergement] = nonReservableDays;
+    }
+    
+    return result;
+  }, [activeSupplier, stockByAccommodation, dureeMinByAccommodation, ratesByAccommodation, selectedRateTypeId, startDate, endDate, supplierData]);
 
   // Fonction pour mettre à jour les prix localement
   const handleRateUpdate = React.useCallback((
@@ -438,10 +466,17 @@ export function ProviderCalendars(): React.ReactElement {
   // Vérifier si la sélection est valide pour la réservation
   // Pour chaque hébergement, les dates doivent être consécutives (ou une seule date)
   // ET la durée de la sélection doit être >= à la durée minimale de chaque date
+  // ET chaque date doit avoir un tarif défini pour le type de tarif sélectionné
   // La validation ne considère que les hébergements sélectionnés dans le filtre
   const hasValidBookingSelection = React.useMemo(() => {
-    return isValidBookingSelection(selectedCells, dureeMinByAccommodation, selectedAccommodations);
-  }, [selectedCells, dureeMinByAccommodation, selectedAccommodations]);
+    return isValidBookingSelection(
+      selectedCells, 
+      dureeMinByAccommodation, 
+      selectedAccommodations,
+      ratesByAccommodation,
+      selectedRateTypeId
+    );
+  }, [selectedCells, dureeMinByAccommodation, selectedAccommodations, ratesByAccommodation, selectedRateTypeId]);
 
   // Générer les récapitulatifs de réservation
   const bookingSummaries = React.useMemo(() => {
@@ -513,6 +548,7 @@ export function ProviderCalendars(): React.ReactElement {
                 onRateUpdate={handleRateUpdate}
                 onDureeMinUpdate={handleDureeMinUpdate}
                 selectedRateTypeId={selectedRateTypeId}
+                nonReservableDaysByAccommodation={nonReservableDaysByAccommodation}
               />
             </>
           )}

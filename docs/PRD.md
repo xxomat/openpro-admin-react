@@ -1240,6 +1240,49 @@ A définir
 	- Ajout de la condition `stock > 0` dans l'affichage conditionnel du prix et de la durée minimale dans `GridDataCell`.
 	- Les cellules sans stock restent visibles avec leur couleur de fond, mais sans contenu textuel.
 
+##### Détection et affichage des jours non réservables — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'interface affiche en gris les jours où un hébergement n'est pas réservable.
+	- Un jour est non réservable si sa durée minimale de réservation est strictement supérieure à la longueur de la plage de disponibilité à laquelle il appartient.
+
+2. **Concepts de l'algorithme**
+	- **Plage de disponibilité** : Période continue où le stock est à 1, encadrée par des jours où le stock est à 0 ou non défini.
+	- **Note importante** : Par défaut, le jour d'hier (date de début de la période affichée - 1 jour) est considéré comme ayant un stock à 0 dans cet algorithme.
+	- **Longueur d'une plage** : Nombre de jours consécutifs où le stock est à 1 dans la plage.
+	- **Règle de réservabilité** : Un jour est non réservable si sa durée minimale de réservation est strictement supérieure à la longueur de la plage de disponibilité à laquelle il appartient.
+
+3. **Algorithme de détection**
+	- Pour chaque hébergement et chaque jour dans la période affichée :
+		- Si le stock du jour est à 1 :
+			- Identifier la plage de disponibilité à laquelle le jour appartient.
+			- Calculer la longueur de cette plage.
+			- Comparer la durée minimale de réservation du jour avec la longueur de la plage.
+			- Si `dureeMin > longueur de la plage`, marquer le jour comme non réservable.
+		- Si le stock du jour est à 0 ou non défini :
+			- Le jour est automatiquement non réservable (pas de plage de disponibilité).
+
+4. **Affichage visuel**
+	- **Jours non réservables** :
+		- Fond gris (`darkTheme.bgTertiary`) avec opacité réduite à 0.5.
+		- Le prix et la durée minimale restent affichés mais avec une opacité réduite.
+		- La bordure est conservée mais avec une opacité réduite.
+	- **Jours réservables** :
+		- Affichage normal (fond vert/rouge selon le stock, opacité normale).
+
+5. **Cas limites**
+	- **Plage de 1 jour avec durée minimale de 1 jour** : Jour réservable (1 ≤ 1).
+	- **Plage de 1 jour avec durée minimale de 2 jours** : Jour non réservable (2 > 1).
+	- **Durée minimale absente ou nulle** : Jour réservable par défaut (pas de contrainte).
+	- **Stock à 0** : Jour non réservable (pas de plage de disponibilité).
+
+6. **Implémentation technique**
+	- **Fichier utilitaire** : `availabilityUtils.ts` contient :
+		- `getAvailabilityRanges()` : Calcule les plages de disponibilité pour un hébergement.
+		- `getNonReservableDays()` : Identifie les jours non réservables en comparant les durées minimales avec les longueurs des plages.
+	- **Calcul dans le composant principal** : `ProviderCalendars/index.tsx` calcule `nonReservableDaysByAccommodation` avec `useMemo` pour optimiser les performances.
+	- **Affichage** : `GridDataCell` reçoit la prop `isNonReservable` et applique le style gris avec opacité réduite.
+
 ##### Remplacement du champ "Durée" par "Date de fin" — Fichiers à modifier
 
 **Contexte** : Le champ "Durée" (select avec options 1, 2 ou 3 mois) est remplacé par un champ "Date de fin" (input de type `date` HTML5) pour permettre une sélection plus flexible de la période à afficher.

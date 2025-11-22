@@ -131,9 +131,11 @@ export function ClientForm({
       display: 'flex', 
       flexDirection: 'column', 
       gap,
-      width: '100%',
-      minWidth: 0,
-      boxSizing: 'border-box'
+      width: '300px', // Largeur fixe
+      minWidth: '300px', // Largeur minimale fixe
+      maxWidth: '300px', // Largeur maximale fixe
+      boxSizing: 'border-box',
+      flexShrink: 0 // Empêche le composant de rétrécir
     }}>
       {/* Civilité */}
       <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>

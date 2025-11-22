@@ -132,13 +132,14 @@ export function BookingModal({
             backgroundColor: darkTheme.bgSecondary,
             borderRadius: 12,
             border: `1px solid ${darkTheme.borderColor}`,
-            maxWidth: 1400,
-            width: '100%',
+            maxWidth: sortedSummaries.length === 1 ? 500 : Math.min(450 * sortedSummaries.length + 32 + (sortedSummaries.length > 1 ? 16 * (sortedSummaries.length - 1) : 0), 1400), // 450px par hébergement + padding + gap
+            width: 'fit-content', // S'adapte au contenu
             maxHeight: '90vh',
             overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            margin: '0 auto' // Centre la modale horizontalement
           }}
           >
           {/* Content */}
@@ -167,12 +168,14 @@ export function BookingModal({
                   display: 'flex', 
                   flexDirection: 'row',
                   gap: 16,
-                  overflow: 'auto',
-                  overflowY: 'hidden',
-                  flex: 1,
+                  overflow: sortedSummaries.length === 1 ? 'visible' : 'auto', // Pas de scroll si un seul hébergement
+                  overflowY: sortedSummaries.length === 1 ? 'visible' : 'hidden',
+                  flex: sortedSummaries.length === 1 ? '0 1 auto' : 1, // Ne pas forcer flex: 1 si un seul hébergement
                   minWidth: 0,
+                  width: 'fit-content', // S'adapte au contenu
                   height: '100%',
-                  alignItems: 'flex-start'
+                  alignItems: 'flex-start',
+                  justifyContent: sortedSummaries.length === 1 ? 'center' : 'flex-start' // Centre si un seul hébergement
                 }}>
                   {sortedSummaries.map((summary, index) => {
                     const isFirstAccommodation = index === 0;
@@ -209,12 +212,12 @@ export function BookingModal({
                           backgroundColor: darkTheme.bgTertiary,
                           borderRadius: 8,
                           border: `1px solid ${darkTheme.borderColor}`,
-                          minWidth: '400px',
-                          maxWidth: '400px',
-                          width: '400px',
+                          width: '450px', // Largeur fixe pour le récapitulatif + formulaire
+                          minWidth: '450px',
+                          maxWidth: '450px',
                           display: 'flex',
                           flexDirection: 'column',
-                          flexShrink: 0,
+                          flexShrink: 0, // Empêche la colonne de rétrécir
                           height: '100%',
                           maxHeight: '100%'
                         }}
@@ -345,9 +348,11 @@ export function BookingModal({
                           <div
                             style={{
                               display: 'flex',
-                              justifyContent: 'space-between',
+                              flexDirection: 'row',
                               alignItems: 'center',
-                              marginBottom: 12
+                              justifyContent: 'space-between',
+                              marginBottom: 12,
+                              width: '300px' // Largeur fixe alignée avec le ClientForm
                             }}
                           >
                             <h4
@@ -382,7 +387,7 @@ export function BookingModal({
                                     accentColor: darkTheme.buttonPrimaryBg
                                   }}
                                 />
-                                <span>Appliquer à tous les hébergements</span>
+                                <span>Appliquer partout</span>
                               </label>
                             )}
                           </div>

@@ -41,6 +41,8 @@ export interface GridDataCellProps {
   editingDureeMinValue: string;
   /** Indique si la date est un week-end */
   isWeekend: boolean;
+  /** Indique si le jour n'est pas réservable (durée minimale > longueur de la plage de disponibilité) */
+  isNonReservable: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** État du drag (pour empêcher les clics pendant le drag) */
@@ -85,6 +87,7 @@ export function GridDataCell({
   editingValue,
   editingDureeMinValue,
   isWeekend,
+  isNonReservable,
   selectedRateTypeId,
   draggingState,
   justFinishedDragRef,
@@ -101,8 +104,12 @@ export function GridDataCell({
   const isAvailable = stock > 0;
   
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
+  // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
   let bgColor: string;
-  if (isDragging) {
+  if (isNonReservable) {
+    // Jour non réservable : fond gris avec opacité réduite
+    bgColor = darkTheme.bgTertiary;
+  } else if (isDragging) {
     bgColor = darkTheme.selectionDraggingBg;
   } else if (isSelected) {
     bgColor = isAvailable 
@@ -161,7 +168,9 @@ export function GridDataCell({
         alignItems: 'center',
         justifyContent: 'center',
         cursor: isSelected ? 'pointer' : 'default',
-        opacity: isWeekend || isSelected || isDragging ? 1 : 0.7,
+        // Les jours avec stock à 0 ont toujours une opacité de 0.5, même s'ils sont des weekends
+        // Les jours non réservables ont une opacité normale (1.0)
+        opacity: !isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7)),
         userSelect: 'none'
       }}
       title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
@@ -218,7 +227,11 @@ export function GridDataCell({
                   const editAllSelection = e.ctrlKey || e.metaKey;
                   onCellClick(accId, dateStr, editAllSelection);
                 }}
-                style={{ userSelect: 'none', cursor: isSelected ? 'pointer' : 'default' }}
+                style={{ 
+                  userSelect: 'none', 
+                  cursor: isSelected ? 'pointer' : 'default',
+                  color: isNonReservable ? darkTheme.textMuted : darkTheme.textPrimary
+                }}
               >
                 {`${Math.round(price)}€`}
                 {isModified && (
@@ -281,7 +294,7 @@ export function GridDataCell({
               }}
               style={{ 
                 fontSize: 10, 
-                color: darkTheme.textMuted, 
+                color: isNonReservable ? darkTheme.error : darkTheme.textMuted, 
                 fontWeight: 400,
                 marginTop: price != null ? 2 : 0,
                 cursor: isSelected ? 'pointer' : 'default',
