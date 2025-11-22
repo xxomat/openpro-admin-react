@@ -342,17 +342,17 @@ export function BookingModal({
                             display: 'flex',
                             flexDirection: 'column',
                             minHeight: 0,
-                            opacity: isDisabled ? 0.6 : 1
+                            opacity: isDisabled ? 0.6 : 1,
+                            width: '300px' // Largeur fixe pour tout le conteneur
                           }}
                         >
+                          {/* Header avec titre et checkbox */}
                           <div
                             style={{
                               display: 'flex',
-                              flexDirection: 'row',
-                              alignItems: 'center',
                               justifyContent: 'space-between',
-                              marginBottom: 12,
-                              width: '300px' // Largeur fixe alignée avec le ClientForm
+                              alignItems: 'center',
+                              marginBottom: 12
                             }}
                           >
                             <h4
@@ -391,11 +391,12 @@ export function BookingModal({
                               </label>
                             )}
                           </div>
+                          
+                          {/* Formulaire client */}
                           <div style={{ 
                             flex: 1,
                             overflowY: 'auto', 
                             overflowX: 'hidden',
-                            paddingRight: 8,
                             minHeight: 0,
                             pointerEvents: isDisabled ? 'none' : 'auto'
                           }}>
