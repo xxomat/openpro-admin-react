@@ -46,6 +46,11 @@ export function ActionButtons({
   onCloseAvailable
 }: ActionButtonsProps): React.ReactElement {
   const totalModifications = modifiedRatesCount + modifiedDureeMinCount;
+  
+  // États pour l'affichage au survol
+  const [refreshHover, setRefreshHover] = React.useState(false);
+  const [openHover, setOpenHover] = React.useState(false);
+  const [closeHover, setCloseHover] = React.useState(false);
 
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
@@ -62,20 +67,23 @@ export function ActionButtons({
           fontWeight: 500,
           cursor: loading ? 'not-allowed' : 'pointer',
           boxShadow: darkTheme.shadowSm,
-          opacity: loading ? 0.6 : 1
+          opacity: loading ? 0.6 : 1,
+          minWidth: 180 // Largeur minimale pour éviter le clignotement
         }}
         onMouseEnter={(e) => {
           if (!loading) {
             e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
+            setRefreshHover(true);
           }
         }}
         onMouseLeave={(e) => {
           if (!loading) {
             e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
+            setRefreshHover(false);
           }
         }}
       >
-        {loading ? 'Actualisation...' : 'Actualiser les données'}
+        {loading ? 'Actualisation...' : (refreshHover ? '⌨️ a' : 'Actualiser les données')}
       </button>
       {availableDatesCount > 0 && onCloseAvailable && (
         <button
@@ -91,20 +99,23 @@ export function ActionButtons({
             fontWeight: 500,
             cursor: loading ? 'not-allowed' : 'pointer',
             boxShadow: darkTheme.shadowSm,
-            opacity: loading ? 0.6 : 1
+            opacity: loading ? 0.6 : 1,
+            minWidth: 160 // Largeur minimale pour éviter le clignotement
           }}
           onMouseEnter={(e) => {
             if (!loading) {
               e.currentTarget.style.background = '#dc2626'; // Rouge plus foncé au survol
+              setCloseHover(true);
             }
           }}
           onMouseLeave={(e) => {
             if (!loading) {
               e.currentTarget.style.background = '#ef4444';
+              setCloseHover(false);
             }
           }}
         >
-          {loading ? 'Fermeture...' : `Fermer (${availableDatesCount} date${availableDatesCount > 1 ? 's' : ''})`}
+          {loading ? 'Fermeture...' : (closeHover ? '⌨️ -' : `Fermer (${availableDatesCount} date${availableDatesCount > 1 ? 's' : ''})`)}
         </button>
       )}
       {unavailableDatesCount > 0 && onOpenUnavailable && (
@@ -121,20 +132,23 @@ export function ActionButtons({
             fontWeight: 500,
             cursor: loading ? 'not-allowed' : 'pointer',
             boxShadow: darkTheme.shadowSm,
-            opacity: loading ? 0.6 : 1
+            opacity: loading ? 0.6 : 1,
+            minWidth: 160 // Largeur minimale pour éviter le clignotement
           }}
           onMouseEnter={(e) => {
             if (!loading) {
               e.currentTarget.style.background = '#d97706'; // Darker orange on hover
+              setOpenHover(true);
             }
           }}
           onMouseLeave={(e) => {
             if (!loading) {
               e.currentTarget.style.background = '#f59e0b';
+              setOpenHover(false);
             }
           }}
         >
-          {loading ? 'Ouverture...' : `Ouvrir (${unavailableDatesCount} date${unavailableDatesCount > 1 ? 's' : ''})`}
+          {loading ? 'Ouverture...' : (openHover ? '⌨️ +' : `Ouvrir (${unavailableDatesCount} date${unavailableDatesCount > 1 ? 's' : ''})`)}
         </button>
       )}
       {totalModifications > 0 && (
@@ -151,7 +165,8 @@ export function ActionButtons({
             fontWeight: 500,
             cursor: loading ? 'not-allowed' : 'pointer',
             boxShadow: darkTheme.shadowSm,
-            opacity: loading ? 0.6 : 1
+            opacity: loading ? 0.6 : 1,
+            minWidth: 180 // Largeur minimale pour éviter le clignotement
           }}
           onMouseEnter={(e) => {
             if (!loading) {

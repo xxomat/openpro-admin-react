@@ -38,6 +38,13 @@ export function DateRangeControls({
 }: DateRangeControlsProps): React.ReactElement {
   const startDateId = React.useId();
   const endDateId = React.useId();
+  const [selectAllHover, setSelectAllHover] = React.useState(false);
+  
+  // Détecter si on est sur Mac pour afficher Cmd+A au lieu de Ctrl+A
+  const isMac = React.useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
+  }, []);
 
   // Validation : s'assurer que endDate >= startDate
   const startDate = new Date(startInput);
@@ -157,17 +164,20 @@ export function DateRangeControls({
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              minWidth: 200 // Largeur minimale pour éviter le clignotement
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
+              setSelectAllHover(true);
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
+              setSelectAllHover(false);
             }}
-            title="Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)"
+            title={`Sélectionner toutes les dates entre la date de début et la date de fin (${isMac ? 'Cmd+A' : 'Ctrl+A'})`}
           >
-            Sélectionner toute la plage
+            {selectAllHover ? `⌨️ ${isMac ? 'Cmd+A' : 'Ctrl+A'}` : 'Sélectionner toute la plage'}
           </button>
         )}
       </div>

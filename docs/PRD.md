@@ -877,6 +877,78 @@ A définir
 			- `setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
 		6. Met à jour l'état de chargement (`setLoading(false)`)
 	- La fonction doit gérer les erreurs et annuler les requêtes si nécessaire (cleanup).
+
+##### Raccourcis clavier pour les boutons de l'interface principale — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Tous les boutons de l'interface principale de l'admin (page principale, hors fenêtres modales) doivent avoir un raccourci clavier associé.
+	- Les raccourcis clavier permettent une navigation et une interaction plus rapides avec l'interface.
+	- **Portée** : Cette fonctionnalité s'applique uniquement à la page principale de l'admin, pas aux fenêtres modales.
+
+2. **Raccourcis clavier par bouton**
+	- **Bouton "Ouvrir"** (dates) : Raccourci `+` (touche plus)
+		- Action : Ouvre les dates non disponibles sélectionnées (met le stock à 1).
+		- Disponibilité : Le bouton n'est visible que si `unavailableDatesCount > 0`.
+	- **Bouton "Fermer"** (dates) : Raccourci `-` (touche moins)
+		- Action : Ferme les dates disponibles sélectionnées (met le stock à 0).
+		- Disponibilité : Le bouton n'est visible que si `availableDatesCount > 0`.
+	- **Bouton "Sélectionner toute la plage"** : Raccourci `Ctrl+A` (Windows/Linux) ou `Cmd+A` (Mac)
+		- Action : Sélectionne toutes les dates entre `startDate` et `endDate` (voir section 5 pour les détails).
+		- Disponibilité : Toujours visible.
+		- **Note** : Ce raccourci est déjà fonctionnel et documenté dans la section 5.
+	- **Bouton "Réserver"** : Raccourci `r`
+		- Action : Ouvre la modale de création de réservation pour les dates sélectionnées.
+		- Disponibilité : Le bouton n'est visible que si une sélection de dates est active.
+	- **Bouton "Actualiser les données"** : Raccourci `a`
+		- Action : Recharge les données depuis le serveur pour le fournisseur actif (voir section "Bouton d'actualisation des données" pour les détails).
+		- Disponibilité : Toujours visible.
+
+3. **Comportement des raccourcis clavier**
+	- **Activation** : Les raccourcis clavier doivent être actifs uniquement lorsque :
+		- L'utilisateur se trouve sur la page principale de l'admin (pas dans une fenêtre modale).
+		- Aucun champ de saisie (input, textarea) n'est en focus, sauf indication contraire.
+		- L'utilisateur n'est pas en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
+	- **Désactivation** : Les raccourcis doivent être désactivés si :
+		- Une fenêtre modale est ouverte.
+		- Un champ de saisie est en focus (pour éviter les conflits avec la saisie de texte).
+		- L'utilisateur est en train d'éditer une valeur dans le calendrier.
+	- **Gestion des conflits** : Si plusieurs boutons partagent le même raccourci, seul le bouton visible et actif doit répondre au raccourci.
+
+4. **Affichage au survol des boutons**
+	- **Comportement général** : Au survol d'un bouton (événement `onMouseEnter`), le texte du bouton doit être remplacé par une icône clavier suivie du raccourci clavier.
+	- **Format d'affichage** : `[icône clavier] [raccourci]`
+		- Exemple pour "Réserver" : `⌨️ r`
+		- Exemple pour "Actualiser les données" : `⌨️ a`
+		- Exemple pour "Ouvrir" : `⌨️ +`
+		- Exemple pour "Fermer" : `⌨️ -`
+		- Exemple pour "Sélectionner toute la plage" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
+	- **Retour au texte original** : Quand la souris quitte le bouton (événement `onMouseLeave`), le texte original du bouton doit être restauré.
+	- **État de chargement** : Si le bouton est en état de chargement (ex: "Actualisation...", "Fermeture..."), le comportement au survol doit être désactivé et le texte de chargement doit rester affiché.
+	- **Icône clavier** : L'icône clavier peut être un emoji (⌨️) ou une icône SVG/icon font selon les préférences de design.
+
+5. **Implémentation technique**
+	- **Gestionnaire d'événements clavier** : Un gestionnaire d'événements `keydown` doit être ajouté au niveau du composant principal (`ProviderCalendars`) pour écouter les raccourcis clavier.
+	- **Vérification des conditions d'activation** : Avant d'exécuter une action, vérifier que :
+		- `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie.
+		- Aucune modale n'est ouverte.
+		- L'utilisateur n'est pas en train d'éditer une cellule du calendrier.
+	- **Mapping des raccourcis** : Créer un mapping entre les raccourcis clavier et les actions correspondantes :
+		- `+` → `handleOpenUnavailable` (si le bouton est visible)
+		- `-` → `handleCloseAvailable` (si le bouton est visible)
+		- `r` → `setIsBookingModalOpen(true)` (si une sélection est active)
+		- `a` → `handleRefreshData` (toujours disponible)
+		- `Ctrl+A` / `Cmd+A` → `handleSelectAllRange` (déjà implémenté)
+	- **Affichage au survol** : Pour chaque bouton, ajouter des gestionnaires `onMouseEnter` et `onMouseLeave` qui :
+		- Stockent le texte original du bouton dans un état local ou une ref.
+		- Au survol, remplacent le texte par `⌨️ [raccourci]`.
+		- Au départ de la souris, restaurent le texte original.
+	- **Gestion des états de chargement** : Si le bouton affiche un texte de chargement, ne pas modifier le texte au survol.
+
+6. **Cas limites**
+	- **Boutons conditionnels** : Les raccourcis pour les boutons conditionnels (Ouvrir, Fermer, Réserver) ne doivent fonctionner que si le bouton est visible et actif.
+	- **Conflits avec les modales** : Si une modale est ouverte, tous les raccourcis de la page principale doivent être désactivés.
+	- **Conflits avec l'édition** : Si l'utilisateur est en train d'éditer un prix ou une durée minimale, les raccourcis doivent être désactivés pour éviter les actions accidentelles.
+	- **Raccourcis système** : Les raccourcis qui entrent en conflit avec les raccourcis système du navigateur (ex: `Ctrl+A` pour sélectionner tout le texte) doivent être gérés avec précaution en vérifiant que l'utilisateur n'est pas dans un champ de saisie.
 	- **Note** : Les fonctions de chargement des données doivent utiliser `startDate` et `endDate` au lieu de `startDate` et `monthsCount`. Les fonctions suivantes doivent être modifiées :
 		- `loadSupplierData(client, idFournisseur, accommodationsList, startDate, endDate, signal)`
 		- `refreshSupplierData(idFournisseur, startDate, endDate)`
