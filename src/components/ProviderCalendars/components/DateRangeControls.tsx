@@ -22,6 +22,8 @@ export interface DateRangeControlsProps {
   endInput: string;
   /** Callback appelé quand la date de fin change */
   onEndInputChange: (value: string) => void;
+  /** Callback appelé quand l'utilisateur clique sur "Sélectionner toute la plage" */
+  onSelectAllRange?: () => void;
 }
 
 /**
@@ -31,7 +33,8 @@ export function DateRangeControls({
   startInput,
   onStartInputChange,
   endInput,
-  onEndInputChange
+  onEndInputChange,
+  onSelectAllRange
 }: DateRangeControlsProps): React.ReactElement {
   const startDateId = React.useId();
   const endDateId = React.useId();
@@ -141,9 +144,34 @@ export function DateRangeControls({
             La date de fin doit être postérieure ou égale à la date de début
           </span>
         )}
+        </div>
+        {onSelectAllRange && (
+          <button
+            onClick={onSelectAllRange}
+            style={{
+              padding: '8px 16px',
+              background: darkTheme.buttonSecondaryBg,
+              color: darkTheme.buttonText,
+              border: `1px solid ${darkTheme.borderColor}`,
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
+            }}
+            title="Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)"
+          >
+            Sélectionner toute la plage
+          </button>
+        )}
       </div>
-    </div>
-    </>
+    </> 
   );
 }
 
