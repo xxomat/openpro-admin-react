@@ -23,7 +23,7 @@ import { DeleteBookingModal } from './components/DeleteBookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
-import { formatDate, addMonths, getDaysInRange } from './utils/dateUtils';
+import { formatDate, addMonths, getDaysInRange, isPastDate } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
 import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '../../services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
@@ -865,7 +865,7 @@ export function ProviderCalendars(): React.ReactElement {
   }, [activeSupplier, availableDatesCount, availableDatesByAccommodation, supplierData, handleRefreshData]);
 
   // Fonction pour sélectionner toutes les dates entre startDate et endDate
-  // Respecte les règles de sélection : exclut les dates occupées par une réservation
+  // Respecte les règles de sélection : exclut les dates occupées par une réservation et les dates passées
   const handleSelectAllRange = React.useCallback(() => {
     if (!activeSupplier) return;
     
@@ -882,17 +882,18 @@ export function ProviderCalendars(): React.ReactElement {
     if (accommodationsToSelect.length === 0) return;
     
     // Créer toutes les clés de cellules pour la sélection
-    // Exclure les dates occupées par une réservation (règle de sélection)
+    // Exclure les dates occupées par une réservation et les dates passées (règles de sélection)
     const newSelectedCells = new Set<string>();
     for (const acc of accommodationsToSelect) {
       for (const date of allDays) {
         const dateStr = formatDate(date);
         
-        // Vérifier si cette date est occupée par une réservation
+        // Vérifier si cette date est occupée par une réservation ou passée
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        const isPast = isPastDate(dateStr);
         
-        // Ne pas sélectionner les dates occupées (règle de sélection)
-        if (!isBooked) {
+        // Ne pas sélectionner les dates occupées ou passées (règles de sélection)
+        if (!isBooked && !isPast) {
           newSelectedCells.add(`${acc.idHebergement}|${dateStr}`);
         }
       }
