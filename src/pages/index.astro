@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import React from 'react';
+import ProviderCalendars from '../components/ProviderCalendars/index';
+---
+
+<Layout>
+	<!-- Mount React island for provider tabs and calendars -->
+	<ProviderCalendars client:load />
+</Layout>

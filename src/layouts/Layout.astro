@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Becterie WebPlanning</title>
+	</head>
+	<body>
+		<slot />
+	</body>
+</html>
+
+<style>
+	:root[data-theme="dark"] {
+		/* Couleurs de fond */
+		--bg-primary: #0f172a;
+		--bg-secondary: #1e293b;
+		--bg-tertiary: #334155;
+		--bg-hover: #475569;
+		
+		/* Couleurs de texte */
+		--text-primary: #f1f5f9;
+		--text-secondary: #cbd5e1;
+		--text-tertiary: #94a3b8;
+		--text-muted: #64748b;
+		
+		/* Bordures */
+		--border-color: #334155;
+		--border-color-light: #475569;
+		--border-color-dark: #1e293b;
+		
+		/* Couleurs d'état */
+		--color-success: #22c55e;
+		--color-success-bg: rgba(34, 197, 94, 0.15);
+		--color-success-bg-strong: rgba(34, 197, 94, 0.2);
+		--color-error: #ef4444;
+		--color-error-bg: rgba(239, 68, 68, 0.15);
+		--color-error-bg-strong: rgba(220, 38, 38, 0.2);
+		--color-warning: #eab308;
+		--color-info: #3b82f6;
+		--color-info-bg: rgba(59, 130, 246, 0.15);
+		
+		/* Couleurs de sélection */
+		--selection-bg: rgba(59, 130, 246, 0.2);
+		--selection-border: #3b82f6;
+		--selection-dragging-bg: rgba(59, 130, 246, 0.3);
+		
+		/* Boutons */
+		--button-primary-bg: #3b82f6;
+		--button-primary-hover: #2563eb;
+		--button-secondary-bg: #475569;
+		--button-secondary-hover: #64748b;
+		--button-disabled-bg: #334155;
+		--button-text: #ffffff;
+		
+		/* Inputs */
+		--input-bg: #1e293b;
+		--input-border: #475569;
+		--input-text: #f1f5f9;
+		--input-focus-border: #3b82f6;
+		
+		/* Grille */
+		--grid-header-bg: #1e293b;
+		--grid-cell-bg: #0f172a;
+		--grid-cell-weekend-bg: #1e293b;
+		--grid-cell-selected-bg: rgba(59, 130, 246, 0.2);
+		--grid-cell-dragging-bg: rgba(59, 130, 246, 0.3);
+		
+		/* Ombres */
+		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+		--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+	}
+
+	html,
+	body {
+		margin: 0;
+		width: 100%;
+		height: 100%;
+		background-color: var(--bg-primary);
+		color: var(--text-primary);
+	}
+</style>
