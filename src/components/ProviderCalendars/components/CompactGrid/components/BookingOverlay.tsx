@@ -135,8 +135,16 @@ export function BookingOverlay({
           const calculatedLeft = arrivalRect.left - gridRect.left + arrivalRect.width * 0.6;
           // S'assurer que le rectangle ne commence jamais avant la première colonne de dates
           left = Math.max(calculatedLeft, firstDateLeft);
-          // Aller jusqu'à la fin de la grille
-          width = gridRect.width - left;
+          // Tronquer à la fin de la dernière cellule visible (endDate)
+          const lastDateCell = gridElement.querySelector(`[data-date="${formatDate(allDays[allDays.length - 1])}"]`) as HTMLElement;
+          if (lastDateCell) {
+            const lastDateRect = lastDateCell.getBoundingClientRect();
+            // Terminer à la fin de la dernière cellule visible (endDate)
+            width = (lastDateRect.right - gridRect.left) - left;
+          } else {
+            // Fallback si la dernière cellule n'est pas trouvée
+            width = gridRect.width - left;
+          }
         } else if (departureCell) {
           // Date d'arrivée avant la plage, date de départ visible
           const departureRect = departureCell.getBoundingClientRect();
