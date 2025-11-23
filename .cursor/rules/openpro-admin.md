@@ -10,98 +10,105 @@ alwaysApply: true
 
 ### Limites strictes
 - **Composants React (.tsx)** : Maximum **400 lignes** (code effectif, hors commentaires)
-- **Hooks personnalisés (.ts)** : Maximum **250 lignes**
-- **Services/Loaders (.ts)** : Maximum **300 lignes**
+- **Hooks personnalisés (.ts)** : Maximum **300 lignes**
+- **Services (.ts)** : Maximum **300 lignes**
 - **Utilitaires (.ts)** : Maximum **200 lignes**
 - **Types/Interfaces (.ts)** : Maximum **300 lignes**
+- **Configuration (.ts)** : Maximum **200 lignes**
+- **Pages Astro (.astro)** : Maximum **200 lignes**
 
 ### Exceptions
 - Les fichiers de configuration (`config.ts`) peuvent dépasser cette limite si nécessaire
 - Les fichiers de types complexes peuvent aller jusqu'à 300 lignes
+- Les composants de présentation très simples peuvent être plus courts
 
 ### Action requise
 Si un fichier dépasse la limite :
 1. Identifier les responsabilités distinctes
-2. Extraire des sous-composants ou hooks personnalisés
-3. Déplacer la logique dans des services séparés
+2. Extraire des composants séparés
+3. Créer des hooks personnalisés pour la logique réutilisable
 4. Créer des fichiers utilitaires pour les fonctions réutilisables
-
-### Exemple de refactoring
-Un composant de 500+ lignes devrait être divisé en :
-- Composant principal (~200 lignes)
-- Sous-composants dans `components/`
-- Hooks personnalisés dans `hooks/` pour la logique métier
-- Services dans `services/` pour les appels API
-- Utilitaires dans `utils/` pour les fonctions pures
+5. Diviser les composants en sous-composants si nécessaire
 
 ## Conventions de nommage
 
-### Fonctions et méthodes
-- **Format** : camelCase en anglais
-- **Exemples** : `loadRateTypes`, `updateDiscoveredRateTypes`, `formatDate`, `getWeeksInRange`
-- **Verbes d'action** : utiliser des verbes clairs (`load`, `update`, `format`, `get`, `set`, `create`)
-
 ### Composants React
 - **Format** : PascalCase
-- **Exemples** : `ProviderCalendars`, `CompactGrid`, `AccommodationList`
-- **Nom descriptif** : le nom doit décrire clairement la fonction du composant
-
-### Types et interfaces TypeScript
-- **Format** : PascalCase
-- **Exemples** : `Supplier`, `Accommodation`, `RateType`, `UseSupplierDataReturn`
-- **Interfaces** : préférer `interface` pour les objets extensibles, `type` pour les unions/intersections
-
-### Variables et constantes
-- **Variables locales** : camelCase (`selectedDates`, `activeSupplier`, `rateTypeLabels`)
-- **Constantes** : camelCase pour les constantes simples, UPPER_SNAKE_CASE pour les constantes globales
-- **Exemples** : `baseUrl`, `apiKey`, `defaultSuppliers` (constantes de config)
+- **Exemples** : `ProviderCalendars`, `AccommodationList`, `CompactGrid`, `BookingModal`
+- **Fichiers** : même nom que le composant (ex: `ProviderCalendars.tsx`)
 
 ### Hooks personnalisés
 - **Format** : camelCase avec préfixe `use`
-- **Exemples** : `useSupplierData`, `useGridSelection`, `useGridEditing`
-- **Retour** : toujours typer le retour avec une interface dédiée (ex: `UseSupplierDataReturn`)
+- **Exemples** : `useSupplierData`, `useGridDrag`, `useGridEditing`
+- **Fichiers** : même nom que le hook (ex: `useSupplierData.ts`)
 
-### Services et loaders
-- **Format** : camelCase avec suffixe descriptif (`Loader`, `Service`, `Utils`)
-- **Exemples** : `rateTypeLoader`, `dataLoader`, `rateUtils`, `dateUtils`
-- **Un fichier = une responsabilité** : chaque loader/service doit avoir une responsabilité claire
+### Fonctions et méthodes
+- **Format** : camelCase en anglais
+- **Exemples** : `getAccommodations`, `loadRateTypes`, `formatDate`, `saveBulkUpdates`
+- **Verbes d'action** : utiliser des verbes clairs (`get`, `load`, `generate`, `format`, `save`, `update`)
+
+### Types et interfaces TypeScript
+- **Format** : PascalCase
+- **Exemples** : `Accommodation`, `RateType`, `SupplierData`, `BulkUpdateRequest`
+- **Interfaces** : préférer `interface` pour les objets extensibles, `type` pour les unions/intersections
+
+### Variables et constantes
+- **Variables locales** : camelCase (`idFournisseur`, `accommodationsList`, `discoveredRateTypes`)
+- **Constantes** : camelCase pour les constantes simples, UPPER_SNAKE_CASE pour les constantes globales
+- **Exemples** : `config`, `backendClient`, `API_BASE_URL` (si constante globale)
+
+### Services
+- **Format** : camelCase avec suffixe `Service` ou descriptif
+- **Exemples** : `backendClient`, `dataLoader`, `accommodationLoader`
+- **Un fichier = une responsabilité** : chaque service doit avoir une responsabilité claire
 
 ## Structure des fichiers
 
 ### Organisation des dossiers
 ```
-components/
-  ComponentName/
-    components/      # Sous-composants
-    hooks/           # Hooks personnalisés
-    services/        # Services et loaders
-      loaders/       # Loaders spécialisés
-      utils/         # Utilitaires
-    utils/           # Utilitaires du composant
-    types.ts         # Types spécifiques au composant
-    config.ts        # Configuration du composant
-    index.tsx        # Point d'entrée du composant
+src/
+  components/         # Composants React
+    ComponentName/
+      components/     # Sous-composants
+      hooks/          # Hooks spécifiques au composant
+      services/       # Services de chargement de données
+      types.ts        # Types spécifiques au composant
+      utils/          # Utilitaires spécifiques au composant
+      index.tsx       # Composant principal
+  layouts/            # Layouts Astro
+  pages/              # Pages Astro
+  services/           # Services partagés
+    api/              # Clients API
+  assets/             # Assets statiques
 ```
 
-### Structure d'un fichier TypeScript/TSX
-1. **En-tête JSDoc** : description du fichier et de son rôle
-2. **Imports** : groupés par type (React, types, utilitaires, relatifs)
+### Structure d'un composant React
+1. **En-tête JSDoc** : description du composant et de son rôle
+2. **Imports** : groupés par type (React, types, bibliothèques externes, relatifs)
+3. **Types/Interfaces** : définitions de types locaux (si nécessaire)
+4. **Constantes** : constantes du composant
+5. **Composant** : fonction du composant
+6. **Exports** : exports nommés uniquement
+
+### Structure d'un hook personnalisé
+1. **En-tête JSDoc** : description du hook et de son rôle
+2. **Imports** : groupés par type
 3. **Types/Interfaces** : définitions de types locaux
-4. **Constantes** : constantes du module
-5. **Fonctions/Composants** : code principal
-6. **Exports** : exports nommés uniquement (pas d'exports par défaut sauf composants React)
+4. **Hook** : fonction du hook avec `use` en préfixe
+5. **Exports** : exports nommés uniquement
 
 ## Documentation
 
 ### JSDoc obligatoire
+- **Tous les composants** doivent avoir une documentation JSDoc
+- **Tous les hooks personnalisés** doivent documenter leur comportement et leur retour
 - **Toutes les fonctions publiques** doivent avoir une documentation JSDoc
-- **Tous les composants React** doivent avoir une documentation JSDoc en en-tête
-- **Tous les hooks personnalisés** doivent documenter leur comportement
+- **Tous les services** doivent documenter leur comportement
 
 ### Format JSDoc
 ```typescript
 /**
- * Description courte de la fonction/composant
+ * Description courte du composant/fonction
  * 
  * Description détaillée si nécessaire, expliquant le comportement,
  * les cas d'usage, ou les détails d'implémentation importants.
@@ -110,11 +117,6 @@ components/
  * @param optionalParam - Description du paramètre optionnel
  * @returns Description de la valeur de retour
  * @throws {Error} Description des erreurs possibles
- * 
- * @example
- * ```ts
- * const result = functionName(param1, param2);
- * ```
  */
 ```
 
@@ -130,171 +132,94 @@ components/
 - **Éviter `any`** : utiliser `unknown` si le type est vraiment inconnu, puis faire une vérification
 - **Utiliser les types fournis** : préférer les types de `@openpro-api-react/client/types`
 - **Types génériques** : utiliser les génériques pour la réutilisabilité
+- **Props de composants** : toujours typer les props avec une interface ou un type
 
 ### Interfaces vs Types
-- **Interfaces** : pour les objets extensibles et les contrats
+- **Interfaces** : pour les objets extensibles et les contrats (props de composants)
 - **Types** : pour les unions, intersections, et types complexes
-- **Exemple** : `interface UseSupplierDataReturn` pour un objet, `type Supplier = { ... }` pour un type simple
 
 ### Gestion des erreurs
 - **Typage des erreurs** : utiliser `Error` ou des classes d'erreur personnalisées
 - **Gestion explicite** : toujours gérer les erreurs dans les fonctions async
 - **Messages d'erreur** : messages clairs et actionnables
+- **Affichage des erreurs** : afficher les erreurs de manière user-friendly dans l'UI
 
 ## React
 
-### Composants fonctionnels uniquement
-- **Pas de classes** : utiliser uniquement des composants fonctionnels
-- **Hooks** : utiliser `useState`, `useEffect`, et hooks personnalisés
-- **Performance** : utiliser `React.memo` et `useMemo`/`useCallback` quand nécessaire
+### Composants
+- **Composants fonctionnels** : utiliser uniquement des composants fonctionnels (pas de classes)
+- **Typage des props** : toujours typer les props avec une interface
+- **Exemple de composant** :
+```typescript
+interface ComponentProps {
+  id: string;
+  name: string;
+  onAction?: (id: string) => void;
+}
+
+export function Component({ id, name, onAction }: ComponentProps): React.ReactElement {
+  // ...
+}
+```
+
+### Hooks
+- **Hooks React standards** : utiliser `React.useState`, `React.useMemo`, `React.useCallback`, etc.
+- **Hooks personnalisés** : créer des hooks pour la logique réutilisable
+- **Dépendances** : toujours inclure toutes les dépendances dans les tableaux de dépendances
+- **Exemple de hook** :
+```typescript
+export function useCustomHook(param: string) {
+  const [state, setState] = React.useState<string>('');
+  
+  React.useEffect(() => {
+    // effet
+  }, [param]);
+  
+  return { state, setState };
+}
+```
 
 ### Gestion d'état
-- **État local** : `useState` pour l'état simple d'un composant
-- **État complexe** : hooks personnalisés pour la logique métier
-- **État partagé** : props drilling ou context selon le besoin
+- **useState** : pour l'état local simple
+- **useMemo** : pour les valeurs calculées coûteuses
+- **useCallback** : pour les fonctions passées en props
+- **État global** : utiliser le contexte React si nécessaire, sinon props drilling
 
-### Props
-- **Typage strict** : toujours typer les props avec une interface dédiée
-- **Props optionnelles** : utiliser `?` et valeurs par défaut si nécessaire
-- **Destructuring** : destructurer les props dans la signature de fonction
+### Performance
+- **Memoization** : utiliser `React.memo` pour les composants purs si nécessaire
+- **useMemo/useCallback** : utiliser avec parcimonie, seulement si nécessaire pour la performance
+- **Éviter les re-renders inutiles** : optimiser les dépendances des hooks
 
-### Exemple de composant
-```typescript
-/**
- * Composant Description
- * 
- * Description détaillée du composant et de son rôle.
- */
-export interface ComponentProps {
-  /** Description de la prop */
-  propName: string;
-  /** Prop optionnelle */
-  optionalProp?: number;
-}
+## Astro
 
-export function Component({ propName, optionalProp = 0 }: ComponentProps): React.ReactElement {
-  // Implémentation
-}
+### Pages et layouts
+- **Pages** : utiliser `.astro` pour les pages statiques
+- **Layouts** : créer des layouts réutilisables dans `layouts/`
+- **Composants Astro** : utiliser pour les parties statiques, React pour les parties interactives
+
+### Exemple de page Astro
+```astro
+---
+import Layout from '../layouts/Layout.astro';
+import { ProviderCalendars } from '../components/ProviderCalendars';
+---
+
+<Layout title="Admin">
+  <ProviderCalendars client:load />
+</Layout>
 ```
 
 ## Services et API
 
-### Structure des loaders
-- **Un loader par ressource** : `accommodationLoader.ts`, `rateLoader.ts`, `rateTypeLoader.ts`
-- **Fonctions exportées** : fonctions pures ou async pour le chargement
+### Structure des services
+- **Un service par ressource** : `backendClient.ts`, `dataLoader.ts`, `accommodationLoader.ts`
+- **Fonctions exportées** : fonctions async pour le chargement de données
 - **Gestion des erreurs** : toujours gérer les erreurs et les signaler
 
-### Client API
-- **Utiliser le client typé** : `ClientByRole<'admin'>` ou `ClientByRole<'customer'>`
-- **AbortSignal** : supporter `AbortSignal` pour l'annulation des requêtes
-- **Gestion des réponses** : vérifier la structure `{ ok, data }` de l'API
-
-## Tests (si applicable)
-
-### Structure des tests
-- **Un fichier de test par fichier source** : `file.spec.ts` ou `file.test.ts`
-- **Nommage** : décrire clairement ce qui est testé
-- **Couverture** : tester les cas d'usage principaux et les cas limites
-
-## Exceptions et cas particuliers
-
-### Fichiers de configuration
-- Les fichiers `config.ts` peuvent contenir des constantes et configurations
-- Pas de limite stricte de lignes si la configuration est complexe
-
-### Fichiers de types
-- Les fichiers `types.ts` peuvent contenir uniquement des définitions de types
-- Limite de 300 lignes pour maintenir la lisibilité
-
-### Imports depuis le sous-module
-- **Utiliser l'alias `@openpro-api-react`** : toujours utiliser l'alias configuré au lieu de chemins relatifs
-- **Format** : `@openpro-api-react/client/...` pour les imports depuis le sous-module
-- **Exemples** :
-  - `import type { ClientByRole } from '@openpro-api-react/client/OpenProClient'`
-  - `import { createOpenProClient } from '@openpro-api-react/client'`
-  - `import type { AccommodationListResponse } from '@openpro-api-react/client/types'`
-- **Interdiction** : ne jamais utiliser de chemins relatifs vers `openpro-api-react` (ex: `../../../../openpro-api-react/src/client`)
-
-## Gestion des erreurs et logging
-
-### Logging
-- **En production** : éviter `console.log`, `console.warn` pour le debug
-- **Erreurs** : utiliser `console.error` uniquement pour les erreurs réelles, avec contexte
-- **Format des logs** : inclure le contexte (nom de fonction, paramètres pertinents)
-- **Exemple** : `console.error('Error fetching rate types:', error)` avec contexte
-
-### Gestion des erreurs async
-- **Toujours utiliser try/catch** dans les fonctions async
-- **Propager les erreurs** : laisser remonter les erreurs critiques, gérer les erreurs non-critiques localement
-- **Messages d'erreur** : messages clairs et actionnables pour l'utilisateur
-- **Erreurs API** : utiliser les classes d'erreur du client (`OpenProHttpError`, `OpenProApiError`)
-
-### Exemple de gestion d'erreur
-```typescript
-try {
-  const data = await loadData();
-  return data;
-} catch (error) {
-  console.error('Error loading data:', error);
-  // Gérer l'erreur ou la propager selon le contexte
-  throw error;
-}
-```
-
-## Performance React
-
-### Mémoïsation
-- **useMemo** : pour les calculs coûteux qui dépendent de props/state
-- **useCallback** : pour les fonctions passées en props à des composants enfants
-- **React.memo** : pour les composants qui re-render souvent avec les mêmes props
-- **Ne pas sur-optimiser** : mémoïser uniquement si nécessaire (profilage)
-
-### Règles d'utilisation
-- Mémoïser les tableaux/objets complexes passés en props
-- Mémoïser les callbacks passés à des composants enfants
-- Mémoïser les calculs coûteux (tri, filtrage, transformations)
-
-### Exemple
-```typescript
-const expensiveValue = React.useMemo(() => {
-  return computeExpensiveValue(data);
-}, [data]);
-
-const handleClick = React.useCallback(() => {
-  doSomething();
-}, [dependencies]);
-```
-
-## Gestion des effets de bord (useEffect)
-
-### Cleanup obligatoire
-- **Toujours nettoyer** : les abonnements, timers, listeners dans le cleanup de `useEffect`
-- **AbortSignal** : utiliser `AbortSignal` pour annuler les requêtes fetch
-- **Dépendances** : inclure toutes les dépendances dans le tableau de dépendances
-
-### Pattern recommandé
-```typescript
-React.useEffect(() => {
-  const abortController = new AbortController();
-  
-  async function loadData() {
-    try {
-      const data = await fetchData(abortController.signal);
-      setData(data);
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Error:', error);
-      }
-    }
-  }
-  
-  loadData();
-  
-  return () => {
-    abortController.abort();
-  };
-}, [dependencies]);
-```
+### Client API Backend
+- **Utiliser le client typé** : `backendClient` depuis `services/api/backendClient.ts`
+- **AbortSignal** : supporter `AbortSignal` pour l'annulation des requêtes si nécessaire
+- **Gestion des réponses** : vérifier la structure des réponses API
 
 ## Imports
 
@@ -303,22 +228,46 @@ React.useEffect(() => {
 2. **Imports de types** : `import type { ... } from '...'`
 3. **Imports de bibliothèques externes** : triés alphabétiquement
 4. **Imports internes** : relatifs, triés par profondeur (moins profond d'abord)
-5. **Imports de styles** : à la fin (si applicable)
 
 ### Exemple
 ```typescript
 import React from 'react';
-import type { ClientByRole } from '@openpro-api-react/client/OpenProClient';
-import type { Accommodation } from '../types';
-import { formatDate } from '../utils/dateUtils';
-import { loadData } from './services/dataLoader';
+import type { Supplier } from './types';
+import { formatDate } from './utils/dateUtils';
+import { useSupplierData } from './hooks/useSupplierData';
 ```
 
 ### Règles
 - **Imports de types** : toujours utiliser `import type` pour les types
-- **Imports relatifs** : utiliser des chemins relatifs cohérents pour les imports internes au projet
-- **Alias pour sous-modules** : utiliser `@openpro-api-react/*` pour tous les imports depuis le sous-module
+- **Imports relatifs** : utiliser des chemins relatifs cohérents
+- **Extensions .js** : utiliser `.js` dans les imports ESM même pour les fichiers `.ts`/`.tsx`
 - **Pas d'imports circulaires** : éviter les dépendances circulaires entre modules
+
+## Gestion des erreurs et logging
+
+### Logging
+- **Utiliser console.log avec modération** : pour le développement uniquement
+- **Format des logs** : inclure le contexte (nom de fonction, paramètres pertinents)
+- **Exemple** : `console.error('Error fetching data:', error)` avec contexte
+- **Production** : éviter les console.log en production, utiliser un système de logging approprié
+
+### Gestion des erreurs async
+- **Toujours utiliser try/catch** dans les fonctions async
+- **Propager les erreurs** : laisser remonter les erreurs critiques, gérer les erreurs non-critiques localement
+- **Messages d'erreur** : messages clairs et actionnables
+- **Affichage utilisateur** : afficher les erreurs de manière user-friendly dans l'UI
+
+### Exemple de gestion d'erreur
+```typescript
+try {
+  const data = await loadData();
+  return data;
+} catch (error) {
+  console.error('Error loading data:', error);
+  // Afficher une erreur à l'utilisateur
+  throw new Error('Failed to load data');
+}
+```
 
 ## Gestion des valeurs par défaut
 
@@ -338,28 +287,29 @@ const value = input || defaultValue; // peut masquer des valeurs valides
 
 ## Validation et sécurité
 
-### Validation des entrées utilisateur
-- **Valider les données** : avant de les envoyer à l'API
-- **Sanitisation** : nettoyer les entrées utilisateur si nécessaire
+### Validation des entrées
+- **Valider les données** : avant de les utiliser dans les composants
 - **Types** : utiliser TypeScript pour la validation à la compilation
-- **Runtime** : valider les données à l'exécution pour les entrées externes
+- **Runtime** : valider les données à l'exécution pour les entrées utilisateur
 
 ### Variables d'environnement
-- **Préfixe PUBLIC_** : utiliser `PUBLIC_` pour les variables Astro accessibles côté client
 - **Ne pas exposer de secrets** : jamais de clés API ou secrets dans le code client
+- **Validation** : valider les variables d'environnement au démarrage
 - **Valeurs par défaut** : fournir des valeurs par défaut pour le développement
 
 ### Exemple
 ```typescript
-const baseUrl = import.meta.env.PUBLIC_OPENPRO_BASE_URL || 'http://localhost:3000';
-const apiKey = import.meta.env.PUBLIC_OPENPRO_API_KEY || 'dev-key';
+const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+if (!API_BASE_URL) {
+  throw new Error('PUBLIC_API_BASE_URL is required');
+}
 ```
 
 ## Code mort et nettoyage
 
 ### À éviter
 - **Code commenté** : supprimer le code commenté, utiliser Git pour l'historique
-- **console.log de debug** : supprimer avant le commit (utiliser un logger conditionnel si nécessaire)
+- **console.log de debug** : supprimer avant le commit ou utiliser un système de logging
 - **Imports inutilisés** : supprimer les imports non utilisés
 - **Variables inutilisées** : supprimer les variables non utilisées
 
@@ -368,76 +318,33 @@ const apiKey = import.meta.env.PUBLIC_OPENPRO_API_KEY || 'dev-key';
 - **FIXME** : marquer les bugs connus avec `// FIXME: description`
 - **Limiter les TODO** : résoudre les TODO avant qu'ils ne s'accumulent
 
-## Accessibilité (a11y)
+## Format ESM
 
-### Règles de base
-- **Attributs ARIA** : utiliser les attributs ARIA quand nécessaire
-- **Navigation au clavier** : tous les éléments interactifs doivent être accessibles au clavier
-- **Labels** : associer les labels aux inputs avec `htmlFor`/`id` ou `aria-label`
-- **Contraste** : respecter les ratios de contraste WCAG
-
-### Exemple
-```typescript
-<button
-  onClick={handleClick}
-  aria-label="Sélectionner la date"
-  onKeyDown={(e) => e.key === 'Enter' && handleClick()}
->
-  Date
-</button>
-```
-
-## Gestion des dates
-
-### Format
-- **Format interne** : utiliser `Date` pour les dates JavaScript
-- **Format API** : utiliser `formatDate()` pour convertir en `YYYY-MM-DD`
-- **Cohérence** : utiliser les utilitaires de `dateUtils.ts` pour toutes les manipulations
-
-### Exemple
-```typescript
-import { formatDate, addMonths } from '../utils/dateUtils';
-
-const startDate = new Date();
-const endDate = addMonths(startDate, 3);
-const dateStr = formatDate(startDate); // "2025-01-15"
-```
-
-## Gestion d'état complexe
-
-### Quand utiliser des objets vs états séparés
-- **États liés** : si plusieurs états changent ensemble, utiliser un objet
-- **États indépendants** : si les états sont indépendants, utiliser des `useState` séparés
-- **Performance** : préférer des états séparés si les mises à jour sont fréquentes et indépendantes
-
-### Exemple
-```typescript
-// ✅ Bon : états liés qui changent ensemble
-const [editing, setEditing] = React.useState({ cell: null, value: '' });
-
-// ✅ Bon : états indépendants
-const [selectedDates, setSelectedDates] = React.useState<Set<string>>(new Set());
-const [selectedAccommodations, setSelectedAccommodations] = React.useState<Set<number>>(new Set());
-```
+### Modules ES
+- **Type module** : le projet utilise `"type": "module"` dans `package.json`
+- **Extensions .js** : utiliser `.js` dans les imports même pour les fichiers `.ts`/`.tsx`
+- **Exemple** : `import { config } from '../config/env.js';`
 
 ## Vérifications avant commit
 
 Avant de commiter du code, vérifier :
 1. ✅ Tous les fichiers respectent les limites de lignes
-2. ✅ Toutes les fonctions publiques ont une documentation JSDoc
+2. ✅ Tous les composants et hooks ont une documentation JSDoc
 3. ✅ Les types sont correctement définis (pas d'`any` non justifié)
-4. ✅ Les noms de variables/fonctions suivent les conventions
-5. ✅ La structure des dossiers est respectée
-6. ✅ Les erreurs sont gérées correctement
-7. ✅ Les `console.log` de debug sont supprimés
+4. ✅ Les props des composants sont typées
+5. ✅ Les noms de variables/fonctions suivent les conventions
+6. ✅ La structure des dossiers est respectée
+7. ✅ Les erreurs sont gérées correctement et affichées à l'utilisateur
 8. ✅ Les imports inutilisés sont supprimés
 9. ✅ Le code commenté est supprimé
-10. ✅ Les effets de bord ont un cleanup approprié
-11. ✅ Les requêtes async utilisent `AbortSignal` si nécessaire
+10. ✅ Les hooks ont toutes leurs dépendances dans les tableaux de dépendances
+11. ✅ Les imports utilisent `.js` pour les fichiers TypeScript en ESM
+12. ✅ Les composants sont optimisés pour éviter les re-renders inutiles
 
 ## Références
 
-- PRD : `OpenPro.Admin/docs/PRD.md` et `openpro-api-react/docs/PRD.md`
+- PRD : `docs/PRD.md`
 - Client API : `openpro-api-react/src/client/`
-- Documentation API Open Pro : https://documentation.open-system.fr/api-openpro/tarif/multi/v1/
-
+- Astro : https://docs.astro.build/
+- React : https://react.dev/
+- TypeScript : https://www.typescriptlang.org/

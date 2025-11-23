@@ -41,6 +41,10 @@ export interface GridDataCellProps {
   editingDureeMinValue: string;
   /** Indique si la date est un week-end */
   isWeekend: boolean;
+  /** Indique si le jour n'est pas réservable (durée minimale > longueur de la plage de disponibilité) */
+  isNonReservable: boolean;
+  /** Indique si cette date est occupée par une réservation */
+  isBooked: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** État du drag (pour empêcher les clics pendant le drag) */
@@ -48,9 +52,11 @@ export interface GridDataCellProps {
   /** Référence pour détecter si un drag vient de se terminer */
   justFinishedDragRef: React.MutableRefObject<boolean>;
   /** Callback appelé quand l'utilisateur clique sur la cellule pour éditer le prix */
-  onCellClick: (accId: number, dateStr: string) => void;
+  onCellClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur clique sur la durée minimale pour l'éditer */
-  onDureeMinClick: (accId: number, dateStr: string) => void;
+  onDureeMinClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
+  /** Callback appelé quand l'utilisateur appuie sur la souris pour démarrer un drag */
+  onMouseDown: (e: React.MouseEvent, dateStr: string, accId: number) => void;
   /** Setter pour la valeur en cours d'édition du prix */
   setEditingValue: React.Dispatch<React.SetStateAction<string>>;
   /** Setter pour la valeur en cours d'édition de la durée minimale */
@@ -83,6 +89,8 @@ export function GridDataCell({
   editingValue,
   editingDureeMinValue,
   isWeekend,
+  isNonReservable,
+  isBooked,
   selectedRateTypeId,
   draggingState,
   justFinishedDragRef,
@@ -93,13 +101,18 @@ export function GridDataCell({
   onEditSubmit,
   onEditDureeMinSubmit,
   onEditCancel,
-  onEditDureeMinCancel
+  onEditDureeMinCancel,
+  onMouseDown
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
   
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
+  // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
   let bgColor: string;
-  if (isDragging) {
+  if (isNonReservable) {
+    // Jour non réservable : fond gris avec opacité réduite
+    bgColor = darkTheme.bgTertiary;
+  } else if (isDragging) {
     bgColor = darkTheme.selectionDraggingBg;
   } else if (isSelected) {
     bgColor = isAvailable 
@@ -123,12 +136,30 @@ export function GridDataCell({
       key={`${accId}-${dateStr}`}
       data-date={dateStr}
       data-acc-id={accId}
+      onMouseDown={(e) => {
+        // Ne pas démarrer le drag si la date est occupée par une réservation
+        if (isBooked) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        // Ne pas démarrer le drag si CTRL est pressé (sera géré par l'édition)
+        if (e.ctrlKey || e.metaKey) {
+          return;
+        }
+        onMouseDown(e, dateStr, accId);
+      }}
       onClick={(e) => {
         if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
           e.preventDefault();
           return;
         }
-        onCellClick(accId, dateStr);
+        // CTRL+clic : ne pas gérer ici, sera géré par les handlers spécifiques (prix/durée min)
+        if (e.ctrlKey || e.metaKey) {
+          return;
+        }
+        // Clic normal : basculer la sélection (géré par useGridDrag via onMouseDown)
+        // On ne fait rien ici car le drag handler s'en occupe
       }}
       style={{
         padding: '8px 4px',
@@ -145,11 +176,13 @@ export function GridDataCell({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: isSelected ? 'pointer' : 'default',
-        opacity: isWeekend || isSelected || isDragging ? 1 : 0.7,
+        cursor: isBooked ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
+        // Les jours avec stock à 0 ont toujours une opacité de 0.5, même s'ils sont des weekends
+        // Les jours non réservables ont une opacité normale (1.0)
+        opacity: !isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7)),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isAvailable ? 'Disponible' : 'Indisponible'} (stock: ${stock})`}
+      title={`${dateStr} — ${isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')} (stock: ${stock})`}
     >
       {isEditing ? (
         <input
@@ -188,7 +221,27 @@ export function GridDataCell({
           {/* Afficher le prix seulement si le stock est disponible */}
           {stock > 0 && selectedRateTypeId !== null ? (
             price != null ? (
-              <span style={{ userSelect: 'none' }}>
+              <span 
+                onMouseDown={(e) => {
+                  // Empêcher le drag de se déclencher
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.stopPropagation();
+                  // CTRL+clic : éditer toute la sélection
+                  const editAllSelection = e.ctrlKey || e.metaKey;
+                  onCellClick(accId, dateStr, editAllSelection);
+                }}
+                style={{ 
+                  userSelect: 'none', 
+                  cursor: isSelected ? 'pointer' : 'default',
+                  color: isNonReservable ? darkTheme.textMuted : darkTheme.textPrimary
+                }}
+              >
                 {`${Math.round(price)}€`}
                 {isModified && (
                   <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
@@ -234,17 +287,23 @@ export function GridDataCell({
             />
           ) : stock > 0 ? (
             <span 
+              onMouseDown={(e) => {
+                // Empêcher le drag de se déclencher
+                e.stopPropagation();
+              }}
               onClick={(e) => {
                 if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
                   e.preventDefault();
                   return;
                 }
                 e.stopPropagation();
-                onDureeMinClick(accId, dateStr);
+                // CTRL+clic : éditer toute la sélection
+                const editAllSelection = e.ctrlKey || e.metaKey;
+                onDureeMinClick(accId, dateStr, editAllSelection);
               }}
               style={{ 
                 fontSize: 10, 
-                color: darkTheme.textMuted, 
+                color: isNonReservable ? darkTheme.error : darkTheme.textMuted, 
                 fontWeight: 400,
                 marginTop: price != null ? 2 : 0,
                 cursor: isSelected ? 'pointer' : 'default',

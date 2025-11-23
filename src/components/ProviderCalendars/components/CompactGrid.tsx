@@ -36,20 +36,30 @@ export interface CompactGridProps {
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
   /** Map des réservations par hébergement */
   bookingsByAccommodation: Record<number, BookingDisplay[]>;
-  /** Set des dates sélectionnées au format YYYY-MM-DD */
-  selectedDates: Set<string>;
-  /** Callback pour mettre à jour la sélection de dates */
-  onSelectedDatesChange: (dates: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  /** Set des cellules sélectionnées au format "accId|dateStr" */
+  selectedCells: Set<string>;
+  /** Callback pour mettre à jour la sélection de cellules */
+  onSelectedCellsChange: (cells: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  /** Map du stock par hébergement et date (pour filtrer la sélection) */
+  stockByAccommodation: Record<number, Record<string, number>>;
   /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
   /** Set des identifiants de durées minimales modifiées (format: "accId-dateStr") */
   modifiedDureeMin: Set<string>;
   /** Callback appelé quand un prix est mis à jour */
-  onRateUpdate: (newPrice: number) => void;
+  onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** Callback appelé quand une durée minimale est mise à jour */
-  onDureeMinUpdate: (newDureeMin: number | null) => void;
+  onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
+  /** Map des jours non réservables par hébergement (clé: idHebergement, valeur: Set des dates non réservables) */
+  nonReservableDaysByAccommodation: Record<number, Set<string>>;
+  /** Map des dates occupées par réservation par hébergement (clé: idHebergement, valeur: Set des dates occupées) */
+  bookedDatesByAccommodation: Record<number, Set<string>>;
+  /** ID de la réservation sélectionnée (uniquement Directe) */
+  selectedBookingId?: number | null;
+  /** Callback appelé quand l'utilisateur clique sur une réservation Directe */
+  onBookingClick?: (booking: BookingDisplay) => void;
 }
 
 export function CompactGrid({
@@ -60,13 +70,17 @@ export function CompactGrid({
   ratesByAccommodation,
   dureeMinByAccommodation,
   bookingsByAccommodation,
-  selectedDates,
-  onSelectedDatesChange,
+  selectedCells,
+  onSelectedCellsChange,
   modifiedRates,
   modifiedDureeMin,
   onRateUpdate,
   onDureeMinUpdate,
-  selectedRateTypeId
+  selectedRateTypeId,
+  nonReservableDaysByAccommodation,
+  bookedDatesByAccommodation,
+  selectedBookingId,
+  onBookingClick
 }: CompactGridProps): React.ReactElement {
   const allDays = React.useMemo(() => getDaysInRange(startDate, endDate), [startDate, endDate]);
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -99,7 +113,7 @@ export function CompactGrid({
     handleEditCancel,
     handleDureeMinCancel
   } = useGridEditing(
-    selectedDates,
+    selectedCells,
     ratesByAccommodation,
     dureeMinByAccommodation,
     selectedRateTypeId,
@@ -110,28 +124,55 @@ export function CompactGrid({
   // Hook pour gérer le drag
   const {
     draggingState,
-    draggingDates,
+    draggingCells,
     justFinishedDragRef,
     handleMouseDown
   } = useGridDrag(
-    onSelectedDatesChange,
+    onSelectedCellsChange,
     getDateFromElement,
     getDateRange,
-    editingCell
+    editingCell,
+    accommodations,
+    stockByAccommodation,
+    bookedDatesByAccommodation
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
+  // Sélectionne toutes les cellules non occupées par une réservation
   const handleHeaderClick = React.useCallback((dateStr: string) => {
-    onSelectedDatesChange((prev: Set<string>) => {
+    onSelectedCellsChange((prev: Set<string>) => {
       const newSet = new Set(prev);
-      if (newSet.has(dateStr)) {
-        newSet.delete(dateStr);
-      } else {
-        newSet.add(dateStr);
+      
+      // Vérifier si toutes les cellules non occupées de cette colonne sont sélectionnées
+      let allSelected = true;
+      for (const acc of accommodations) {
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        if (isBooked) continue; // Ignorer les dates occupées
+        
+        const cellKey = `${acc.idHebergement}|${dateStr}`;
+        if (!newSet.has(cellKey)) {
+          allSelected = false;
+          break;
+        }
       }
+      
+      // Si toutes les cellules non occupées sont sélectionnées, désélectionner toutes
+      // Sinon, sélectionner toutes les cellules non occupées
+      for (const acc of accommodations) {
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        if (isBooked) continue; // Ne pas sélectionner les dates occupées
+        
+        const cellKey = `${acc.idHebergement}|${dateStr}`;
+        if (allSelected) {
+          newSet.delete(cellKey);
+        } else {
+          newSet.add(cellKey);
+        }
+      }
+      
       return newSet;
     });
-  }, [onSelectedDatesChange]);
+  }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation]);
 
   // Gestionnaire pour convertir le scroll vertical en scroll horizontal
   // Utilisation d'un useEffect avec addEventListener pour pouvoir utiliser { passive: false }
@@ -165,7 +206,7 @@ export function CompactGrid({
         } else if (editingDureeMinCell) {
           handleDureeMinCancel();
         } else {
-          onSelectedDatesChange(new Set());
+          onSelectedCellsChange(new Set());
         }
       }
     };
@@ -174,7 +215,7 @@ export function CompactGrid({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingCell, editingDureeMinCell, onSelectedDatesChange, handleEditCancel, handleDureeMinCancel]);
+  }, [editingCell, editingDureeMinCell, onSelectedCellsChange, handleEditCancel, handleDureeMinCancel]);
 
   return (
     <>
@@ -242,8 +283,27 @@ export function CompactGrid({
         </div>
         {allDays.map((day, idx) => {
           const dateStr = formatDate(day);
-          const isSelected = selectedDates.has(dateStr);
-          const isDragging = draggingDates.has(dateStr);
+          // Une colonne est considérée sélectionnée si :
+          // - Il y a au moins une cellule non occupée
+          // - ET toutes les cellules non occupées sont sélectionnées
+          // Si toutes les cellules sont occupées, la colonne n'est pas sélectionnée
+          const nonBookedAccommodations = accommodations.filter(acc => 
+            !(bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false)
+          );
+          
+          const isSelected = accommodations.length > 0 
+            && nonBookedAccommodations.length > 0 // Au moins une cellule non occupée
+            && nonBookedAccommodations.every(acc => {
+              const cellKey = `${acc.idHebergement}|${dateStr}`;
+              return selectedCells.has(cellKey);
+            });
+          // Une colonne est en drag si au moins une cellule non occupée est en drag
+          const isDragging = accommodations.some(acc => {
+            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+            if (isBooked) return false; // Ignorer les dates occupées
+            const cellKey = `${acc.idHebergement}|${dateStr}`;
+            return draggingCells.has(cellKey);
+          });
           
           return (
             <GridHeaderCell
@@ -299,8 +359,9 @@ export function CompactGrid({
                   ? priceMap[dateStr]?.[selectedRateTypeId] 
                   : undefined;
                 const dureeMin = dureeMinMap[dateStr] ?? null;
-                const isSelected = selectedDates.has(dateStr);
-                const isDragging = draggingDates.has(dateStr);
+                const cellKey = `${acc.idHebergement}|${dateStr}`;
+                const isSelected = selectedCells.has(cellKey);
+                const isDragging = draggingCells.has(cellKey);
                 const isModified = selectedRateTypeId !== null 
                   ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
                   : false;
@@ -308,6 +369,8 @@ export function CompactGrid({
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
                 const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                const isNonReservable = (nonReservableDaysByAccommodation[acc.idHebergement] ?? new Set<string>()).has(dateStr);
+                const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
 
                 return (
                   <GridDataCell
@@ -326,11 +389,14 @@ export function CompactGrid({
                     editingValue={editingValue}
                     editingDureeMinValue={editingDureeMinValue}
                     isWeekend={isWeekend}
+                    isNonReservable={isNonReservable}
+                    isBooked={isBooked}
                     selectedRateTypeId={selectedRateTypeId}
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}
                     onCellClick={handleCellClick}
                     onDureeMinClick={handleDureeMinClick}
+                    onMouseDown={handleMouseDown}
                     setEditingValue={setEditingValue}
                     setEditingDureeMinValue={setEditingDureeMinValue}
                     onEditSubmit={handleEditSubmit}
@@ -353,6 +419,8 @@ export function CompactGrid({
         startDate={startDate}
         endDate={endDate}
         gridRef={gridRef}
+        selectedBookingId={selectedBookingId}
+        onBookingClick={onBookingClick}
       />
     </div>
     </>

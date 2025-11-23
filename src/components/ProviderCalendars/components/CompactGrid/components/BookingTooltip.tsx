@@ -7,7 +7,8 @@
 
 import React from 'react';
 import type { BookingDisplay } from '../../../types';
-import { darkTheme } from '../../../utils/theme';
+import { PlateformeReservation } from '../../../types';
+import { darkTheme, getBookingColor } from '../../../utils/theme';
 import { formatDateDisplay } from '../../../utils/dateUtils';
 
 export interface BookingTooltipProps {
@@ -30,6 +31,9 @@ export function BookingTooltip({
 
   // Section 1 - Référence
   const reference = booking.reference || 'Non renseigné';
+  
+  // Plateforme de réservation
+  const plateformeReservation = booking.plateformeReservation;
 
   // Section 2 - Client
   const clientParts: string[] = [];
@@ -88,8 +92,26 @@ export function BookingTooltip({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Section Référence */}
-        <div style={{ fontWeight: 600, fontSize: 14, color: darkTheme.textPrimary, borderBottom: `1px solid ${darkTheme.borderColor}`, paddingBottom: 8 }}>
-          Réf: {reference}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          fontWeight: 600, 
+          fontSize: 14, 
+          color: darkTheme.textPrimary, 
+          borderBottom: `1px solid ${darkTheme.borderColor}`, 
+          paddingBottom: 8 
+        }}>
+          <span>Réf: {reference}</span>
+          {plateformeReservation && (
+            <span style={{ 
+              fontSize: 12, 
+              color: getBookingColor(plateformeReservation), 
+              fontWeight: 500 
+            }}>
+              {plateformeReservation}
+            </span>
+          )}
         </div>
 
         {/* Section Client */}

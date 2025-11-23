@@ -398,6 +398,22 @@ A définir
 
 7. **Champ d'affichage du résumé de sélection (pour tests)**
 	- Un **champ texte en lecture seule** (`textarea`) doit être affiché sous le calendrier pour afficher un résumé formaté de la sélection.
+	- **Restriction de sélection pour les dates occupées** :
+		- Les dates occupées par une réservation ne doivent **pas** être sélectionnables (ni par clic, ni par drag).
+		- Une date est considérée comme occupée si elle appartient à la période d'une réservation : du jour d'arrivée inclus au jour de départ exclus.
+		- Exemple : Pour une réservation avec `dateArrivee = "2025-06-15"` et `dateDepart = "2025-06-22"`, les dates occupées sont : 15, 16, 17, 18, 19, 20, 21 (le 22 est exclu car c'est le jour de départ).
+		- Cette restriction s'applique à **toutes** les réservations, quelle que soit la plateforme d'origine (Booking.com, Directe, OpenPro, Xotelia, etc.).
+		- Cette restriction s'applique également aux réservations Direct en attente de synchronisation (`isPendingSync: true`) et aux réservations obsolètes (`isObsolete: true`).
+		- **Style visuel** : Les cellules occupées par une réservation doivent afficher un curseur `not-allowed` au survol pour indiquer qu'elles ne sont pas sélectionnables.
+
+	- **Restriction de sélection pour les dates occupées** :
+		- Les dates occupées par une réservation ne doivent **pas** être sélectionnables (ni par clic, ni par drag).
+		- Une date est considérée comme occupée si elle appartient à la période d'une réservation : du jour d'arrivée inclus au jour de départ exclus.
+		- Exemple : Pour une réservation avec `dateArrivee = "2025-06-15"` et `dateDepart = "2025-06-22"`, les dates occupées sont : 15, 16, 17, 18, 19, 20, 21 (le 22 est exclu car c'est le jour de départ).
+		- Cette restriction s'applique à **toutes** les réservations, quelle que soit la plateforme d'origine (Booking.com, Directe, OpenPro, Xotelia, etc.).
+		- Cette restriction s'applique également aux réservations Direct en attente de synchronisation (`isPendingSync: true`) et aux réservations obsolètes (`isObsolete: true`).
+		- **Style visuel** : Les cellules occupées par une réservation doivent afficher un curseur `not-allowed` au survol pour indiquer qu'elles ne sont pas sélectionnables.
+
 	- **Format du résumé** : une ligne par date sélectionnée, au format `Date, H1 - T1, H2 - T2, H3 - T3, ...` où :
 		- `Date` : date au format `"YYYY-MM-DD"` (ex: "2024-03-15").
 		- `H1, H2, H3, ...` : noms des hébergements (`nomHebergement`) affichés dans la grille, triés par ordre alphabétique.
@@ -886,6 +902,145 @@ A définir
 		6. Met à jour l'état de chargement (`setSaving(false)`).
 	- La fonction doit gérer les erreurs et afficher des messages appropriés.
 
+##### Bouton "Ouvrir" pour réactiver les dates non disponibles — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Lorsqu'une sélection de cellules contient au moins une date avec stock à 0 (indisponible), un bouton "Ouvrir" doit apparaître dans la barre d'actions.
+	- Ce bouton permet de remettre le stock à 1 pour toutes les dates non disponibles (stock = 0) présentes dans la sélection actuelle.
+	- Les dates avec stock > 0 dans la sélection ne sont pas modifiées.
+
+2. **Conditions d'affichage**
+	- **Bouton "Ouvrir" visible** : Uniquement si la sélection contient au moins une cellule avec stock à 0.
+	- **Position** : Le bouton doit apparaître à côté du bouton "Sauvegarder" dans le composant `ActionButtons`, à gauche des autres boutons.
+	- **Style** : Bouton d'action secondaire (couleur différente du bouton "Sauvegarder") avec icône ou texte explicite.
+	- **Texte du bouton** : "Ouvrir (X dates)" où X est le nombre de dates non disponibles sélectionnées.
+
+3. **Comportement fonctionnel**
+	- **Clic sur "Ouvrir"** :
+		- Identifier toutes les cellules sélectionnées avec stock à 0.
+		- Grouper ces cellules par hébergement (`idHebergement`).
+		- Pour chaque hébergement, créer un payload de mise à jour du stock contenant uniquement les dates avec stock à 0.
+		- Envoyer une requête au backend pour mettre à jour le stock à 1 pour ces dates spécifiques.
+		- **Cas limites** :
+			- Si une date a déjà un stock à 1, elle est ignorée (ne fait pas partie des dates avec stock à 0).
+			- Toutes les dates valides (format YYYY-MM-DD) peuvent être créées ou mises à jour dans OpenPro via l'API. Il n'existe pas de cas d'erreur pour une "date qui n'existe pas" car l'API OpenPro crée automatiquement les entrées de stock pour les dates valides.
+		- En cas de succès, rafraîchir les données pour refléter les changements de stock.
+		- En cas d'erreur, afficher un message d'erreur à l'utilisateur.
+
+4. **Détails d'implémentation**
+
+	4.1. **Détection des dates non disponibles dans la sélection**
+		- Dans `ProviderCalendars/index.tsx`, créer un `useMemo` qui :
+			- Parcourt toutes les cellules de `selectedCells`.
+			- Pour chaque cellule (`accId|dateStr`), vérifie le stock via `stockByAccommodation[accId]?.[dateStr] ?? 0`.
+			- Retourne un objet `Record<number, Set<string>>` (hébergement → dates avec stock à 0) contenant uniquement les dates non disponibles sélectionnées.
+
+	4.2. **Comptage des dates non disponibles**
+		- Calculer le nombre total de dates non disponibles sélectionnées pour déterminer l'affichage du bouton et le texte du bouton (ex: "Ouvrir (5 dates)").
+
+	4.3. **Composant ActionButtons**
+		- Ajouter une prop `unavailableDatesCount?: number` au composant `ActionButtons`.
+		- Ajouter une prop `onOpenUnavailable?: () => void` pour le callback du clic.
+		- Afficher conditionnellement le bouton "Ouvrir" si `unavailableDatesCount > 0`.
+		- Le bouton doit avoir un style distinct (ex: couleur orange/jaune pour différencier de "Sauvegarder").
+
+	4.4. **Fonction de mise à jour du stock**
+		- Utiliser la fonction `updateStock()` dans `backendClient.ts` qui appelle `POST /api/suppliers/:idFournisseur/accommodations/:idHebergement/stock` du backend.
+
+	4.5. **Handler d'ouverture**
+		- Dans `ProviderCalendars/index.tsx`, créer une fonction `handleOpenUnavailable()` qui :
+			- Récupère les dates non disponibles groupées par hébergement (via le `useMemo` de détection).
+			- Pour chaque hébergement, construit un payload avec les dates à mettre à jour (stock = 1).
+			- Appelle `updateStock()` pour chaque hébergement.
+			- Gère les erreurs (affichage d'un message si une mise à jour échoue).
+			- Appelle `handleRefreshData()` en cas de succès complet pour rafraîchir l'affichage.
+
+5. **Gestion des erreurs**
+	- **Erreur partielle** : Si certaines mises à jour réussissent et d'autres échouent, afficher un message d'erreur indiquant quelles dates n'ont pas pu être mises à jour.
+	- **Erreur totale** : Si toutes les mises à jour échouent, afficher un message d'erreur global.
+	- **État de chargement** : Le bouton "Ouvrir" doit être désactivé pendant la mise à jour du stock.
+
+6. **Expérience utilisateur**
+	- Le bouton "Ouvrir" doit afficher le nombre de dates concernées (ex: "Ouvrir (5 dates)").
+	- Pendant la mise à jour, afficher un état de chargement ("Ouverture...").
+	- Après succès, la sélection peut être maintenue ou vidée (à définir selon préférence UX).
+	- Les dates réactivées apparaissent immédiatement en vert après rafraîchissement.
+
+7. **Intégration avec le système existant**
+	- Le bouton "Ouvrir" coexiste avec les boutons "Actualiser" et "Sauvegarder".
+	- La logique de mise à jour du stock doit être séparée de la logique de sauvegarde des tarifs/durées minimales.
+	- Les modifications de stock sont immédiatement persistées dans OpenPro (pas besoin de cliquer sur "Sauvegarder").
+
+##### Bouton "Fermer" pour désactiver les dates disponibles — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- Lorsqu'une sélection de cellules contient au moins une date avec stock > 0 (disponible), un bouton "Fermer" doit apparaître dans la barre d'actions.
+	- Ce bouton permet de mettre le stock à 0 pour toutes les dates disponibles (stock > 0) présentes dans la sélection actuelle.
+	- Les dates avec stock à 0 dans la sélection ne sont pas modifiées.
+
+2. **Conditions d'affichage**
+	- **Bouton "Fermer" visible** : Uniquement si la sélection contient au moins une cellule avec stock > 0.
+	- **Position** : Le bouton doit apparaître entre le bouton "Actualiser" et le bouton "Ouvrir" dans le composant `ActionButtons`.
+	- **Style** : Bouton d'action avec couleur rouge pour différencier des autres boutons et indiquer une action de fermeture.
+	- **Texte du bouton** : "Fermer (X dates)" où X est le nombre de dates disponibles sélectionnées.
+
+3. **Comportement fonctionnel**
+	- **Clic sur "Fermer"** :
+		- Identifier toutes les cellules sélectionnées avec stock > 0.
+		- Grouper ces cellules par hébergement (`idHebergement`).
+		- Pour chaque hébergement, créer un payload de mise à jour du stock contenant uniquement les dates avec stock > 0.
+		- Envoyer une requête au backend pour mettre à jour le stock à 0 pour ces dates spécifiques.
+		- **Cas limites** :
+			- Si une date a déjà un stock à 0, elle est ignorée (ne fait pas partie des dates avec stock > 0).
+			- Toutes les dates valides (format YYYY-MM-DD) peuvent être mises à jour dans OpenPro via l'API. Il n'existe pas de cas d'erreur pour une "date qui n'existe pas" car l'API OpenPro crée automatiquement les entrées de stock pour les dates valides.
+		- En cas de succès, rafraîchir les données pour refléter les changements de stock.
+		- En cas d'erreur, afficher un message d'erreur à l'utilisateur.
+
+4. **Détails d'implémentation**
+
+	4.1. **Détection des dates disponibles dans la sélection**
+		- Dans `ProviderCalendars/index.tsx`, créer un `useMemo` qui :
+			- Parcourt toutes les cellules de `selectedCells`.
+			- Pour chaque cellule (`accId|dateStr`), vérifie le stock via `stockByAccommodation[accId]?.[dateStr] ?? 0`.
+			- Retourne un objet `Record<number, Set<string>>` (hébergement → dates avec stock > 0) contenant uniquement les dates disponibles sélectionnées.
+
+	4.2. **Comptage des dates disponibles**
+		- Calculer le nombre total de dates disponibles sélectionnées pour déterminer l'affichage du bouton et le texte du bouton (ex: "Fermer (5 dates)").
+
+	4.3. **Composant ActionButtons**
+		- Ajouter une prop `availableDatesCount?: number` au composant `ActionButtons`.
+		- Ajouter une prop `onCloseAvailable?: () => void` pour le callback du clic.
+		- Afficher conditionnellement le bouton "Fermer" si `availableDatesCount > 0`.
+		- Le bouton doit avoir un style distinct avec couleur rouge pour différencier des autres boutons et indiquer une action de fermeture.
+
+	4.4. **Fonction de mise à jour du stock**
+		- Utiliser la fonction `updateStock()` dans `backendClient.ts` qui appelle `POST /api/suppliers/:idFournisseur/accommodations/:idHebergement/stock` du backend.
+
+	4.5. **Handler de fermeture**
+		- Dans `ProviderCalendars/index.tsx`, créer une fonction `handleCloseAvailable()` qui :
+			- Récupère les dates disponibles groupées par hébergement (via le `useMemo` de détection).
+			- Pour chaque hébergement, construit un payload avec les dates à mettre à jour (stock = 0).
+			- Appelle `updateStock()` pour chaque hébergement.
+			- Gère les erreurs (affichage d'un message si une mise à jour échoue).
+			- Appelle `handleRefreshData()` en cas de succès complet pour rafraîchir l'affichage.
+
+5. **Gestion des erreurs**
+	- **Erreur partielle** : Si certaines mises à jour réussissent et d'autres échouent, afficher un message d'erreur indiquant quelles dates n'ont pas pu être mises à jour.
+	- **Erreur totale** : Si toutes les mises à jour échouent, afficher un message d'erreur global.
+	- **État de chargement** : Le bouton "Fermer" doit être désactivé pendant la mise à jour du stock.
+
+6. **Expérience utilisateur**
+	- Le bouton "Fermer" doit afficher le nombre de dates concernées (ex: "Fermer (5 dates)").
+	- Pendant la mise à jour, afficher un état de chargement ("Fermeture...").
+	- Après succès, la sélection peut être maintenue ou vidée (à définir selon préférence UX).
+	- Les dates fermées apparaissent immédiatement en rouge après rafraîchissement.
+
+7. **Intégration avec le système existant**
+	- Le bouton "Fermer" coexiste avec les boutons "Actualiser", "Ouvrir" et "Sauvegarder".
+	- L'ordre d'affichage recommandé des boutons : "Actualiser" → "Fermer" (si dates disponibles) → "Ouvrir" (si dates non disponibles) → "Sauvegarder" (si modifications).
+	- La logique de mise à jour du stock doit être séparée de la logique de sauvegarde des tarifs/durées minimales.
+	- Les modifications de stock sont immédiatement persistées dans OpenPro (pas besoin de cliquer sur "Sauvegarder").
+
 ##### Affichage de la durée minimale de séjour — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
@@ -966,8 +1121,9 @@ A définir
 ##### Affichage des réservations — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
-	- Les réservations sont affichées sous forme de **rectangles bleus opaques** par-dessus les cellules du calendrier.
+	- Les réservations sont affichées sous forme de **rectangles colorés opaques** par-dessus les cellules du calendrier.
 	- Chaque réservation est représentée par un rectangle continu qui s'étend sur plusieurs cellules selon les dates d'arrivée et de départ.
+	- Chaque plateforme de réservation a une couleur distincte pour faciliter l'identification visuelle (voir section 5 pour les détails des couleurs).
 	- Les rectangles sont positionnés directement dans la grille CSS pour un alignement automatique avec les lignes d'hébergements.
 
 2. **Chargement des données de réservation**
@@ -1013,7 +1169,18 @@ A définir
 		- L'overlay des rectangles est limité en x pour empêcher tout débordement.
 
 5. **Style visuel des rectangles**
-	- **Couleur de fond** : Bleu foncé opaque (`darkTheme.bookingBg`, ex: `#3b82f6`).
+	- **Couleur de fond** : Chaque plateforme de réservation a une couleur distincte pour faciliter l'identification visuelle :
+		- **Booking.com** : `#003580` (bleu foncé, contraste ~8.6:1 avec texte blanc)
+		- **Directe** : `#059669` (vert émeraude foncé, contraste ~4.7:1 avec texte blanc)
+		- **OpenPro** : `#c2410c` (orange foncé, contraste ~6.1:1 avec texte blanc)
+		- **Xotelia** : `#dc2626` (rouge foncé, contraste ~5.1:1 avec texte blanc)
+		- **Unknown** : `#64748b` (gris moyen, contraste ~4.5:1 avec texte blanc)
+	- La couleur est déterminée par la propriété `plateformeReservation` de chaque réservation via la fonction `getBookingColor()` du thème.
+	- Toutes les couleurs respectent le ratio de contraste WCAG AA minimum de 4.5:1 avec le texte blanc pour garantir une bonne lisibilité.
+	- **Réservations obsolètes** : Les réservations Direct avec `isObsolete: true` sont affichées avec :
+		- Un pattern de hachurage : `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px)`
+		- Une opacité réduite à 0.6 pour indiquer visuellement leur statut obsolète
+		- Le style est appliqué via `backgroundImage` et `opacity` dans le composant `BookingOverlay`
 	- **Bordures** : Bordures arrondies avec `borderRadius: 8px`.
 	- **Z-index** : `zIndex: 2` pour s'afficher au-dessus des cellules de la grille (`zIndex: 1`).
 	- **Pointer events** : `pointerEvents: 'none'` pour ne pas bloquer les interactions avec les cellules sous-jacentes.
@@ -1045,6 +1212,12 @@ A définir
 	- **Positionnement** : Utilisation de `position: absolute` avec des positions calculées dynamiquement.
 	- **Performance** : Utilisation de `useMemo` pour calculer les positions des rectangles uniquement lorsque les données changent.
 	- **Intégration** : Le composant `BookingOverlay` est intégré dans `CompactGrid` et reçoit les données de réservation via les props.
+	- **Gestion des réservations obsolètes** :
+		- Le flag `isObsolete` est fourni par le backend dans les réponses de `/api/suppliers/:idFournisseur/supplier-data`
+		- Les réservations obsolètes sont détectées dynamiquement côté backend (non stockées en DB)
+		- Le frontend affiche simplement le flag tel que reçu du backend
+		- Le style hachuré est appliqué conditionnellement basé sur `rect.booking.isObsolete === true`
+		- Aucune logique métier côté frontend, uniquement l'affichage visuel
 
 10. **Exemples visuels**
 	- **Rectangle de réservation standard** :
@@ -1066,11 +1239,213 @@ A définir
 		└───────────────────────────────────────────────
 		```
 
+##### Sélection d'une réservation Directe — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'utilisateur peut sélectionner une réservation en cliquant sur son rectangle dans la grille de calendrier.
+	- **Restriction importante** : Seules les réservations **Directe** (`plateformeReservation === PlateformeReservation.Directe`) peuvent être sélectionnées.
+	- Les réservations des autres plateformes (Booking.com, OpenPro, Xotelia, etc.) ne sont pas sélectionnables.
+	- Une seule réservation peut être sélectionnée à la fois.
+
+2. **Comportement de sélection**
+	- **Clic sur une réservation Directe non sélectionnée** : Sélectionne cette réservation et désélectionne toute réservation précédemment sélectionnée.
+	- **Clic sur une réservation Directe déjà sélectionnée** : Désélectionne cette réservation.
+	- **Clic sur une réservation non Directe** : Aucune action (la réservation reste non sélectionnable).
+	- **Clic en dehors d'une réservation** : La sélection actuelle est maintenue (pas de désélection automatique).
+
+3. **Indicateur visuel de sélection**
+	- Les réservations Directe sélectionnées doivent avoir un **style visuel distinctif** pour indiquer leur état de sélection.
+	- **Style proposé** :
+		- Une bordure plus épaisse (ex: `4px solid rgba(255, 255, 255, 0.9)`)
+		- Optionnel : Une ombre portée légère (`boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'`)
+		- Le fond reste vert émeraude (`#059669`) pour les réservations Directe
+	- Les réservations non sélectionnées conservent leur style normal (avec ou sans bordure selon leur statut de synchronisation).
+
+4. **Gestion de l'état de sélection**
+	- L'état de la réservation sélectionnée est stocké dans le composant parent (`ProviderCalendars`).
+	- **Identifiant de réservation** : Utiliser `booking.idDossier` comme identifiant unique pour la réservation sélectionnée.
+	- **État** : `selectedBookingId: number | null`
+		- `null` : Aucune réservation sélectionnée
+		- `number` : ID de la réservation Directe sélectionnée (`idDossier`)
+
+5. **Interactions utilisateur**
+	- **Curseur** : Les réservations Directe affichent un curseur `pointer` au survol pour indiquer qu'elles sont cliquables.
+	- Les réservations non Directe affichent un curseur `default` pour indiquer qu'elles ne sont pas interactives.
+	- **Feedback visuel au survol** : Optionnel, peut ajouter un léger effet de survol (ex: opacité légèrement augmentée) pour les réservations Directe.
+
+6. **Exclusion mutuelle avec la sélection de dates**
+	- **Sélection d'une réservation** : Lorsqu'une réservation Directe est sélectionnée, toute sélection de dates existante est automatiquement annulée (vidée).
+	- **Sélection de dates** : Lorsque l'utilisateur sélectionne une ou plusieurs dates (par clic, drag, ou clic sur un header), toute réservation sélectionnée est automatiquement désélectionnée.
+	- Cette exclusion mutuelle garantit qu'une seule "sélection active" existe à la fois dans l'interface :
+		- Soit une réservation est sélectionnée (pour des actions sur la réservation)
+		- Soit des dates sont sélectionnées (pour créer une nouvelle réservation ou modifier des tarifs)
+	- **Comportement** :
+		- Clic sur une réservation Directe → Sélectionne la réservation + Vide la sélection de dates
+		- Clic sur une date (ou drag de dates) → Sélectionne les dates + Désélectionne la réservation
+		- Clic sur un header de colonne → Sélectionne/désélectionne la colonne + Désélectionne la réservation
+
+7. **Intégration avec les autres fonctionnalités**
+	- La sélection d'une réservation permet d'activer ultérieurement des actions spécifiques (ex: suppression, modification).
+	- La réservation sélectionnée peut être utilisée par d'autres composants ou boutons d'action dans l'interface.
+
+7. **Détails d'implémentation**
+
+	7.1. **Composant BookingOverlay**
+		- Ajouter une prop `selectedBookingId?: number | null` pour recevoir l'ID de la réservation sélectionnée.
+		- Ajouter une prop `onBookingClick?: (booking: BookingDisplay) => void` pour le callback de clic.
+		- Modifier chaque rectangle de réservation pour :
+			- Vérifier si la réservation est Directe (`booking.plateformeReservation === PlateformeReservation.Directe`).
+			- Si Directe : Ajouter un gestionnaire `onClick` qui appelle `onBookingClick(booking)`.
+			- Si Directe : Appliquer le style visuel de sélection si `booking.idDossier === selectedBookingId`.
+			- Si Directe : Afficher un curseur `pointer` au survol.
+			- Si non Directe : Ne pas ajouter de gestionnaire de clic et afficher un curseur `default`.
+
+	7.2. **Composant ProviderCalendars (index.tsx)**
+		- Créer un état `selectedBookingId: number | null` avec `React.useState<number | null>(null)`.
+		- Créer une fonction `handleBookingClick` qui :
+			- Vérifie si la réservation est Directe (déjà vérifié dans BookingOverlay).
+			- Si la réservation cliquée est déjà sélectionnée (`booking.idDossier === selectedBookingId`), désélectionne (`setSelectedBookingId(null)`).
+			- Sinon, sélectionne la nouvelle réservation (`setSelectedBookingId(booking.idDossier)`) **ET vide la sélection de dates** (`setSelectedCells(new Set<string>())`).
+		- Modifier tous les gestionnaires de sélection de dates (`setSelectedCells`, `handleHeaderClick`, etc.) pour désélectionner la réservation (`setSelectedBookingId(null)`) lorsque des dates sont sélectionnées.
+		- Passer `selectedBookingId` et `onBookingClick={handleBookingClick}` à `CompactGrid`, qui les passera à `BookingOverlay`.
+
+	7.3. **Filtrage des réservations cliquables**
+		- Dans `BookingOverlay`, vérifier `booking.plateformeReservation === PlateformeReservation.Directe` avant d'ajouter le gestionnaire de clic.
+		- Les réservations non Directe ne doivent pas déclencher d'action au clic.
+
+8. **Cas limites**
+	- **Réservation Directe en attente de synchronisation** : Peut être sélectionnée normalement.
+	- **Réservation Directe obsolète** : Peut être sélectionnée normalement (mais probablement pas supprimable).
+	- **Plusieurs réservations Directe chevauchantes** : Chaque rectangle est cliquable indépendamment, seule la réservation cliquée est sélectionnée.
+	- **Réservation Directe partiellement visible** : Peut être sélectionnée même si elle est partiellement hors de la plage affichée.
+
+9. **Performance**
+	- La vérification du type de plateforme doit être effectuée lors du rendu de chaque rectangle.
+	- L'état de sélection ne nécessite pas de recalcul des positions des rectangles.
+	- Le style conditionnel de sélection est appliqué uniquement aux rectangles Directe.
+
+##### Création d'une réservation Directe — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'utilisateur peut créer une nouvelle réservation Directe en sélectionnant des dates dans le calendrier et en ouvrant le formulaire de création.
+	- Le formulaire de création (`BookingModal`) permet de saisir les informations du client et de la réservation.
+	- Le formulaire doit supporter l'autocomplétion du navigateur pour améliorer l'expérience utilisateur.
+
+2. **Support de l'autocomplétion**
+	- Tous les champs du formulaire client doivent inclure l'attribut HTML `autoComplete` approprié pour permettre au navigateur de proposer l'autocomplétion.
+	- **Champs avec autocomplétion** :
+		- **Nom** : `autoComplete="family-name"`
+		- **Prénom** : `autoComplete="given-name"`
+		- **Email** : `autoComplete="email"` (en plus de `type="email"`)
+		- **Téléphone** : `autoComplete="tel"`
+		- **Adresse** : `autoComplete="street-address"`
+		- **Code postal** : `autoComplete="postal-code"`
+		- **Ville** : `autoComplete="address-level2"`
+		- **Pays** : `autoComplete="country"`
+		- **Société** (client professionnel) : `autoComplete="organization"`
+	- Cette fonctionnalité permet au navigateur (Chrome, Firefox, Safari, etc.) de proposer automatiquement les informations sauvegardées de l'utilisateur, améliorant ainsi la rapidité de saisie et réduisant les erreurs.
+
+3. **Composant ClientForm**
+	- Le composant `ClientForm` doit implémenter tous les attributs `autoComplete` appropriés sur les champs de saisie.
+	- Les attributs doivent être définis en camelCase React (`autoComplete` et non `autocomplete`).
+
+##### Suppression d'une réservation Directe — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'utilisateur peut supprimer une réservation Directe sélectionnée en appuyant sur la touche Suppr (Delete).
+	- Une modale de confirmation s'affiche pour confirmer la suppression avant de procéder.
+	- La suppression entraîne la suppression de la réservation en DB (et dans le stub en test) ainsi que la réactivation du stock pour les dates concernées.
+
+2. **Déclenchement de la modale**
+	- **Condition** : Une réservation Directe doit être sélectionnée (`selectedBookingId !== null`).
+	- **Touche** : Appui sur la touche Suppr (Delete) ouvre la modale de confirmation.
+	- **Comportement** : Si aucune réservation n'est sélectionnée, l'appui sur Suppr ne fait rien.
+
+3. **Contenu de la modale de confirmation**
+	- La modale affiche un **récapitulatif** de la réservation à supprimer avec les informations suivantes :
+		- Dates d'arrivée et de départ (formatées)
+		- Nom du client (nom complet)
+		- Nom de l'hébergement
+		- Nombre de personnes
+		- Montant total (si disponible)
+		- Référence (si disponible)
+	- La modale doit être claire et indiquer qu'il s'agit d'une action irréversible.
+
+4. **Fermeture/annulation de la modale**
+	- **Touche Échap (Escape)** : Ferme la modale sans supprimer la réservation.
+	- **Bouton "Annuler"** : Ferme la modale sans supprimer la réservation.
+	- Dans les deux cas, la sélection de réservation est maintenue.
+
+5. **Confirmation de suppression**
+	- **Bouton "Supprimer"** : Lance la suppression de la réservation.
+	- **Ordre des opérations lors de la suppression** :
+		1. **Étape 1** : Supprimer la réservation en DB (et dans le stub en test) via l'API backend.
+		2. **Étape 2** : Mettre le stock à 1 pour toutes les dates de la réservation supprimée (du `dateArrivee` inclus au `dateDepart` exclus) via l'API de mise à jour du stock.
+		3. **Étape 3** : Rafraîchir les données (`handleRefreshData()`) pour refléter la suppression.
+		4. **Étape 4** : Annuler la sélection de réservation (`setSelectedBookingId(null)`).
+		5. **Étape 5** : Fermer la modale.
+
+6. **Gestion des erreurs**
+	- **Erreur de suppression** : Si la suppression échoue, afficher un message d'erreur dans la modale ou via une notification. La modale reste ouverte pour permettre un nouvel essai ou une annulation.
+	- **Erreur de mise à jour du stock** : Si la suppression réussit mais que la mise à jour du stock échoue, afficher un avertissement (la réservation est supprimée mais le stock n'a pas été réactivé). Rafraîchir les données quand même.
+	- **État de chargement** : Afficher un état de chargement pendant la suppression et la mise à jour du stock (bouton "Supprimer" désactivé, texte "Suppression...").
+
+7. **Détails d'implémentation**
+
+	7.1. **Composant DeleteBookingModal**
+		- Créer un nouveau composant `DeleteBookingModal` similaire à `BookingModal` mais pour la suppression.
+		- **Props** :
+			- `isOpen: boolean` - Indique si la modale est ouverte
+			- `onClose: () => void` - Callback pour fermer la modale
+			- `booking: BookingDisplay | null` - La réservation à supprimer
+			- `onConfirmDelete: (booking: BookingDisplay) => Promise<void>` - Callback pour confirmer la suppression
+		- **Fonctionnalités** :
+			- Afficher le récapitulatif de la réservation
+			- Gérer la touche Échap pour fermer la modale
+			- Afficher un état de chargement pendant la suppression
+			- Gérer les erreurs d'affichage
+
+	7.2. **Gestion du clavier (index.tsx)**
+		- Ajouter un `useEffect` qui écoute la touche Suppr uniquement quand une réservation Directe est sélectionnée.
+		- Utiliser `window.addEventListener('keydown', handleDeleteKey)` avec `useEffect`.
+		- Ouvrir la modale de suppression lorsque la touche Suppr est pressée.
+
+	7.3. **API Backend**
+		- Créer un endpoint `DELETE /api/suppliers/:idFournisseur/local-bookings/:idDossier` pour supprimer une réservation locale.
+		- L'endpoint doit supprimer la réservation dans la DB D1 (et dans le stub si en mode test).
+		- Retourner une réponse de succès ou d'erreur.
+
+	7.4. **API Frontend**
+		- Créer une fonction `deleteBooking(idFournisseur: number, idDossier: number)` dans `backendClient.ts`.
+		- La fonction doit appeler l'endpoint DELETE du backend.
+
+	7.5. **Mise à jour du stock**
+		- Après la suppression réussie, calculer toutes les dates de la réservation (du `dateArrivee` inclus au `dateDepart` exclus).
+		- Utiliser l'endpoint existant `POST /api/suppliers/:idFournisseur/accommodations/:idHebergement/stock` pour mettre le stock à 1 pour toutes ces dates.
+		- La fonction `updateStock()` existe déjà dans `backendClient.ts`.
+
+	7.6. **Intégration dans index.tsx**
+		- Créer un état `isDeleteModalOpen: boolean` pour gérer l'ouverture/fermeture de la modale.
+		- Créer une fonction `handleDeleteBooking` qui :
+			- Appelle `deleteBooking()` pour supprimer la réservation.
+			- Calcule toutes les dates de la réservation.
+			- Appelle `updateStock()` pour mettre le stock à 1.
+			- Appelle `handleRefreshData()` pour rafraîchir les données.
+			- Annule la sélection de réservation (`setSelectedBookingId(null)`).
+			- Ferme la modale.
+		- Trouver la réservation sélectionnée dans `bookingsByAccommodation` pour passer à la modale.
+
+8. **Style visuel**
+	- La modale doit avoir un style cohérent avec le reste de l'application (thème sombre).
+	- Le bouton "Supprimer" doit avoir une couleur distincte (ex: rouge) pour indiquer une action destructive.
+	- Le bouton "Annuler" doit être moins visible (bouton secondaire).
+	- Un message d'avertissement peut être affiché pour indiquer que l'action est irréversible.
+
 ##### Tooltip des réservations — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
-	- Un tooltip contextuel s'affiche au survol des rectangles bleus de réservation.
-	- Le tooltip affiche un résumé condensé mais complet de toutes les données du dossier de réservation.
+	- Un tooltip contextuel s'affiche au survol des rectangles colorés de réservation.
+	- Le tooltip affiche un résumé condensé mais complet de toutes les données du dossier de réservation, incluant la plateforme de réservation.
 	- Le tooltip suit la position de la souris pour rester visible pendant le survol.
 
 2. **Déclenchement du tooltip**
@@ -1221,6 +1596,49 @@ A définir
 5. **Implémentation technique**
 	- Ajout de la condition `stock > 0` dans l'affichage conditionnel du prix et de la durée minimale dans `GridDataCell`.
 	- Les cellules sans stock restent visibles avec leur couleur de fond, mais sans contenu textuel.
+
+##### Détection et affichage des jours non réservables — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'interface affiche en gris les jours où un hébergement n'est pas réservable.
+	- Un jour est non réservable si sa durée minimale de réservation est strictement supérieure à la longueur de la plage de disponibilité à laquelle il appartient.
+
+2. **Concepts de l'algorithme**
+	- **Plage de disponibilité** : Période continue où le stock est à 1, encadrée par des jours où le stock est à 0 ou non défini.
+	- **Note importante** : Par défaut, le jour d'hier (date de début de la période affichée - 1 jour) est considéré comme ayant un stock à 0 dans cet algorithme.
+	- **Longueur d'une plage** : Nombre de jours consécutifs où le stock est à 1 dans la plage.
+	- **Règle de réservabilité** : Un jour est non réservable si sa durée minimale de réservation est strictement supérieure à la longueur de la plage de disponibilité à laquelle il appartient.
+
+3. **Algorithme de détection**
+	- Pour chaque hébergement et chaque jour dans la période affichée :
+		- Si le stock du jour est à 1 :
+			- Identifier la plage de disponibilité à laquelle le jour appartient.
+			- Calculer la longueur de cette plage.
+			- Comparer la durée minimale de réservation du jour avec la longueur de la plage.
+			- Si `dureeMin > longueur de la plage`, marquer le jour comme non réservable.
+		- Si le stock du jour est à 0 ou non défini :
+			- Le jour est automatiquement non réservable (pas de plage de disponibilité).
+
+4. **Affichage visuel**
+	- **Jours non réservables** :
+		- Fond gris (`darkTheme.bgTertiary`) avec opacité réduite à 0.5.
+		- Le prix et la durée minimale restent affichés mais avec une opacité réduite.
+		- La bordure est conservée mais avec une opacité réduite.
+	- **Jours réservables** :
+		- Affichage normal (fond vert/rouge selon le stock, opacité normale).
+
+5. **Cas limites**
+	- **Plage de 1 jour avec durée minimale de 1 jour** : Jour réservable (1 ≤ 1).
+	- **Plage de 1 jour avec durée minimale de 2 jours** : Jour non réservable (2 > 1).
+	- **Durée minimale absente ou nulle** : Jour réservable par défaut (pas de contrainte).
+	- **Stock à 0** : Jour non réservable (pas de plage de disponibilité).
+
+6. **Implémentation technique**
+	- **Fichier utilitaire** : `availabilityUtils.ts` contient :
+		- `getAvailabilityRanges()` : Calcule les plages de disponibilité pour un hébergement.
+		- `getNonReservableDays()` : Identifie les jours non réservables en comparant les durées minimales avec les longueurs des plages.
+	- **Calcul dans le composant principal** : `ProviderCalendars/index.tsx` calcule `nonReservableDaysByAccommodation` avec `useMemo` pour optimiser les performances.
+	- **Affichage** : `GridDataCell` reçoit la prop `isNonReservable` et applique le style gris avec opacité réduite.
 
 ##### Remplacement du champ "Durée" par "Date de fin" — Fichiers à modifier
 

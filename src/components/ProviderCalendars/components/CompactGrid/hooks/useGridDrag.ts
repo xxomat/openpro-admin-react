@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { formatDate } from '../../../utils/dateUtils';
+import { getAccIdFromElement } from '../utils/gridUtils';
 
 /**
  * État du drag de sélection de dates
@@ -27,32 +28,39 @@ export interface DraggingState {
 }
 
 /**
- * Hook pour gérer le drag de sélection de dates
+ * Hook pour gérer le drag de sélection de cellules
  * 
- * @param onSelectedDatesChange - Callback pour mettre à jour la sélection de dates
+ * @param onSelectedCellsChange - Callback pour mettre à jour la sélection de cellules
  * @param getDateFromElement - Fonction pour extraire la date d'un élément DOM
  * @param getDateRange - Fonction pour calculer la plage de dates entre deux dates
  * @param editingCell - État de la cellule en cours d'édition (pour empêcher le drag pendant l'édition)
+ * @param accommodations - Liste des hébergements
+ * @param stockByAccommodation - Map du stock par hébergement et date
  * @returns État du drag et gestionnaires d'événements
  */
 export function useGridDrag(
-  onSelectedDatesChange: (dates: Set<string> | ((prev: Set<string>) => Set<string>)) => void,
+  onSelectedCellsChange: (cells: Set<string> | ((prev: Set<string>) => Set<string>)) => void,
   getDateFromElement: (element: HTMLElement) => string | null,
   getDateRange: (startDateStr: string, endDateStr: string) => string[],
-  editingCell: { accId: number; dateStr: string } | null
+  editingCell: { accId: number; dateStr: string } | null,
+  accommodations: Array<{ idHebergement: number }>,
+  stockByAccommodation: Record<number, Record<string, number>>,
+  bookedDatesByAccommodation: Record<number, Set<string>>
 ): {
   draggingState: DraggingState | null;
-  draggingDates: Set<string>;
+  draggingCells: Set<string>;
   justFinishedDragRef: React.MutableRefObject<boolean>;
-  handleMouseDown: (e: React.MouseEvent, dateStr: string) => void;
+  handleMouseDown: (e: React.MouseEvent, dateStr: string, accId?: number) => void;
 } {
   const [draggingState, setDraggingState] = React.useState<DraggingState | null>(null);
   const justFinishedDragRef = React.useRef(false);
 
   // Gestionnaire pour démarrer le drag
-  const handleMouseDown = React.useCallback((e: React.MouseEvent, dateStr: string) => {
+  const handleMouseDown = React.useCallback((e: React.MouseEvent, dateStr: string, accId?: number) => {
     if (editingCell) return;
     if (e.button !== 0) return;
+    // Ne pas gérer le drag si CTRL est pressé (sera géré par l'édition)
+    if (e.ctrlKey || e.metaKey) return;
     
     setDraggingState({
       startDate: dateStr,
@@ -89,6 +97,27 @@ export function useGridDrag(
     });
   }, [getDateFromElement]);
 
+  // Fonction helper pour générer les cellules d'une plage de dates
+  // Exclut les dates occupées par une réservation
+  const generateCellsForDateRange = React.useCallback((startDateStr: string, endDateStr: string): string[] => {
+    const dateRange = getDateRange(startDateStr, endDateStr);
+    const cells: string[] = [];
+    
+    for (const dateStr of dateRange) {
+      for (const acc of accommodations) {
+        // Vérifier si cette date est occupée par une réservation
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        
+        // Ne pas inclure les dates occupées (toutes les autres dates sont sélectionnables, même avec stock à 0)
+        if (!isBooked) {
+          cells.push(`${acc.idHebergement}|${dateStr}`);
+        }
+      }
+    }
+    
+    return cells;
+  }, [getDateRange, accommodations, bookedDatesByAccommodation]);
+
   // Gestionnaire pour terminer le drag
   const handleMouseUp = React.useCallback((e: MouseEvent) => {
     setDraggingState(prev => {
@@ -101,15 +130,46 @@ export function useGridDrag(
       if (!prev.isDragging || distance < 5) {
         justFinishedDragRef.current = true;
         
-        onSelectedDatesChange((prevSelected: Set<string>) => {
-          const newSet = new Set(prevSelected);
-          if (newSet.has(prev.startDate)) {
-            newSet.delete(prev.startDate);
-          } else {
-            newSet.add(prev.startDate);
+        // Clic simple : basculer la sélection de toutes les cellules pour cette date (même avec stock à 0)
+        // Si on a cliqué sur une cellule spécifique (pas un header), on peut aussi basculer juste cette cellule
+        const elementUnderCursor = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement;
+        const accId = elementUnderCursor ? getAccIdFromElement(elementUnderCursor) : null;
+        
+        if (accId !== null) {
+          // Vérifier si cette date est occupée par une réservation
+          const isBooked = bookedDatesByAccommodation[accId]?.has(prev.startDate) ?? false;
+          
+          // Ne pas permettre la sélection si la date est occupée
+          if (!isBooked) {
+            // Clic sur une cellule spécifique : basculer cette cellule (si non occupée)
+            const cellKey = `${accId}|${prev.startDate}`;
+            onSelectedCellsChange((prevSelected: Set<string>) => {
+              const newSet = new Set(prevSelected);
+              if (newSet.has(cellKey)) {
+                newSet.delete(cellKey);
+              } else {
+                newSet.add(cellKey);
+              }
+              return newSet;
+            });
           }
-          return newSet;
-        });
+        } else {
+          // Clic sur un header : basculer toutes les cellules pour cette date (même avec stock à 0)
+          const cellsForDate = generateCellsForDateRange(prev.startDate, prev.startDate);
+          onSelectedCellsChange((prevSelected: Set<string>) => {
+            const newSet = new Set(prevSelected);
+            const allSelected = cellsForDate.every(cell => newSet.has(cell));
+            
+            for (const cell of cellsForDate) {
+              if (allSelected) {
+                newSet.delete(cell);
+              } else {
+                newSet.add(cell);
+              }
+            }
+            return newSet;
+          });
+        }
         
         setTimeout(() => {
           justFinishedDragRef.current = false;
@@ -117,16 +177,17 @@ export function useGridDrag(
         return null;
       }
       
-      const dateRange = getDateRange(prev.startDate, prev.currentDate);
+      // Drag : sélectionner toutes les cellules dans la plage (même avec stock à 0)
+      const cellsInRange = generateCellsForDateRange(prev.startDate, prev.currentDate);
       const isReplaceMode = e.ctrlKey || e.metaKey;
       
-      onSelectedDatesChange((prevSelected: Set<string>) => {
+      onSelectedCellsChange((prevSelected: Set<string>) => {
         if (isReplaceMode) {
-          return new Set(dateRange);
+          return new Set(cellsInRange);
         } else {
           const newSet = new Set(prevSelected);
-          for (const dateStr of dateRange) {
-            newSet.add(dateStr);
+          for (const cell of cellsInRange) {
+            newSet.add(cell);
           }
           return newSet;
         }
@@ -139,7 +200,7 @@ export function useGridDrag(
       
       return null;
     });
-  }, [getDateRange, onSelectedDatesChange]);
+  }, [generateCellsForDateRange, onSelectedCellsChange, bookedDatesByAccommodation]);
 
   // Effet pour gérer les événements globaux de souris pendant le drag
   React.useEffect(() => {
@@ -154,15 +215,15 @@ export function useGridDrag(
     };
   }, [draggingState, handleMouseMove, handleMouseUp]);
 
-  // Calculer les dates dans la plage de drag pour la surbrillance temporaire
-  const draggingDates = React.useMemo(() => {
+  // Calculer les cellules dans la plage de drag pour la surbrillance temporaire
+  const draggingCells = React.useMemo(() => {
     if (!draggingState || !draggingState.isDragging) return new Set<string>();
-    return new Set(getDateRange(draggingState.startDate, draggingState.currentDate));
-  }, [draggingState, getDateRange]);
+    return new Set(generateCellsForDateRange(draggingState.startDate, draggingState.currentDate));
+  }, [draggingState, generateCellsForDateRange]);
 
   return {
     draggingState,
-    draggingDates,
+    draggingCells,
     justFinishedDragRef,
     handleMouseDown
   };

@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import type { Supplier } from './types';
+import type { Supplier, BookingDisplay } from './types';
+import { PlateformeReservation } from './types';
 import { ActionButtons } from './components/ActionButtons';
 import { AccommodationList } from './components/AccommodationList';
 import { CompactGrid } from './components/CompactGrid';
@@ -17,11 +18,16 @@ import { RateTypeSelector } from './components/RateTypeSelector';
 import { SelectionSummary } from './components/SelectionSummary';
 import { SupplierTabs } from './components/SupplierTabs';
 import { AdminFooter } from './components/AdminFooter';
+import { BookingModal } from './components/BookingModal';
+import { DeleteBookingModal } from './components/DeleteBookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
+import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
 import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
-import { saveBulkUpdates, type BulkUpdateRequest } from '../../services/api/backendClient';
+import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '../../services/api/backendClient';
+import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
+import { getNonReservableDays } from './utils/availabilityUtils';
 
 export function ProviderCalendars(): React.ReactElement {
   const [suppliers] = React.useState<Supplier[]>(defaultSuppliers);
@@ -36,6 +42,7 @@ export function ProviderCalendars(): React.ReactElement {
     return formatDate(endDate);
   });
   const [saving, setSaving] = React.useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = React.useState(false);
 
   const supplierData = useSupplierData();
 
@@ -59,11 +66,11 @@ export function ProviderCalendars(): React.ReactElement {
     return addMonths(loadStartDate, 12);
   }, [loadStartDate]);
 
-  // Obtenir la sélection de dates pour le fournisseur actif
-  const selectedDates = React.useMemo(() => {
+  // Obtenir la sélection de cellules pour le fournisseur actif (format: "accId-dateStr")
+  const selectedCells = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.selectedDatesBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
-  }, [activeSupplier, supplierData.selectedDatesBySupplier]);
+    return supplierData.selectedCellsBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
+  }, [activeSupplier, supplierData.selectedCellsBySupplier]);
 
   // Obtenir la sélection d'hébergements pour le fournisseur actif
   const selectedAccommodations = React.useMemo(() => {
@@ -81,15 +88,110 @@ export function ProviderCalendars(): React.ReactElement {
     });
   }, [activeSupplier, supplierData]);
 
-  // Fonction pour mettre à jour la sélection de dates du fournisseur actif
-  const setSelectedDates = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+  // État pour la réservation sélectionnée (uniquement Directe)
+  const [selectedBookingId, setSelectedBookingId] = React.useState<number | null>(null);
+
+  // Fonction pour mettre à jour la sélection de cellules du fournisseur actif
+  // Vide automatiquement la sélection de réservation quand des dates sont sélectionnées
+  const setSelectedCells = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
-    supplierData.setSelectedDatesBySupplier(prev => {
+    supplierData.setSelectedCellsBySupplier(prev => {
       const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
+      
+      // Si la nouvelle sélection n'est pas vide, vider la sélection de réservation
+      if (newSet.size > 0) {
+        setSelectedBookingId(null);
+      }
+      
       return { ...prev, [activeSupplier.idFournisseur]: newSet };
     });
   }, [activeSupplier, supplierData]);
+
+  // Fonction pour vider la sélection de dates
+  const handleClearSelection = React.useCallback(() => {
+    if (!activeSupplier) return;
+    setSelectedCells(new Set<string>());
+  }, [activeSupplier, setSelectedCells]);
+
+  // Fonction pour gérer le clic sur une réservation
+  const handleBookingClick = React.useCallback((booking: BookingDisplay) => {
+    // Vérifier que la réservation est Directe (sécurité supplémentaire)
+    if (booking.plateformeReservation !== PlateformeReservation.Directe) {
+      return; // Ne pas sélectionner les réservations non Directe
+    }
+
+    // Si la réservation cliquée est déjà sélectionnée, désélectionner
+    if (booking.idDossier === selectedBookingId) {
+      setSelectedBookingId(null);
+    } else {
+      // Sinon, sélectionner cette réservation ET vider la sélection de dates
+      setSelectedBookingId(booking.idDossier);
+      // Vider la sélection de dates directement (sans passer par setSelectedCells pour éviter la récursion)
+      if (activeSupplier) {
+        supplierData.setSelectedCellsBySupplier(prev => ({
+          ...prev,
+          [activeSupplier.idFournisseur]: new Set<string>()
+        }));
+      }
+    }
+  }, [selectedBookingId, activeSupplier, supplierData]);
+
+  // État pour la modale de suppression
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+
+  // Trouver la réservation sélectionnée dans les données
+  const selectedBooking = React.useMemo(() => {
+    if (!activeSupplier || selectedBookingId === null || selectedBookingId === undefined) {
+      return null;
+    }
+
+    const bookingsByAcc = supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    
+    // Parcourir toutes les réservations pour trouver celle avec le bon idDossier
+    for (const bookingsArray of Object.values(bookingsByAcc)) {
+      const booking = bookingsArray.find(b => b.idDossier === selectedBookingId);
+      if (booking) {
+        return booking;
+      }
+    }
+
+    return null;
+  }, [activeSupplier, selectedBookingId, supplierData.bookingsBySupplierAndAccommodation]);
+
+  // Trouver le nom de l'hébergement pour la réservation sélectionnée
+  const selectedBookingAccommodationName = React.useMemo(() => {
+    if (!selectedBooking || !activeSupplier) {
+      return undefined;
+    }
+
+    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    const accommodation = accommodations.find(acc => acc.idHebergement === selectedBooking.idHebergement);
+    return accommodation?.nomHebergement;
+  }, [selectedBooking, activeSupplier, supplierData.accommodations]);
+
+  // Gérer la touche Suppr pour ouvrir la modale de suppression
+  React.useEffect(() => {
+    if (!selectedBooking || isDeleteModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorer si on est dans un input, textarea, etc.
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Del') {
+        e.preventDefault();
+        setIsDeleteModalOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedBooking, isDeleteModalOpen]);
 
   // Obtenir les modifications pour le fournisseur actif
   const modifiedRates = React.useMemo(() => {
@@ -129,17 +231,57 @@ export function ProviderCalendars(): React.ReactElement {
     return supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.bookingsBySupplierAndAccommodation]);
 
+  // Calculer les jours non réservables pour chaque hébergement
+  const nonReservableDaysByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    
+    const result: Record<number, Set<string>> = {};
+    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    
+    for (const acc of accommodations) {
+      const stockByDate = stockByAccommodation[acc.idHebergement] ?? {};
+      const dureeMinByDate = dureeMinByAccommodation[acc.idHebergement] ?? {};
+      const ratesByDate = ratesByAccommodation[acc.idHebergement];
+      
+      const nonReservableDays = getNonReservableDays(
+        stockByDate,
+        dureeMinByDate,
+        ratesByDate,
+        selectedRateTypeId,
+        startDate,
+        endDate
+      );
+      
+      result[acc.idHebergement] = nonReservableDays;
+    }
+    
+    return result;
+  }, [activeSupplier, stockByAccommodation, dureeMinByAccommodation, ratesByAccommodation, selectedRateTypeId, startDate, endDate, supplierData]);
+
   // Fonction pour mettre à jour les prix localement
-  const handleRateUpdate = React.useCallback((newPrice: number) => {
+  const handleRateUpdate = React.useCallback((
+    newPrice: number,
+    editAllSelection: boolean = false,
+    editingCell: { accId: number; dateStr: string } | null = null
+  ) => {
     if (!activeSupplier || selectedRateTypeId === null) return;
     const modifications = new Set<string>();
     supplierData.setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
       const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
       
-      // Appliquer le prix à toutes les combinaisons date-hébergement sélectionnées pour le type tarif sélectionné
-      for (const dateStr of selectedDates) {
-        for (const accId of selectedAccommodations) {
+      if (editAllSelection && editingCell) {
+        // CTRL+clic : appliquer à toute la sélection, mais uniquement aux hébergements visibles (sélectionnés dans le filtre)
+        for (const cellKey of selectedCells) {
+          const [accIdStr, dateStr] = cellKey.split('|');
+          const accId = parseInt(accIdStr, 10);
+          if (isNaN(accId) || !dateStr) continue;
+          
+          // Filtrer : ne modifier que les hébergements sélectionnés dans le filtre
+          if (selectedAccommodations.size > 0 && !selectedAccommodations.has(accId)) {
+            continue;
+          }
+          
           if (!supplierDataState[accId]) {
             supplierDataState[accId] = {};
           }
@@ -149,6 +291,17 @@ export function ProviderCalendars(): React.ReactElement {
           supplierDataState[accId][dateStr][selectedRateTypeId] = newPrice;
           modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
         }
+      } else if (editingCell) {
+        // Clic normal : appliquer seulement à la cellule en cours d'édition
+        const { accId, dateStr } = editingCell;
+        if (!supplierDataState[accId]) {
+          supplierDataState[accId] = {};
+        }
+        if (!supplierDataState[accId][dateStr]) {
+          supplierDataState[accId][dateStr] = {};
+        }
+        supplierDataState[accId][dateStr][selectedRateTypeId] = newPrice;
+        modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
       }
       
       return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
@@ -162,25 +315,62 @@ export function ProviderCalendars(): React.ReactElement {
       }
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedDates, selectedAccommodations, activeSupplier, selectedRateTypeId, supplierData]);
+  }, [selectedCells, selectedAccommodations, activeSupplier, selectedRateTypeId, supplierData]);
 
   // Fonction pour mettre à jour la durée minimale localement
-  const handleDureeMinUpdate = React.useCallback((newDureeMin: number | null) => {
+  const handleDureeMinUpdate = React.useCallback((
+    newDureeMin: number | null,
+    editAllSelection: boolean = false,
+    editingCell: { accId: number; dateStr: string } | null = null
+  ) => {
     if (!activeSupplier) return;
     const modifications = new Set<string>();
     supplierData.setDureeMinByAccommodation(prev => {
       const updated = { ...prev };
-      const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
+      // Créer une copie profonde de l'état du fournisseur pour que React détecte le changement
+      const existingState = updated[activeSupplier.idFournisseur] ?? {};
+      const supplierDataState: Record<number, Record<string, number | null>> = {};
       
-      // Appliquer la durée minimale à toutes les combinaisons date-hébergement sélectionnées
-      for (const dateStr of selectedDates) {
-        for (const accId of selectedAccommodations) {
+      // Copier toutes les données existantes
+      for (const [accIdStr, datesMap] of Object.entries(existingState)) {
+        const accId = parseInt(accIdStr, 10);
+        if (!isNaN(accId)) {
+          supplierDataState[accId] = { ...datesMap };
+        }
+      }
+      
+      if (editAllSelection && editingCell) {
+        // CTRL+clic : appliquer à toute la sélection, mais uniquement aux hébergements visibles (sélectionnés dans le filtre)
+        for (const cellKey of selectedCells) {
+          const [accIdStr, dateStr] = cellKey.split('|');
+          const accId = parseInt(accIdStr, 10);
+          if (isNaN(accId) || !dateStr) continue;
+          
+          // Filtrer : ne modifier que les hébergements sélectionnés dans le filtre
+          if (selectedAccommodations.size > 0 && !selectedAccommodations.has(accId)) {
+            continue;
+          }
+          
           if (!supplierDataState[accId]) {
             supplierDataState[accId] = {};
+          } else {
+            // Créer une copie de l'objet dates pour cet hébergement
+            supplierDataState[accId] = { ...supplierDataState[accId] };
           }
           supplierDataState[accId][dateStr] = newDureeMin;
           modifications.add(`${accId}-${dateStr}`);
         }
+      } else if (editingCell) {
+        // Clic normal : appliquer seulement à la cellule en cours d'édition
+        const { accId, dateStr } = editingCell;
+        if (!supplierDataState[accId]) {
+          supplierDataState[accId] = {};
+        } else {
+          // Créer une copie de l'objet dates pour cet hébergement
+          supplierDataState[accId] = { ...supplierDataState[accId] };
+        }
+        supplierDataState[accId][dateStr] = newDureeMin;
+        modifications.add(`${accId}-${dateStr}`);
       }
       
       return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
@@ -194,7 +384,7 @@ export function ProviderCalendars(): React.ReactElement {
       }
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
-  }, [selectedDates, selectedAccommodations, activeSupplier, supplierData]);
+  }, [selectedCells, selectedAccommodations, activeSupplier, supplierData]);
 
   // Fonction pour sauvegarder les modifications
   const handleSave = React.useCallback(async () => {
@@ -319,8 +509,6 @@ export function ProviderCalendars(): React.ReactElement {
         }))
       };
       
-      console.log('Sending bulk data:', JSON.stringify(bulkData, null, 2));
-      
       // Envoyer les modifications au backend
       await saveBulkUpdates(activeSupplier.idFournisseur, bulkData);
       
@@ -337,7 +525,6 @@ export function ProviderCalendars(): React.ReactElement {
       });
     } catch (error) {
       // Gérer les erreurs (affichage d'un message d'erreur)
-      console.error('Erreur lors de la sauvegarde:', error);
       supplierData.setError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
@@ -349,6 +536,70 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return;
     await supplierData.refreshSupplierData(activeSupplier.idFournisseur, startDate, endDate);
   }, [activeSupplier, startDate, endDate, supplierData]);
+
+  // Fonction pour gérer la suppression d'une réservation
+  // Définie après handleRefreshData pour éviter l'erreur d'initialisation
+  const handleDeleteBooking = React.useCallback(async (booking: BookingDisplay) => {
+    if (!activeSupplier || !booking) return;
+
+    // Étape 1: Supprimer la réservation en DB (et dans le stub en test)
+    // Passer les critères supplémentaires pour une recherche plus précise
+    await deleteBooking(
+      activeSupplier.idFournisseur,
+      booking.idDossier,
+      booking.idHebergement,
+      booking.dateArrivee,
+      booking.dateDepart
+    );
+
+    // Étape 2: Calculer toutes les dates de la réservation (du dateArrivee inclus au dateDepart exclus)
+    const dates: string[] = [];
+    const [startYear, startMonth, startDay] = booking.dateArrivee.split('-').map(Number);
+    const [endYear, endMonth, endDay] = booking.dateDepart.split('-').map(Number);
+
+    // Créer des dates en locale pour éviter les problèmes de fuseau horaire
+    let currentDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
+
+    // Ajouter toutes les dates du premier jour inclus au dernier jour inclus (dateDepart est exclu)
+    while (currentDate < endDate) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      dates.push(dateStr);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Mettre le stock à 1 pour toutes les dates de la réservation supprimée
+    if (dates.length > 0) {
+      const stockPayload = {
+        jours: dates.map(date => ({
+          date,
+          dispo: 1
+        }))
+      };
+
+      await updateStock(activeSupplier.idFournisseur, booking.idHebergement, stockPayload);
+    }
+
+    // Étape 3: Rafraîchir les données
+    await handleRefreshData();
+
+    // Étape 4: Annuler la sélection de réservation
+    setSelectedBookingId(null);
+
+    // Étape 5: Fermer la modale
+    setIsDeleteModalOpen(false);
+  }, [activeSupplier, handleRefreshData]);
+
+  // Poller l'état de synchronisation des réservations Direct toutes les 30 secondes
+  // et déclencher un refresh automatique si l'état change
+  useSyncStatusPolling(
+    activeSupplier?.idFournisseur ?? null,
+    handleRefreshData,
+    30000 // 30 secondes
+  );
 
   // Chargement initial des données pour tous les fournisseurs au montage du composant
   // Les données sont chargées pour 1 an, mais l'affichage est limité à [startDate; endDate]
@@ -364,6 +615,254 @@ export function ProviderCalendars(): React.ReactElement {
       [activeSupplier.idFournisseur]: newRateTypeId
     }));
   }, [activeSupplier, supplierData]);
+
+  // Vérifier si la sélection est valide pour la réservation
+  // Pour chaque hébergement, les dates doivent être consécutives (ou une seule date)
+  // ET la durée de la sélection doit être >= à la durée minimale de chaque date
+  // ET chaque date doit avoir un tarif défini pour le type de tarif sélectionné
+  // La validation ne considère que les hébergements sélectionnés dans le filtre
+  const hasValidBookingSelection = React.useMemo(() => {
+    return isValidBookingSelection(
+      selectedCells, 
+      dureeMinByAccommodation, 
+      selectedAccommodations,
+      ratesByAccommodation,
+      selectedRateTypeId
+    );
+  }, [selectedCells, dureeMinByAccommodation, selectedAccommodations, ratesByAccommodation, selectedRateTypeId]);
+
+  // Générer les récapitulatifs de réservation
+  const bookingSummaries = React.useMemo(() => {
+    if (!activeSupplier || !selectedRateTypeId || selectedCells.size === 0) return [];
+    
+    const accommodations = (supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
+      .filter(acc => selectedAccommodations.has(acc.idHebergement));
+    
+    return generateBookingSummaries(
+      selectedCells,
+      accommodations,
+      ratesByAccommodation,
+      selectedRateTypeId
+    );
+  }, [selectedCells, selectedAccommodations, activeSupplier, ratesByAccommodation, selectedRateTypeId, supplierData]);
+
+  // Détecter les dates non disponibles (stock à 0) dans la sélection
+  const unavailableDatesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier || selectedCells.size === 0) {
+      return {} as Record<number, Set<string>>;
+    }
+
+    const result: Record<number, Set<string>> = {};
+
+    for (const cellKey of selectedCells) {
+      const [accIdStr, dateStr] = cellKey.split('|');
+      const accId = parseInt(accIdStr, 10);
+      
+      if (isNaN(accId) || !dateStr) continue;
+
+      // Vérifier le stock pour cette cellule
+      const stock = stockByAccommodation[accId]?.[dateStr] ?? 0;
+      
+      // Si le stock est à 0, ajouter cette date aux dates non disponibles
+      if (stock === 0) {
+        if (!result[accId]) {
+          result[accId] = new Set<string>();
+        }
+        result[accId].add(dateStr);
+      }
+    }
+
+    return result;
+  }, [selectedCells, stockByAccommodation, activeSupplier]);
+
+  // Compter le nombre total de dates non disponibles
+  const unavailableDatesCount = React.useMemo(() => {
+    let count = 0;
+    for (const dates of Object.values(unavailableDatesByAccommodation)) {
+      count += dates.size;
+    }
+    return count;
+  }, [unavailableDatesByAccommodation]);
+
+  // Détecter les dates disponibles (stock > 0) dans la sélection
+  const availableDatesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier || selectedCells.size === 0) {
+      return {} as Record<number, Set<string>>;
+    }
+
+    const result: Record<number, Set<string>> = {};
+
+    for (const cellKey of selectedCells) {
+      const [accIdStr, dateStr] = cellKey.split('|');
+      const accId = parseInt(accIdStr, 10);
+      
+      if (isNaN(accId) || !dateStr) continue;
+
+      // Vérifier le stock pour cette cellule
+      const stock = stockByAccommodation[accId]?.[dateStr] ?? 0;
+      
+      // Si le stock est > 0, ajouter cette date aux dates disponibles
+      if (stock > 0) {
+        if (!result[accId]) {
+          result[accId] = new Set<string>();
+        }
+        result[accId].add(dateStr);
+      }
+    }
+
+    return result;
+  }, [selectedCells, stockByAccommodation, activeSupplier]);
+
+  // Compter le nombre total de dates disponibles
+  const availableDatesCount = React.useMemo(() => {
+    let count = 0;
+    for (const dates of Object.values(availableDatesByAccommodation)) {
+      count += dates.size;
+    }
+    return count;
+  }, [availableDatesByAccommodation]);
+
+  // Calculer toutes les dates occupées par réservation, groupées par hébergement
+  const bookedDatesByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) {
+      return {} as Record<number, Set<string>>;
+    }
+
+    const result: Record<number, Set<string>> = {};
+
+    // Parcourir toutes les réservations pour chaque hébergement
+    for (const [accIdStr, bookings] of Object.entries(bookingsByAccommodation)) {
+      const accId = parseInt(accIdStr, 10);
+      if (isNaN(accId) || !Array.isArray(bookings)) continue;
+
+      if (!result[accId]) {
+        result[accId] = new Set<string>();
+      }
+
+      for (const booking of bookings) {
+        // Calculer toutes les dates occupées (du dateArrivee inclus au dateDepart exclus)
+        const startDate = new Date(booking.dateArrivee);
+        const endDate = new Date(booking.dateDepart);
+        let currentDate = new Date(startDate);
+
+        // Le jour de départ est exclu car c'est le jour où on quitte (dernière nuit = dateDepart - 1 jour)
+        while (currentDate < endDate) {
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
+          result[accId].add(dateStr);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+    }
+
+    return result;
+  }, [activeSupplier, bookingsByAccommodation]);
+
+  // Fonction pour ouvrir (réactiver) les dates non disponibles
+  // Définie après unavailableDatesCount et unavailableDatesByAccommodation pour éviter l'erreur d'initialisation
+  const handleOpenUnavailable = React.useCallback(async () => {
+    if (!activeSupplier || unavailableDatesCount === 0) return;
+    
+    setSaving(true);
+    supplierData.setError(null);
+    
+    const errors: string[] = [];
+    let successCount = 0;
+    
+    try {
+      // Pour chaque hébergement avec des dates non disponibles
+      for (const [accIdStr, dates] of Object.entries(unavailableDatesByAccommodation)) {
+        const accId = parseInt(accIdStr, 10);
+        if (isNaN(accId) || dates.size === 0) continue;
+        
+        try {
+          // Créer le payload pour mettre le stock à 1 pour toutes les dates non disponibles
+          const stockPayload = {
+            jours: Array.from(dates).map(dateStr => ({
+              date: dateStr,
+              dispo: 1
+            }))
+          };
+          
+          // Mettre à jour le stock dans OpenPro
+          await updateStock(activeSupplier.idFournisseur, accId, stockPayload);
+          successCount += dates.size;
+        } catch (error) {
+          const errorMsg = `Erreur pour l'hébergement ${accId}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+          errors.push(errorMsg);
+          console.error(errorMsg, error);
+        }
+      }
+      
+      if (errors.length > 0) {
+        // Si certaines mises à jour ont échoué
+        const partialError = `Certaines dates n'ont pas pu être ouvertes (${successCount}/${unavailableDatesCount} réussies). ${errors.join('; ')}`;
+        supplierData.setError(partialError);
+      } else if (successCount > 0) {
+        // Si toutes les mises à jour ont réussi, rafraîchir les données
+        await handleRefreshData();
+      }
+    } catch (error) {
+      // Gérer les erreurs globales
+      supplierData.setError(error instanceof Error ? error.message : 'Erreur lors de l\'ouverture des dates');
+    } finally {
+      setSaving(false);
+    }
+  }, [activeSupplier, unavailableDatesCount, unavailableDatesByAccommodation, supplierData, handleRefreshData]);
+
+  // Fonction pour fermer (mettre à 0) les dates disponibles
+  // Définie après availableDatesCount et availableDatesByAccommodation pour éviter l'erreur d'initialisation
+  const handleCloseAvailable = React.useCallback(async () => {
+    if (!activeSupplier || availableDatesCount === 0) return;
+    
+    setSaving(true);
+    supplierData.setError(null);
+    
+    const errors: string[] = [];
+    let successCount = 0;
+    
+    try {
+      // Pour chaque hébergement avec des dates disponibles
+      for (const [accIdStr, dates] of Object.entries(availableDatesByAccommodation)) {
+        const accId = parseInt(accIdStr, 10);
+        if (isNaN(accId) || dates.size === 0) continue;
+        
+        try {
+          // Créer le payload pour mettre le stock à 0 pour toutes les dates disponibles
+          const stockPayload = {
+            jours: Array.from(dates).map(dateStr => ({
+              date: dateStr,
+              dispo: 0
+            }))
+          };
+          
+          // Mettre à jour le stock dans OpenPro
+          await updateStock(activeSupplier.idFournisseur, accId, stockPayload);
+          successCount += dates.size;
+        } catch (error) {
+          const errorMsg = `Erreur pour l'hébergement ${accId}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+          errors.push(errorMsg);
+          console.error(errorMsg, error);
+        }
+      }
+      
+      if (errors.length > 0) {
+        // Si certaines mises à jour ont échoué
+        const partialError = `Certaines dates n'ont pas pu être fermées (${successCount}/${availableDatesCount} réussies). ${errors.join('; ')}`;
+        supplierData.setError(partialError);
+      } else if (successCount > 0) {
+        // Si toutes les mises à jour ont réussi, rafraîchir les données
+        await handleRefreshData();
+      }
+    } catch (error) {
+      // Gérer les erreurs globales
+      supplierData.setError(error instanceof Error ? error.message : 'Erreur lors de la fermeture des dates');
+    } finally {
+      setSaving(false);
+    }
+  }, [activeSupplier, availableDatesCount, availableDatesByAccommodation, supplierData, handleRefreshData]);
 
   return (
     <div style={{ 
@@ -413,37 +912,91 @@ export function ProviderCalendars(): React.ReactElement {
                 ratesByAccommodation={ratesByAccommodation}
                 dureeMinByAccommodation={dureeMinByAccommodation}
                 bookingsByAccommodation={bookingsByAccommodation}
-                selectedDates={selectedDates}
-                onSelectedDatesChange={setSelectedDates}
+                selectedCells={selectedCells}
+                onSelectedCellsChange={setSelectedCells}
                 modifiedRates={modifiedRates}
                 modifiedDureeMin={modifiedDureeMin}
                 onRateUpdate={handleRateUpdate}
                 onDureeMinUpdate={handleDureeMinUpdate}
                 selectedRateTypeId={selectedRateTypeId}
+                nonReservableDaysByAccommodation={nonReservableDaysByAccommodation}
+                bookedDatesByAccommodation={bookedDatesByAccommodation}
+                selectedBookingId={selectedBookingId}
+                onBookingClick={handleBookingClick}
               />
             </>
           )}
           
-          <ActionButtons
-            loading={supplierData.loading || saving}
-            modifiedRatesCount={modifiedRates.size}
-            modifiedDureeMinCount={modifiedDureeMin.size}
-            onRefresh={handleRefreshData}
-            onSave={handleSave}
-          />
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
+            {hasValidBookingSelection && (
+              <button
+                onClick={() => setIsBookingModalOpen(true)}
+                style={{
+                  padding: '10px 20px',
+                  background: darkTheme.buttonPrimaryBg,
+                  color: darkTheme.buttonText,
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  boxShadow: darkTheme.shadowSm
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = darkTheme.buttonPrimaryHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = darkTheme.buttonPrimaryBg;
+                }}
+              >
+                Réserver
+              </button>
+            )}
+            <ActionButtons
+              loading={supplierData.loading || saving}
+              modifiedRatesCount={modifiedRates.size}
+              modifiedDureeMinCount={modifiedDureeMin.size}
+              unavailableDatesCount={unavailableDatesCount}
+              availableDatesCount={availableDatesCount}
+              onRefresh={handleRefreshData}
+              onSave={handleSave}
+              onOpenUnavailable={handleOpenUnavailable}
+              onCloseAvailable={handleCloseAvailable}
+            />
+          </div>
           
           <SelectionSummary
-            selectedDates={selectedDates}
+            selectedCells={selectedCells}
             selectedAccommodations={(supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
               .filter(acc => selectedAccommodations.has(acc.idHebergement))}
             selectedRateTypeId={selectedRateTypeId}
             ratesByAccommodation={ratesByAccommodation}
             modifiedRates={modifiedRates}
+            dureeMinByAccommodation={dureeMinByAccommodation}
           />
         </div>
       )}
 
       <AdminFooter />
+
+      {/* Modale de réservation */}
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        bookingSummaries={bookingSummaries}
+        idFournisseur={activeSupplier?.idFournisseur ?? 0}
+        onBookingCreated={handleRefreshData}
+        onSelectionClear={handleClearSelection}
+      />
+
+      {/* Modale de suppression de réservation */}
+      <DeleteBookingModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        booking={selectedBooking}
+        accommodationName={selectedBookingAccommodationName}
+        onConfirmDelete={handleDeleteBooking}
+      />
     </div>
   );
 }

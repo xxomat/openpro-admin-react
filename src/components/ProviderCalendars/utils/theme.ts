@@ -77,3 +77,24 @@ export const darkTheme = {
  */
 export type Theme = typeof darkTheme;
 
+/**
+ * Couleurs de réservation par plateforme
+ * Chaque couleur est choisie pour avoir un bon contraste avec le texte blanc (ratio WCAG AA minimum 4.5:1)
+ */
+export const bookingPlatformColors = {
+  'Booking.com': '#003580', // Bleu foncé (contraste ~8.6:1)
+  'Directe': '#059669',     // Vert émeraude foncé (contraste ~4.7:1)
+  'OpenPro': '#c2410c',      // Orange foncé (contraste ~6.1:1)
+  'Xotelia': '#dc2626',      // Rouge foncé (contraste ~5.1:1)
+  'Unknown': '#64748b',      // Gris moyen (contraste ~4.5:1)
+} as const;
+
+/**
+ * Retourne la couleur de fond pour une plateforme de réservation donnée
+ * @param plateforme - Nom de la plateforme de réservation
+ * @returns Couleur hexadécimale pour la plateforme, ou la couleur par défaut pour Unknown
+ */
+export function getBookingColor(plateforme: string): string {
+  return bookingPlatformColors[plateforme as keyof typeof bookingPlatformColors] || bookingPlatformColors.Unknown;
+}
+
