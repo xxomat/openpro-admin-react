@@ -174,28 +174,8 @@ export function CompactGrid({
     });
   }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation]);
 
-  // Gestionnaire pour convertir le scroll vertical en scroll horizontal
-  // Utilisation d'un useEffect avec addEventListener pour pouvoir utiliser { passive: false }
-  // et empêcher efficacement le scroll de la page
-  React.useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleWheel = (event: WheelEvent) => {
-      // Convertir le scroll vertical en scroll horizontal
-      container.scrollLeft += event.deltaY;
-      
-      // Empêcher le scroll vertical par défaut et la propagation vers la page
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, []);
+  // Plus de gestionnaire de scroll nécessaire : le scroll horizontal a été supprimé
+  // La navigation se fait désormais uniquement via les contrôles de plage de dates (startDate/endDate)
 
   // Gestionnaire pour la touche Échap : annule toute sélection ou annule l'édition
   React.useEffect(() => {
@@ -219,32 +199,10 @@ export function CompactGrid({
 
   return (
     <>
-      <style>{`
-        .compact-grid-scroll::-webkit-scrollbar {
-          height: 12px;
-        }
-        .compact-grid-scroll::-webkit-scrollbar-track {
-          background: ${darkTheme.bgTertiary};
-          border-radius: 6px;
-        }
-        .compact-grid-scroll::-webkit-scrollbar-thumb {
-          background: ${darkTheme.borderColorLight};
-          border-radius: 6px;
-          border: 2px solid ${darkTheme.bgTertiary};
-        }
-        .compact-grid-scroll::-webkit-scrollbar-thumb:hover {
-          background: ${darkTheme.bgHover};
-        }
-        .compact-grid-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: ${darkTheme.borderColorLight} ${darkTheme.bgTertiary};
-        }
-      `}</style>
       <div 
         ref={scrollContainerRef}
-        className="compact-grid-scroll"
         style={{ 
-          overflowX: 'scroll', 
+          overflowX: 'hidden', 
           border: `1px solid ${darkTheme.borderColor}`, 
           borderRadius: 8, 
           background: darkTheme.bgSecondary, 

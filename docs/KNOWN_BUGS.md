@@ -16,12 +16,15 @@ Ce document liste les bugs connus du projet OpenPro.Admin, leur statut et les in
 - **Comportement attendu** : Les rectangles de réservation ne doivent jamais dépasser sur la colonne des noms d'hébergements, même lors du scroll horizontal.
 - **Comportement actuel** : Les rectangles de réservation peuvent déborder sur la colonne des noms d'hébergements lors du scroll horizontal.
 - **Impact** : Majeur - Affecte la lisibilité et l'expérience utilisateur
-- **Statut** : Non résolu
+- **Statut** : Non résolu (mais ne peut plus se produire)
 - **Date de découverte** : 2024-12-19
+- **Date de mitigation** : 2024-12-22
 - **Fichiers concernés** :
   - `src/components/ProviderCalendars/components/CompactGrid/components/BookingOverlay.tsx`
   - `src/components/ProviderCalendars/components/CompactGrid.tsx`
-- **Notes** : Le problème semble lié au calcul des positions lors du scroll. Les positions sont calculées avec `getBoundingClientRect()` qui donne des positions relatives à la fenêtre, pas au conteneur scrollable. Une solution pourrait être d'utiliser un conteneur avec `overflow: hidden` ou `clip-path` pour limiter l'affichage des rectangles à la zone des colonnes de dates.
+- **Notes** : 
+  - Le problème semble lié au calcul des positions lors du scroll. Les positions sont calculées avec `getBoundingClientRect()` qui donne des positions relatives à la fenêtre, pas au conteneur scrollable.
+  - **Workaround appliqué** : La scrollbar horizontale du calendrier a été supprimée (modification de `overflowX: 'scroll'` en `overflowX: 'hidden'` dans `CompactGrid.tsx`). Le bug existe toujours techniquement, mais ne peut plus se produire car le scroll horizontal n'est plus possible. La navigation dans le calendrier se fait désormais uniquement via les contrôles de plage de dates (`startDate` et `endDate`), ce qui est suffisant pour l'utilisation de l'application.
 
 ---
 
