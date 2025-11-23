@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { formatDate } from '../../../utils/dateUtils';
+import { formatDate, isPastDate } from '../../../utils/dateUtils';
 import { darkTheme } from '../../../utils/theme';
 
 /**
@@ -47,25 +47,38 @@ export function GridHeaderCell({
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
   const dayOfWeek = (day.getDay() + 6) % 7; // 0 = Monday
   const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+  const isPast = isPastDate(dateStr);
 
   return (
     <div
       data-date={dateStr}
       onClick={(e) => {
+        // Ne pas permettre la sélection si la date est passée
+        if (isPast) {
+          e.preventDefault();
+          return;
+        }
         if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
           e.preventDefault();
           return;
         }
         onHeaderClick(dateStr);
       }}
-      onMouseDown={(e) => onMouseDown(e, dateStr)}
+      onMouseDown={(e) => {
+        // Ne pas permettre le drag si la date est passée
+        if (isPast) {
+          e.preventDefault();
+          return;
+        }
+        onMouseDown(e, dateStr);
+      }}
       style={{
         padding: '8px 4px',
         background: isDragging
           ? darkTheme.selectionDraggingBg
           : (isSelected 
             ? darkTheme.selectionBg
-            : (isWeekend ? darkTheme.gridCellWeekendBg : darkTheme.gridHeaderBg)),
+            : darkTheme.gridHeaderBg), // Toujours utiliser gridHeaderBg pour les dates passées
         borderBottom: `2px solid ${darkTheme.borderColor}`,
         borderLeft: isDragging 
           ? `2px solid ${darkTheme.selectionBorder}` 
@@ -80,9 +93,9 @@ export function GridHeaderCell({
         fontSize: 11,
         color: darkTheme.textSecondary,
         fontWeight: isWeekend ? 700 : 500,
-        cursor: draggingState?.isDragging ? 'grabbing' : 'grab',
+        cursor: isPast ? 'not-allowed' : (draggingState?.isDragging ? 'grabbing' : 'grab'),
         userSelect: 'none',
-        opacity: isWeekend ? 1 : 0.8
+        opacity: isPast ? 0.6 : (isWeekend ? 1 : 0.8)
       }}
     >
       <div style={{ fontWeight: isWeekend ? 700 : 500 }}>{weekDayHeaders[dayOfWeek]}</div>

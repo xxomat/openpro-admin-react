@@ -8,6 +8,7 @@
 import React from 'react';
 import type { EditingCell } from '../hooks/useGridEditing';
 import { darkTheme } from '../../../utils/theme';
+import { isPastDate } from '../../../utils/dateUtils';
 
 /**
  * Props du composant GridDataCell
@@ -105,11 +106,16 @@ export function GridDataCell({
   onMouseDown
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
+  const isPast = isPastDate(dateStr);
   
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
   // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
+  // Si la date est passée, appliquer un fond sombre comme l'en-tête
   let bgColor: string;
-  if (isNonReservable) {
+  if (isPast) {
+    // Date passée : fond sombre identique à l'en-tête
+    bgColor = darkTheme.gridHeaderBg;
+  } else if (isNonReservable) {
     // Jour non réservable : fond gris avec opacité réduite
     bgColor = darkTheme.bgTertiary;
   } else if (isDragging) {
@@ -137,8 +143,8 @@ export function GridDataCell({
       data-date={dateStr}
       data-acc-id={accId}
       onMouseDown={(e) => {
-        // Ne pas démarrer le drag si la date est occupée par une réservation
-        if (isBooked) {
+        // Ne pas démarrer le drag si la date est occupée par une réservation ou passée
+        if (isBooked || isPast) {
           e.preventDefault();
           e.stopPropagation();
           return;
@@ -164,10 +170,10 @@ export function GridDataCell({
       style={{
         padding: '8px 4px',
         background: bgColor,
-        borderTop: `${borderWidth} solid ${borderColor}`,
-        borderLeft: `${borderWidth} solid ${borderColor}`,
-        borderRight: `${borderWidth} solid ${borderColor}`,
-        borderBottom: `1px solid ${darkTheme.borderColor}`,
+        borderTop: 'none',
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderBottom: 'none',
         textAlign: 'center',
         fontSize: 13,
         fontWeight: isWeekend ? 700 : 500,
@@ -176,13 +182,14 @@ export function GridDataCell({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: isBooked ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
+        cursor: (isBooked || isPast) ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
         // Les jours avec stock à 0 ont toujours une opacité de 0.5, même s'ils sont des weekends
         // Les jours non réservables ont une opacité normale (1.0)
-        opacity: !isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7)),
+        // Les dates passées ont une opacité réduite pour indiquer leur état désactivé
+        opacity: isPast ? 0.6 : (!isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7))),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')} (stock: ${stock})`}
+      title={`${dateStr} — ${isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible'))} (stock: ${stock})`}
     >
       {isEditing ? (
         <input

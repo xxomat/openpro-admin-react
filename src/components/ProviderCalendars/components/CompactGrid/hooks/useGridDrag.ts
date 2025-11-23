@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { formatDate } from '../../../utils/dateUtils';
+import { formatDate, isPastDate } from '../../../utils/dateUtils';
 import { getAccIdFromElement } from '../utils/gridUtils';
 
 /**
@@ -61,6 +61,8 @@ export function useGridDrag(
     if (e.button !== 0) return;
     // Ne pas gérer le drag si CTRL est pressé (sera géré par l'édition)
     if (e.ctrlKey || e.metaKey) return;
+    // Ne pas permettre le drag si la date est passée
+    if (isPastDate(dateStr)) return;
     
     setDraggingState({
       startDate: dateStr,
@@ -98,12 +100,15 @@ export function useGridDrag(
   }, [getDateFromElement]);
 
   // Fonction helper pour générer les cellules d'une plage de dates
-  // Exclut les dates occupées par une réservation
+  // Exclut les dates occupées par une réservation et les dates passées
   const generateCellsForDateRange = React.useCallback((startDateStr: string, endDateStr: string): string[] => {
     const dateRange = getDateRange(startDateStr, endDateStr);
     const cells: string[] = [];
     
     for (const dateStr of dateRange) {
+      // Ne pas inclure les dates passées
+      if (isPastDate(dateStr)) continue;
+      
       for (const acc of accommodations) {
         // Vérifier si cette date est occupée par une réservation
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
@@ -136,11 +141,12 @@ export function useGridDrag(
         const accId = elementUnderCursor ? getAccIdFromElement(elementUnderCursor) : null;
         
         if (accId !== null) {
-          // Vérifier si cette date est occupée par une réservation
+          // Vérifier si cette date est occupée par une réservation ou passée
           const isBooked = bookedDatesByAccommodation[accId]?.has(prev.startDate) ?? false;
+          const isPast = isPastDate(prev.startDate);
           
-          // Ne pas permettre la sélection si la date est occupée
-          if (!isBooked) {
+          // Ne pas permettre la sélection si la date est occupée ou passée
+          if (!isBooked && !isPast) {
             // Clic sur une cellule spécifique : basculer cette cellule (si non occupée)
             const cellKey = `${accId}|${prev.startDate}`;
             onSelectedCellsChange((prevSelected: Set<string>) => {

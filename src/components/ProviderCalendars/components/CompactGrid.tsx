@@ -9,7 +9,7 @@
 
 import React from 'react';
 import type { Accommodation, BookingDisplay } from '../types';
-import { formatDate, getDaysInRange } from '../utils/dateUtils';
+import { formatDate, getDaysInRange, isPastDate } from '../utils/dateUtils';
 import { GridDataCell } from './CompactGrid/components/GridDataCell';
 import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
 import { BookingOverlay } from './CompactGrid/components/BookingOverlay';
@@ -138,8 +138,13 @@ export function CompactGrid({
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
-  // Sélectionne toutes les cellules non occupées par une réservation
+  // Sélectionne toutes les cellules non occupées par une réservation et non passées
   const handleHeaderClick = React.useCallback((dateStr: string) => {
+    // Ne pas permettre la sélection si la date est passée
+    if (isPastDate(dateStr)) {
+      return;
+    }
+    
     onSelectedCellsChange((prev: Set<string>) => {
       const newSet = new Set(prev);
       

@@ -72,3 +72,20 @@ export function formatDateDisplay(dateStr: string): string {
   return `${day}/${month}/${year}`;
 }
 
+/**
+ * Vérifie si une date est passée (antérieure à aujourd'hui)
+ * 
+ * @param dateStr - Date au format YYYY-MM-DD
+ * @returns true si la date est passée, false sinon
+ */
+export function isPastDate(dateStr: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  
+  return date.getTime() < today.getTime();
+}
+

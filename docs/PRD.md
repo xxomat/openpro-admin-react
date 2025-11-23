@@ -303,6 +303,7 @@ Vue d'ensemble :
 			- **Contenu de la cellule** : prix affiché au format `${Math.round(price)}€` si disponible, sinon chaîne vide.
 			- Le prix est centré dans la cellule.
 			- La cellule entière (pas seulement le prix) a le fond coloré.
+			- **Bordures** : Les cellules de données n'ont **pas** de bordures (toutes les bordures sont définies à `none`). L'affichage se fait uniquement via les couleurs de fond pour différencier les états.
 
 4. **Génération des jours**
 	- La fonction `getDaysInRange(startDate, endDate)` génère un tableau de dates (`days: Date[]`) couvrant toutes les dates entre `startDate` et `endDate` (incluses).
@@ -332,6 +333,28 @@ A définir
 	- Le système permet de **sélectionner une colonne entière** (un jour) en cliquant sur la **cellule d'en-tête** correspondante dans la ligne 1 (header).
 	- La cellule d'en-tête contient le jour de la semaine (L, M, M, J, V, S, D) et la date (format `jour/mois`).
 	- Un clic sur une cellule d'en-tête sélectionne/désélectionne la colonne correspondante.
+	- **Restriction pour les dates passées** : Les dates antérieures à aujourd'hui ne peuvent **pas** être sélectionnées (voir section 1.1 pour les détails).
+
+1.1. **Gestion des dates passées**
+	- **Définition** : Une date est considérée comme "passée" si elle est antérieure à aujourd'hui (date du jour, sans l'heure).
+	- **Style visuel des cellules de données** :
+		- **Fond** : Les dates passées doivent avoir un fond sombre identique à celui de l'en-tête du calendrier (`darkTheme.gridHeaderBg` ou `#1e293b`).
+		- **Opacité** : Les dates passées doivent avoir une opacité réduite (`opacity: 0.6`) pour indiquer leur état désactivé.
+		- **Bordures** : Les dates passées n'ont **pas** de bordures (toutes les bordures sont définies à `none`), comme toutes les autres cellules de dates.
+		- **Couleur de texte** : La couleur de texte reste identique aux autres cellules (`darkTheme.textPrimary`).
+	- **Style visuel des cellules d'en-tête** :
+		- **Fond** : Les dates passées dans les en-têtes doivent avoir un fond sombre identique à celui de l'en-tête du calendrier (`darkTheme.gridHeaderBg`).
+		- **Opacité** : Les dates passées dans les en-têtes doivent avoir une opacité réduite (`opacity: 0.6`) pour indiquer leur état désactivé.
+		- **Couleur de texte** : La couleur de texte reste identique aux autres en-têtes (`darkTheme.textSecondary`).
+	- **Désactivation de la sélection** :
+		- Les dates passées ne peuvent **pas** être sélectionnées par clic sur la cellule d'en-tête.
+		- Les dates passées ne peuvent **pas** être sélectionnées par drag.
+		- Les dates passées ne peuvent **pas** être sélectionnées via le bouton "Sélectionner toute la plage" ou le raccourci Ctrl+A.
+		- Les dates passées ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
+	- **Indicateur visuel d'interaction** :
+		- Le curseur doit être `not-allowed` au survol des dates passées (cellules de données et d'en-tête) pour indiquer qu'elles ne sont pas sélectionnables.
+		- Les cellules d'en-tête des dates passées ne doivent pas avoir le curseur `grab` ou `pointer`.
+	- **Comportement avec les autres restrictions** : Les dates passées sont soumises aux mêmes restrictions que les dates occupées par une réservation (voir section 8).
 
 2. **État de sélection**
 	- L'état de sélection est stocké dans `selectedDays: Set<number>` (Set des indices de colonnes sélectionnées) ou `selectedDates: Set<string>` (Set des dates au format `"YYYY-MM-DD"`).
@@ -348,10 +371,11 @@ A définir
 
 4. **Comportement interactif**
 	- Un **clic simple** sur une cellule d'en-tête :
-		- Si la colonne n'est pas sélectionnée → la sélectionne et applique la surbrillance.
+		- Si la colonne n'est pas sélectionnée et n'est **pas** une date passée → la sélectionne et applique la surbrillance.
 		- Si la colonne est déjà sélectionnée → la désélectionne et retire la surbrillance.
-	- Le curseur doit changer en `cursor: pointer` au survol des cellules d'en-tête pour indiquer l'interactivité.
-	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible).
+		- Si la colonne est une date passée → aucune action (la sélection est ignorée).
+	- Le curseur doit changer en `cursor: pointer` au survol des cellules d'en-tête pour indiquer l'interactivité, sauf pour les dates passées où le curseur doit être `not-allowed`.
+	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible), mais exclut les dates passées.
 	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
 
 5. **Sélection de toute la plage de dates**
@@ -359,7 +383,9 @@ A définir
 		- Un bouton **"Sélectionner toute la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner toutes les dates entre `startDate` et `endDate` en un seul clic.
 		- **Action du bouton** : Lors du clic sur ce bouton :
 			- Sélectionner toutes les dates entre `startDate` (incluse) et `endDate` (incluse) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
-			- **Respect des règles de sélection** : Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+			- **Respect des règles de sélection** : 
+				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
 			- Désélectionner automatiquement toute réservation sélectionnée (si une réservation était sélectionnée, elle est désélectionnée).
 		- **Visibilité** : Le bouton doit être visible pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
 		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)".
@@ -370,13 +396,17 @@ A définir
 			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
 		- **Comportement** :
 			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
-			- **Respect des règles de sélection** : Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+			- **Respect des règles de sélection** : 
+				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
 			- Désélectionne automatiquement toute réservation sélectionnée.
 		- **Isolation par fournisseur** : Le raccourci fonctionne uniquement pour le fournisseur actif (onglet actuellement affiché).
 	- **Implémentation technique** :
 		- Le gestionnaire d'événement `keydown` doit écouter les événements `Ctrl+A` (ou `Cmd+A` sur Mac) au niveau du composant principal.
 		- Vérifier que `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie avant d'exécuter l'action.
-		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant les dates occupées par une réservation.
+		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant :
+			- Les dates occupées par une réservation.
+			- Les dates passées (antérieures à aujourd'hui).
 		- Utiliser `selectedCells: Set<string>` au format `"accId|dateStr"` pour stocker la sélection.
 
 6. **Sélection par drag de la souris**
@@ -384,6 +414,7 @@ A définir
 		- Le drag peut être initié **uniquement depuis les cellules d'en-tête** (ligne 1).
 		- Le drag commence lors d'un **mousedown** (clic maintenu) sur une cellule d'en-tête.
 		- La colonne de départ est identifiée par la date (`dateStr`) de la cellule d'en-tête où le drag commence.
+		- **Restriction** : Le drag ne peut **pas** être initié depuis une date passée. Si l'utilisateur tente de faire un drag depuis une date passée, l'action est ignorée.
 	- **Suivi du drag**
 		- Pendant le drag (`mousemove`), le système identifie la colonne actuellement survolée en fonction de la position de la souris.
 		- Toutes les colonnes entre la colonne de départ et la colonne actuelle sont considérées comme faisant partie de la sélection temporaire.
@@ -395,8 +426,8 @@ A définir
 		- La surbrillance temporaire doit être appliquée à **toutes les cellules** des colonnes concernées (en-têtes + données).
 	- **Finalisation de la sélection**
 		- Lors du **mouseup** (relâchement du bouton de la souris), la sélection temporaire devient la sélection définitive.
-		- Toutes les colonnes de la sélection temporaire sont ajoutées à `selectedDates` (ou sélectionnées si elles ne l'étaient pas déjà).
-		- Si le drag est très court (moins de 5 pixels de déplacement), il est considéré comme un clic simple et suit le comportement du clic (toggle de la colonne de départ).
+		- Toutes les colonnes de la sélection temporaire sont ajoutées à `selectedDates` (ou sélectionnées si elles ne l'étaient pas déjà), **sauf les dates passées** qui sont exclues de la sélection.
+		- Si le drag est très court (moins de 5 pixels de déplacement), il est considéré comme un clic simple et suit le comportement du clic (toggle de la colonne de départ, avec exclusion des dates passées).
 	- **Comportement avec sélection existante**
 		- **Mode "ajout"** (par défaut) : Le drag ajoute les colonnes à la sélection existante sans désélectionner les colonnes déjà sélectionnées.
 		- **Mode "remplacement"** (avec touche Ctrl/Cmd) : Si la touche Ctrl (Windows/Linux) ou Cmd (Mac) est maintenue pendant le drag, la sélection existante est remplacée par la nouvelle sélection du drag.
