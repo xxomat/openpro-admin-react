@@ -24,8 +24,6 @@ export interface DateRangeControlsProps {
   onEndInputChange: (value: string) => void;
   /** Callback appelé quand l'utilisateur clique sur "Sélectionner toute la plage" */
   onSelectAllRange?: () => void;
-  /** Callback appelé quand l'utilisateur clique sur le bouton "Aujourd'hui" */
-  onResetToToday?: () => void;
 }
 
 /**
@@ -36,19 +34,10 @@ export function DateRangeControls({
   onStartInputChange,
   endInput,
   onEndInputChange,
-  onSelectAllRange,
-  onResetToToday
+  onSelectAllRange
 }: DateRangeControlsProps): React.ReactElement {
   const startDateId = React.useId();
   const endDateId = React.useId();
-  const [selectAllHover, setSelectAllHover] = React.useState(false);
-  const [todayButtonHover, setTodayButtonHover] = React.useState(false);
-  
-  // Détecter si on est sur Mac pour afficher Cmd+A au lieu de Ctrl+A
-  const isMac = React.useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
-  }, []);
 
   // Validation : s'assurer que endDate >= startDate
   const startDate = new Date(startInput);
@@ -130,37 +119,6 @@ export function DateRangeControls({
               className="date-input-dark"
             />
           </label>
-          {onResetToToday && (
-            <button
-              onClick={onResetToToday}
-              style={{
-                padding: '6px 10px',
-                background: darkTheme.buttonSecondaryBg,
-                color: darkTheme.buttonText,
-                border: `1px solid ${darkTheme.borderColor}`,
-                borderRadius: 6,
-                fontSize: 16,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 60,
-                height: 'fit-content'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
-                setTodayButtonHover(true);
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
-                setTodayButtonHover(false);
-              }}
-              title="Remettre la date de début à aujourd'hui (t)"
-            >
-              {todayButtonHover ? '⌨️ t' : '📅'}
-            </button>
-          )}
           <label htmlFor={endDateId} style={{ display: 'flex', alignItems: 'center', gap: 8, color: darkTheme.textPrimary }}>
             <span>Date de fin</span>
             <input
@@ -199,20 +157,17 @@ export function DateRangeControls({
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              minWidth: 200 // Largeur minimale pour éviter le clignotement
+              whiteSpace: 'nowrap'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
-              setSelectAllHover(true);
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
-              setSelectAllHover(false);
             }}
-            title={`Sélectionner toutes les dates entre la date de début et la date de fin (${isMac ? 'Cmd+A' : 'Ctrl+A'})`}
+            title="Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)"
           >
-            {selectAllHover ? `⌨️ ${isMac ? 'Cmd+A' : 'Ctrl+A'}` : 'Sélectionner toute la plage'}
+            Sélectionner toute la plage
           </button>
         )}
       </div>

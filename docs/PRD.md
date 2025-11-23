@@ -230,51 +230,6 @@ Vue d'ensemble :
 		- Les deux champs doivent être accessibles au clavier et respecter les standards d'accessibilité (attributs `aria-label`)
 	- **Persistance** : Les dates de début et de fin peuvent être stockées dans l'état local du composant. Optionnel : persister les dates dans le localStorage pour conserver la sélection entre les sessions.
 
-#### Navigation et modification des dates — Exigences fonctionnelles
-
-1. **Modification des dates via les champs de saisie**
-	- Les champs "Date de début" et "Date de fin" sont des inputs HTML5 de type `date`.
-	- L'utilisateur peut modifier les dates en :
-		- Cliquant sur le champ et sélectionnant une date dans le sélecteur de date du navigateur.
-		- Saisissant directement la date au format `YYYY-MM-DD` dans le champ.
-
-2. **Modification des dates via la molette de la souris (scroll)**
-	- **Scroll sur les champs de date** : Lorsque le curseur de la souris est positionné sur un champ de date ("Date de début" ou "Date de fin"), l'utilisateur peut utiliser la molette de la souris pour modifier la date :
-		- **Scroll vers le bas** : Diminue la date d'un jour.
-			- **Scroll vers le haut** : Augmente la date d'un jour.
-	- **Comportement** :
-		- Le scroll sur les champs de date doit modifier uniquement la date du champ concerné.
-		- Le scroll de la page doit être empêché lorsque le curseur est sur un champ de date, pour éviter que la page ne défile pendant la modification de la date.
-		- Si la date de début dépasse la date de fin (ou vice versa), les deux dates sont ajustées automatiquement pour maintenir la cohérence.
-
-3. **Modification des dates via Ctrl+scroll (ou Cmd+scroll sur Mac)**
-	- **Scroll avec modificateur sur la page** : Lorsque l'utilisateur maintient la touche `Ctrl` (Windows/Linux) ou `Cmd` (Mac) et fait défiler la page avec la molette de la souris :
-		- **Scroll vers le bas** : Diminue la date de début et la date de fin d'un jour chacune.
-		- **Scroll vers le haut** : Augmente la date de début et la date de fin d'un jour chacune.
-	- **Maintien de l'écart** : L'écart en jours entre la date de début et la date de fin doit être maintenu lors de cette opération.
-		- Exemple : Si l'écart est de 30 jours (du 1er au 31 janvier), après un Ctrl+scroll vers le bas, les dates deviennent du 31 décembre au 30 janvier (écart de 30 jours maintenu).
-	- **Comportement** :
-		- Le zoom de Chrome (Ctrl+scroll) doit être empêché pour permettre cette fonctionnalité.
-		- Le scroll normal de la page (sans Ctrl/Cmd) continue de fonctionner normalement.
-		- Cette fonctionnalité ne doit pas être active lorsque le curseur est sur un champ de date (les champs de date ont leur propre gestionnaire de scroll).
-		- Cette fonctionnalité ne doit pas être active lorsque le curseur est dans un champ de saisie (input, textarea) ou lorsqu'une modale est ouverte.
-
-4. **Bouton "Aujourd'hui"**
-	- Un bouton avec une icône de calendrier (📅) doit être affiché entre les champs "Date de début" et "Date de fin".
-	- **Action du bouton** : Lors du clic sur ce bouton :
-		- La date de début est remise à aujourd'hui.
-		- La date de fin est ajustée pour maintenir l'écart en jours entre les deux dates.
-		- Exemple : Si l'écart est de 30 jours (du 1er au 31 janvier) et que l'utilisateur clique sur "Aujourd'hui" le 15 février, les dates deviennent du 15 février au 17 mars (écart de 30 jours maintenu).
-	- **Raccourci clavier** : Le raccourci `t` (touche "t" sans modificateur) déclenche la même action que le bouton.
-	- **Affichage au survol** : Au survol du bouton, le texte est remplacé par `⌨️ t` (icône clavier + raccourci).
-	- **Disponibilité** : Le bouton est toujours visible et actif.
-
-5. **Priorité des gestionnaires d'événements**
-	- Les gestionnaires de scroll sont organisés par priorité :
-		1. **Scroll sur les champs de date** : Priorité la plus élevée. Empêche le scroll de la page et modifie uniquement la date du champ concerné.
-		2. **Ctrl+scroll sur la page** : Priorité moyenne. Empêche le zoom de Chrome et modifie les deux dates en maintenant l'écart.
-		3. **Scroll normal sur la page** : Priorité la plus basse. Comportement par défaut du navigateur (défilement de la page).
-
 2. **Chargement des hébergements**
 	- **Chargement initial uniquement** : 
 		- Au chargement initial de la page web uniquement, pour **chaque fournisseur** (`suppliers: Supplier[]`), charger la liste complète des hébergements (`accommodations: Accommodation[]`).
@@ -348,7 +303,6 @@ Vue d'ensemble :
 			- **Contenu de la cellule** : prix affiché au format `${Math.round(price)}€` si disponible, sinon chaîne vide.
 			- Le prix est centré dans la cellule.
 			- La cellule entière (pas seulement le prix) a le fond coloré.
-			- **Bordures** : Les cellules de données n'ont **pas** de bordures (toutes les bordures sont définies à `none`). L'affichage se fait uniquement via les couleurs de fond pour différencier les états.
 
 4. **Génération des jours**
 	- La fonction `getDaysInRange(startDate, endDate)` génère un tableau de dates (`days: Date[]`) couvrant toutes les dates entre `startDate` et `endDate` (incluses).
@@ -378,28 +332,6 @@ A définir
 	- Le système permet de **sélectionner une colonne entière** (un jour) en cliquant sur la **cellule d'en-tête** correspondante dans la ligne 1 (header).
 	- La cellule d'en-tête contient le jour de la semaine (L, M, M, J, V, S, D) et la date (format `jour/mois`).
 	- Un clic sur une cellule d'en-tête sélectionne/désélectionne la colonne correspondante.
-	- **Restriction pour les dates passées** : Les dates antérieures à aujourd'hui ne peuvent **pas** être sélectionnées (voir section 1.1 pour les détails).
-
-1.1. **Gestion des dates passées**
-	- **Définition** : Une date est considérée comme "passée" si elle est antérieure à aujourd'hui (date du jour, sans l'heure).
-	- **Style visuel des cellules de données** :
-		- **Fond** : Les dates passées doivent avoir un fond sombre identique à celui de l'en-tête du calendrier (`darkTheme.gridHeaderBg` ou `#1e293b`).
-		- **Opacité** : Les dates passées doivent avoir une opacité réduite (`opacity: 0.6`) pour indiquer leur état désactivé.
-		- **Bordures** : Les dates passées n'ont **pas** de bordures (toutes les bordures sont définies à `none`), comme toutes les autres cellules de dates.
-		- **Couleur de texte** : La couleur de texte reste identique aux autres cellules (`darkTheme.textPrimary`).
-	- **Style visuel des cellules d'en-tête** :
-		- **Fond** : Les dates passées dans les en-têtes doivent avoir un fond sombre identique à celui de l'en-tête du calendrier (`darkTheme.gridHeaderBg`).
-		- **Opacité** : Les dates passées dans les en-têtes doivent avoir une opacité réduite (`opacity: 0.6`) pour indiquer leur état désactivé.
-		- **Couleur de texte** : La couleur de texte reste identique aux autres en-têtes (`darkTheme.textSecondary`).
-	- **Désactivation de la sélection** :
-		- Les dates passées ne peuvent **pas** être sélectionnées par clic sur la cellule d'en-tête.
-		- Les dates passées ne peuvent **pas** être sélectionnées par drag.
-		- Les dates passées ne peuvent **pas** être sélectionnées via le bouton "Sélectionner toute la plage" ou le raccourci Ctrl+A.
-		- Les dates passées ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
-	- **Indicateur visuel d'interaction** :
-		- Le curseur doit être `not-allowed` au survol des dates passées (cellules de données et d'en-tête) pour indiquer qu'elles ne sont pas sélectionnables.
-		- Les cellules d'en-tête des dates passées ne doivent pas avoir le curseur `grab` ou `pointer`.
-	- **Comportement avec les autres restrictions** : Les dates passées sont soumises aux mêmes restrictions que les dates occupées par une réservation (voir section 8).
 
 2. **État de sélection**
 	- L'état de sélection est stocké dans `selectedDays: Set<number>` (Set des indices de colonnes sélectionnées) ou `selectedDates: Set<string>` (Set des dates au format `"YYYY-MM-DD"`).
@@ -416,11 +348,10 @@ A définir
 
 4. **Comportement interactif**
 	- Un **clic simple** sur une cellule d'en-tête :
-		- Si la colonne n'est pas sélectionnée et n'est **pas** une date passée → la sélectionne et applique la surbrillance.
+		- Si la colonne n'est pas sélectionnée → la sélectionne et applique la surbrillance.
 		- Si la colonne est déjà sélectionnée → la désélectionne et retire la surbrillance.
-		- Si la colonne est une date passée → aucune action (la sélection est ignorée).
-	- Le curseur doit changer en `cursor: pointer` au survol des cellules d'en-tête pour indiquer l'interactivité, sauf pour les dates passées où le curseur doit être `not-allowed`.
-	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible), mais exclut les dates passées.
+	- Le curseur doit changer en `cursor: pointer` au survol des cellules d'en-tête pour indiquer l'interactivité.
+	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible).
 	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
 
 5. **Sélection de toute la plage de dates**
@@ -428,9 +359,7 @@ A définir
 		- Un bouton **"Sélectionner toute la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner toutes les dates entre `startDate` et `endDate` en un seul clic.
 		- **Action du bouton** : Lors du clic sur ce bouton :
 			- Sélectionner toutes les dates entre `startDate` (incluse) et `endDate` (incluse) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
-			- **Respect des règles de sélection** : 
-				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
-				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
+			- **Respect des règles de sélection** : Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
 			- Désélectionner automatiquement toute réservation sélectionnée (si une réservation était sélectionnée, elle est désélectionnée).
 		- **Visibilité** : Le bouton doit être visible pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
 		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)".
@@ -441,17 +370,13 @@ A définir
 			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
 		- **Comportement** :
 			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
-			- **Respect des règles de sélection** : 
-				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
-				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
+			- **Respect des règles de sélection** : Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
 			- Désélectionne automatiquement toute réservation sélectionnée.
 		- **Isolation par fournisseur** : Le raccourci fonctionne uniquement pour le fournisseur actif (onglet actuellement affiché).
 	- **Implémentation technique** :
 		- Le gestionnaire d'événement `keydown` doit écouter les événements `Ctrl+A` (ou `Cmd+A` sur Mac) au niveau du composant principal.
 		- Vérifier que `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie avant d'exécuter l'action.
-		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant :
-			- Les dates occupées par une réservation.
-			- Les dates passées (antérieures à aujourd'hui).
+		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant les dates occupées par une réservation.
 		- Utiliser `selectedCells: Set<string>` au format `"accId|dateStr"` pour stocker la sélection.
 
 6. **Sélection par drag de la souris**
@@ -459,7 +384,6 @@ A définir
 		- Le drag peut être initié **uniquement depuis les cellules d'en-tête** (ligne 1).
 		- Le drag commence lors d'un **mousedown** (clic maintenu) sur une cellule d'en-tête.
 		- La colonne de départ est identifiée par la date (`dateStr`) de la cellule d'en-tête où le drag commence.
-		- **Restriction** : Le drag ne peut **pas** être initié depuis une date passée. Si l'utilisateur tente de faire un drag depuis une date passée, l'action est ignorée.
 	- **Suivi du drag**
 		- Pendant le drag (`mousemove`), le système identifie la colonne actuellement survolée en fonction de la position de la souris.
 		- Toutes les colonnes entre la colonne de départ et la colonne actuelle sont considérées comme faisant partie de la sélection temporaire.
@@ -471,8 +395,8 @@ A définir
 		- La surbrillance temporaire doit être appliquée à **toutes les cellules** des colonnes concernées (en-têtes + données).
 	- **Finalisation de la sélection**
 		- Lors du **mouseup** (relâchement du bouton de la souris), la sélection temporaire devient la sélection définitive.
-		- Toutes les colonnes de la sélection temporaire sont ajoutées à `selectedDates` (ou sélectionnées si elles ne l'étaient pas déjà), **sauf les dates passées** qui sont exclues de la sélection.
-		- Si le drag est très court (moins de 5 pixels de déplacement), il est considéré comme un clic simple et suit le comportement du clic (toggle de la colonne de départ, avec exclusion des dates passées).
+		- Toutes les colonnes de la sélection temporaire sont ajoutées à `selectedDates` (ou sélectionnées si elles ne l'étaient pas déjà).
+		- Si le drag est très court (moins de 5 pixels de déplacement), il est considéré comme un clic simple et suit le comportement du clic (toggle de la colonne de départ).
 	- **Comportement avec sélection existante**
 		- **Mode "ajout"** (par défaut) : Le drag ajoute les colonnes à la sélection existante sans désélectionner les colonnes déjà sélectionnées.
 		- **Mode "remplacement"** (avec touche Ctrl/Cmd) : Si la touche Ctrl (Windows/Linux) ou Cmd (Mac) est maintenue pendant le drag, la sélection existante est remplacée par la nouvelle sélection du drag.
@@ -922,82 +846,6 @@ A définir
 			- `setModifiedDureeMinBySupplier(prev => ({ ...prev, [activeSupplier.idFournisseur]: new Set() }))`
 		6. Met à jour l'état de chargement (`setLoading(false)`)
 	- La fonction doit gérer les erreurs et annuler les requêtes si nécessaire (cleanup).
-
-##### Raccourcis clavier pour les boutons de l'interface principale — Exigences fonctionnelles
-
-1. **Vue d'ensemble**
-	- Tous les boutons de l'interface principale de l'admin (page principale, hors fenêtres modales) doivent avoir un raccourci clavier associé.
-	- Les raccourcis clavier permettent une navigation et une interaction plus rapides avec l'interface.
-	- **Portée** : Cette fonctionnalité s'applique uniquement à la page principale de l'admin, pas aux fenêtres modales.
-
-2. **Raccourcis clavier par bouton**
-	- **Bouton "Ouvrir"** (dates) : Raccourci `+` (touche plus)
-		- Action : Ouvre les dates non disponibles sélectionnées (met le stock à 1).
-		- Disponibilité : Le bouton n'est visible que si `unavailableDatesCount > 0`.
-	- **Bouton "Fermer"** (dates) : Raccourci `-` (touche moins)
-		- Action : Ferme les dates disponibles sélectionnées (met le stock à 0).
-		- Disponibilité : Le bouton n'est visible que si `availableDatesCount > 0`.
-	- **Bouton "Sélectionner toute la plage"** : Raccourci `Ctrl+A` (Windows/Linux) ou `Cmd+A` (Mac)
-		- Action : Sélectionne toutes les dates entre `startDate` et `endDate` (voir section 5 pour les détails).
-		- Disponibilité : Toujours visible.
-		- **Note** : Ce raccourci est déjà fonctionnel et documenté dans la section 5.
-	- **Bouton "Réserver"** : Raccourci `r`
-		- Action : Ouvre la modale de création de réservation pour les dates sélectionnées.
-		- Disponibilité : Le bouton n'est visible que si une sélection de dates est active.
-	- **Bouton "Actualiser les données"** : Raccourci `a`
-		- Action : Recharge les données depuis le serveur pour le fournisseur actif (voir section "Bouton d'actualisation des données" pour les détails).
-		- Disponibilité : Toujours visible.
-	- **Bouton "Aujourd'hui"** (remettre la date de début à aujourd'hui) : Raccourci `t`
-		- Action : Remet la date de début à aujourd'hui et ajuste la date de fin pour maintenir l'écart entre les deux dates (voir section "Navigation et modification des dates" pour les détails).
-		- Disponibilité : Toujours visible.
-
-3. **Comportement des raccourcis clavier**
-	- **Activation** : Les raccourcis clavier doivent être actifs uniquement lorsque :
-		- L'utilisateur se trouve sur la page principale de l'admin (pas dans une fenêtre modale).
-		- Aucun champ de saisie (input, textarea) n'est en focus, sauf indication contraire.
-		- L'utilisateur n'est pas en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
-	- **Désactivation** : Les raccourcis doivent être désactivés si :
-		- Une fenêtre modale est ouverte.
-		- Un champ de saisie est en focus (pour éviter les conflits avec la saisie de texte).
-		- L'utilisateur est en train d'éditer une valeur dans le calendrier.
-	- **Gestion des conflits** : Si plusieurs boutons partagent le même raccourci, seul le bouton visible et actif doit répondre au raccourci.
-
-4. **Affichage au survol des boutons**
-	- **Comportement général** : Au survol d'un bouton (événement `onMouseEnter`), le texte du bouton doit être remplacé par une icône clavier suivie du raccourci clavier.
-	- **Format d'affichage** : `[icône clavier] [raccourci]`
-		- Exemple pour "Réserver" : `⌨️ r`
-		- Exemple pour "Actualiser les données" : `⌨️ a`
-		- Exemple pour "Ouvrir" : `⌨️ +`
-		- Exemple pour "Fermer" : `⌨️ -`
-		- Exemple pour "Sélectionner toute la plage" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
-		- Exemple pour "Aujourd'hui" : `⌨️ t`
-	- **Retour au texte original** : Quand la souris quitte le bouton (événement `onMouseLeave`), le texte original du bouton doit être restauré.
-	- **État de chargement** : Si le bouton est en état de chargement (ex: "Actualisation...", "Fermeture..."), le comportement au survol doit être désactivé et le texte de chargement doit rester affiché.
-	- **Icône clavier** : L'icône clavier peut être un emoji (⌨️) ou une icône SVG/icon font selon les préférences de design.
-
-5. **Implémentation technique**
-	- **Gestionnaire d'événements clavier** : Un gestionnaire d'événements `keydown` doit être ajouté au niveau du composant principal (`ProviderCalendars`) pour écouter les raccourcis clavier.
-	- **Vérification des conditions d'activation** : Avant d'exécuter une action, vérifier que :
-		- `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie.
-		- Aucune modale n'est ouverte.
-		- L'utilisateur n'est pas en train d'éditer une cellule du calendrier.
-	- **Mapping des raccourcis** : Créer un mapping entre les raccourcis clavier et les actions correspondantes :
-		- `+` → `handleOpenUnavailable` (si le bouton est visible)
-		- `-` → `handleCloseAvailable` (si le bouton est visible)
-		- `r` → `setIsBookingModalOpen(true)` (si une sélection est active)
-		- `a` → `handleRefreshData` (toujours disponible)
-		- `Ctrl+A` / `Cmd+A` → `handleSelectAllRange` (déjà implémenté)
-	- **Affichage au survol** : Pour chaque bouton, ajouter des gestionnaires `onMouseEnter` et `onMouseLeave` qui :
-		- Stockent le texte original du bouton dans un état local ou une ref.
-		- Au survol, remplacent le texte par `⌨️ [raccourci]`.
-		- Au départ de la souris, restaurent le texte original.
-	- **Gestion des états de chargement** : Si le bouton affiche un texte de chargement, ne pas modifier le texte au survol.
-
-6. **Cas limites**
-	- **Boutons conditionnels** : Les raccourcis pour les boutons conditionnels (Ouvrir, Fermer, Réserver) ne doivent fonctionner que si le bouton est visible et actif.
-	- **Conflits avec les modales** : Si une modale est ouverte, tous les raccourcis de la page principale doivent être désactivés.
-	- **Conflits avec l'édition** : Si l'utilisateur est en train d'éditer un prix ou une durée minimale, les raccourcis doivent être désactivés pour éviter les actions accidentelles.
-	- **Raccourcis système** : Les raccourcis qui entrent en conflit avec les raccourcis système du navigateur (ex: `Ctrl+A` pour sélectionner tout le texte) doivent être gérés avec précaution en vérifiant que l'utilisateur n'est pas dans un champ de saisie.
 	- **Note** : Les fonctions de chargement des données doivent utiliser `startDate` et `endDate` au lieu de `startDate` et `monthsCount`. Les fonctions suivantes doivent être modifiées :
 		- `loadSupplierData(client, idFournisseur, accommodationsList, startDate, endDate, signal)`
 		- `refreshSupplierData(idFournisseur, startDate, endDate)`
