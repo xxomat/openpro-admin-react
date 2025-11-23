@@ -297,3 +297,49 @@ export async function updateStock(
   }
 }
 
+/**
+ * Supprime une réservation locale (Directe)
+ * 
+ * @param idFournisseur - Identifiant du fournisseur
+ * @param idDossier - Identifiant du dossier de réservation
+ * @param idHebergement - Identifiant de l'hébergement (optionnel, pour une recherche plus précise)
+ * @param dateArrivee - Date d'arrivée (optionnel, pour une recherche plus précise)
+ * @param dateDepart - Date de départ (optionnel, pour une recherche plus précise)
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue sans valeur en cas de succès
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function deleteBooking(
+  idFournisseur: number,
+  idDossier: number,
+  idHebergement?: number,
+  dateArrivee?: string,
+  dateDepart?: string,
+  signal?: AbortSignal
+): Promise<void> {
+  // Construire l'URL avec les paramètres optionnels en query string
+  const url = new URL(`${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/local-bookings/${idDossier}`);
+  if (idHebergement !== undefined) {
+    url.searchParams.set('idHebergement', String(idHebergement));
+  }
+  if (dateArrivee) {
+    url.searchParams.set('dateArrivee', dateArrivee);
+  }
+  if (dateDepart) {
+    url.searchParams.set('dateDepart', dateDepart);
+  }
+
+  const res = await fetch(url.toString(), {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    signal
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to delete booking: ${errorText}`);
+  }
+}
+

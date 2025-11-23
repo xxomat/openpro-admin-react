@@ -19,12 +19,13 @@ import { SelectionSummary } from './components/SelectionSummary';
 import { SupplierTabs } from './components/SupplierTabs';
 import { AdminFooter } from './components/AdminFooter';
 import { BookingModal } from './components/BookingModal';
+import { DeleteBookingModal } from './components/DeleteBookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
 import { formatDate, addMonths } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
-import { saveBulkUpdates, type BulkUpdateRequest, updateStock } from '../../services/api/backendClient';
+import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '../../services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
 import { getNonReservableDays } from './utils/availabilityUtils';
 
@@ -135,6 +136,62 @@ export function ProviderCalendars(): React.ReactElement {
       }
     }
   }, [selectedBookingId, activeSupplier, supplierData]);
+
+  // État pour la modale de suppression
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+
+  // Trouver la réservation sélectionnée dans les données
+  const selectedBooking = React.useMemo(() => {
+    if (!activeSupplier || selectedBookingId === null || selectedBookingId === undefined) {
+      return null;
+    }
+
+    const bookingsByAcc = supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    
+    // Parcourir toutes les réservations pour trouver celle avec le bon idDossier
+    for (const bookingsArray of Object.values(bookingsByAcc)) {
+      const booking = bookingsArray.find(b => b.idDossier === selectedBookingId);
+      if (booking) {
+        return booking;
+      }
+    }
+
+    return null;
+  }, [activeSupplier, selectedBookingId, supplierData.bookingsBySupplierAndAccommodation]);
+
+  // Trouver le nom de l'hébergement pour la réservation sélectionnée
+  const selectedBookingAccommodationName = React.useMemo(() => {
+    if (!selectedBooking || !activeSupplier) {
+      return undefined;
+    }
+
+    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    const accommodation = accommodations.find(acc => acc.idHebergement === selectedBooking.idHebergement);
+    return accommodation?.nomHebergement;
+  }, [selectedBooking, activeSupplier, supplierData.accommodations]);
+
+  // Gérer la touche Suppr pour ouvrir la modale de suppression
+  React.useEffect(() => {
+    if (!selectedBooking || isDeleteModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorer si on est dans un input, textarea, etc.
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Del') {
+        e.preventDefault();
+        setIsDeleteModalOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedBooking, isDeleteModalOpen]);
 
   // Obtenir les modifications pour le fournisseur actif
   const modifiedRates = React.useMemo(() => {
@@ -479,6 +536,62 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return;
     await supplierData.refreshSupplierData(activeSupplier.idFournisseur, startDate, endDate);
   }, [activeSupplier, startDate, endDate, supplierData]);
+
+  // Fonction pour gérer la suppression d'une réservation
+  // Définie après handleRefreshData pour éviter l'erreur d'initialisation
+  const handleDeleteBooking = React.useCallback(async (booking: BookingDisplay) => {
+    if (!activeSupplier || !booking) return;
+
+    // Étape 1: Supprimer la réservation en DB (et dans le stub en test)
+    // Passer les critères supplémentaires pour une recherche plus précise
+    await deleteBooking(
+      activeSupplier.idFournisseur,
+      booking.idDossier,
+      booking.idHebergement,
+      booking.dateArrivee,
+      booking.dateDepart
+    );
+
+    // Étape 2: Calculer toutes les dates de la réservation (du dateArrivee inclus au dateDepart exclus)
+    const dates: string[] = [];
+    const [startYear, startMonth, startDay] = booking.dateArrivee.split('-').map(Number);
+    const [endYear, endMonth, endDay] = booking.dateDepart.split('-').map(Number);
+
+    // Créer des dates en locale pour éviter les problèmes de fuseau horaire
+    let currentDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
+
+    // Ajouter toutes les dates du premier jour inclus au dernier jour inclus (dateDepart est exclu)
+    while (currentDate < endDate) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      dates.push(dateStr);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Mettre le stock à 1 pour toutes les dates de la réservation supprimée
+    if (dates.length > 0) {
+      const stockPayload = {
+        jours: dates.map(date => ({
+          date,
+          dispo: 1
+        }))
+      };
+
+      await updateStock(activeSupplier.idFournisseur, booking.idHebergement, stockPayload);
+    }
+
+    // Étape 3: Rafraîchir les données
+    await handleRefreshData();
+
+    // Étape 4: Annuler la sélection de réservation
+    setSelectedBookingId(null);
+
+    // Étape 5: Fermer la modale
+    setIsDeleteModalOpen(false);
+  }, [activeSupplier, handleRefreshData]);
 
   // Poller l'état de synchronisation des réservations Direct toutes les 30 secondes
   // et déclencher un refresh automatique si l'état change
@@ -874,6 +987,15 @@ export function ProviderCalendars(): React.ReactElement {
         idFournisseur={activeSupplier?.idFournisseur ?? 0}
         onBookingCreated={handleRefreshData}
         onSelectionClear={handleClearSelection}
+      />
+
+      {/* Modale de suppression de réservation */}
+      <DeleteBookingModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        booking={selectedBooking}
+        accommodationName={selectedBookingAccommodationName}
+        onConfirmDelete={handleDeleteBooking}
       />
     </div>
   );

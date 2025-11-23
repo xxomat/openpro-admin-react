@@ -1324,6 +1324,98 @@ A définir
 	- L'état de sélection ne nécessite pas de recalcul des positions des rectangles.
 	- Le style conditionnel de sélection est appliqué uniquement aux rectangles Directe.
 
+##### Suppression d'une réservation Directe — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'utilisateur peut supprimer une réservation Directe sélectionnée en appuyant sur la touche Suppr (Delete).
+	- Une modale de confirmation s'affiche pour confirmer la suppression avant de procéder.
+	- La suppression entraîne la suppression de la réservation en DB (et dans le stub en test) ainsi que la réactivation du stock pour les dates concernées.
+
+2. **Déclenchement de la modale**
+	- **Condition** : Une réservation Directe doit être sélectionnée (`selectedBookingId !== null`).
+	- **Touche** : Appui sur la touche Suppr (Delete) ouvre la modale de confirmation.
+	- **Comportement** : Si aucune réservation n'est sélectionnée, l'appui sur Suppr ne fait rien.
+
+3. **Contenu de la modale de confirmation**
+	- La modale affiche un **récapitulatif** de la réservation à supprimer avec les informations suivantes :
+		- Dates d'arrivée et de départ (formatées)
+		- Nom du client (nom complet)
+		- Nom de l'hébergement
+		- Nombre de personnes
+		- Montant total (si disponible)
+		- Référence (si disponible)
+	- La modale doit être claire et indiquer qu'il s'agit d'une action irréversible.
+
+4. **Fermeture/annulation de la modale**
+	- **Touche Échap (Escape)** : Ferme la modale sans supprimer la réservation.
+	- **Bouton "Annuler"** : Ferme la modale sans supprimer la réservation.
+	- Dans les deux cas, la sélection de réservation est maintenue.
+
+5. **Confirmation de suppression**
+	- **Bouton "Supprimer"** : Lance la suppression de la réservation.
+	- **Ordre des opérations lors de la suppression** :
+		1. **Étape 1** : Supprimer la réservation en DB (et dans le stub en test) via l'API backend.
+		2. **Étape 2** : Mettre le stock à 1 pour toutes les dates de la réservation supprimée (du `dateArrivee` inclus au `dateDepart` exclus) via l'API de mise à jour du stock.
+		3. **Étape 3** : Rafraîchir les données (`handleRefreshData()`) pour refléter la suppression.
+		4. **Étape 4** : Annuler la sélection de réservation (`setSelectedBookingId(null)`).
+		5. **Étape 5** : Fermer la modale.
+
+6. **Gestion des erreurs**
+	- **Erreur de suppression** : Si la suppression échoue, afficher un message d'erreur dans la modale ou via une notification. La modale reste ouverte pour permettre un nouvel essai ou une annulation.
+	- **Erreur de mise à jour du stock** : Si la suppression réussit mais que la mise à jour du stock échoue, afficher un avertissement (la réservation est supprimée mais le stock n'a pas été réactivé). Rafraîchir les données quand même.
+	- **État de chargement** : Afficher un état de chargement pendant la suppression et la mise à jour du stock (bouton "Supprimer" désactivé, texte "Suppression...").
+
+7. **Détails d'implémentation**
+
+	7.1. **Composant DeleteBookingModal**
+		- Créer un nouveau composant `DeleteBookingModal` similaire à `BookingModal` mais pour la suppression.
+		- **Props** :
+			- `isOpen: boolean` - Indique si la modale est ouverte
+			- `onClose: () => void` - Callback pour fermer la modale
+			- `booking: BookingDisplay | null` - La réservation à supprimer
+			- `onConfirmDelete: (booking: BookingDisplay) => Promise<void>` - Callback pour confirmer la suppression
+		- **Fonctionnalités** :
+			- Afficher le récapitulatif de la réservation
+			- Gérer la touche Échap pour fermer la modale
+			- Afficher un état de chargement pendant la suppression
+			- Gérer les erreurs d'affichage
+
+	7.2. **Gestion du clavier (index.tsx)**
+		- Ajouter un `useEffect` qui écoute la touche Suppr uniquement quand une réservation Directe est sélectionnée.
+		- Utiliser `window.addEventListener('keydown', handleDeleteKey)` avec `useEffect`.
+		- Ouvrir la modale de suppression lorsque la touche Suppr est pressée.
+
+	7.3. **API Backend**
+		- Créer un endpoint `DELETE /api/suppliers/:idFournisseur/local-bookings/:idDossier` pour supprimer une réservation locale.
+		- L'endpoint doit supprimer la réservation dans la DB D1 (et dans le stub si en mode test).
+		- Retourner une réponse de succès ou d'erreur.
+
+	7.4. **API Frontend**
+		- Créer une fonction `deleteBooking(idFournisseur: number, idDossier: number)` dans `backendClient.ts`.
+		- La fonction doit appeler l'endpoint DELETE du backend.
+
+	7.5. **Mise à jour du stock**
+		- Après la suppression réussie, calculer toutes les dates de la réservation (du `dateArrivee` inclus au `dateDepart` exclus).
+		- Utiliser l'endpoint existant `POST /api/suppliers/:idFournisseur/accommodations/:idHebergement/stock` pour mettre le stock à 1 pour toutes ces dates.
+		- La fonction `updateStock()` existe déjà dans `backendClient.ts`.
+
+	7.6. **Intégration dans index.tsx**
+		- Créer un état `isDeleteModalOpen: boolean` pour gérer l'ouverture/fermeture de la modale.
+		- Créer une fonction `handleDeleteBooking` qui :
+			- Appelle `deleteBooking()` pour supprimer la réservation.
+			- Calcule toutes les dates de la réservation.
+			- Appelle `updateStock()` pour mettre le stock à 1.
+			- Appelle `handleRefreshData()` pour rafraîchir les données.
+			- Annule la sélection de réservation (`setSelectedBookingId(null)`).
+			- Ferme la modale.
+		- Trouver la réservation sélectionnée dans `bookingsByAccommodation` pour passer à la modale.
+
+8. **Style visuel**
+	- La modale doit avoir un style cohérent avec le reste de l'application (thème sombre).
+	- Le bouton "Supprimer" doit avoir une couleur distincte (ex: rouge) pour indiquer une action destructive.
+	- Le bouton "Annuler" doit être moins visible (bouton secondaire).
+	- Un message d'avertissement peut être affiché pour indiquer que l'action est irréversible.
+
 ##### Tooltip des réservations — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
