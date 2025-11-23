@@ -23,7 +23,7 @@ import { DeleteBookingModal } from './components/DeleteBookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
-import { formatDate, addMonths } from './utils/dateUtils';
+import { formatDate, addMonths, getDaysInRange } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
 import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '../../services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
@@ -864,6 +864,67 @@ export function ProviderCalendars(): React.ReactElement {
     }
   }, [activeSupplier, availableDatesCount, availableDatesByAccommodation, supplierData, handleRefreshData]);
 
+  // Fonction pour sélectionner toutes les dates entre startDate et endDate
+  // Respecte les règles de sélection : exclut les dates occupées par une réservation
+  const handleSelectAllRange = React.useCallback(() => {
+    if (!activeSupplier) return;
+    
+    // Obtenir toutes les dates entre startDate et endDate
+    const allDays = getDaysInRange(startDate, endDate);
+    
+    // Obtenir les hébergements à sélectionner
+    // Si aucun hébergement n'est sélectionné, sélectionner tous les hébergements disponibles
+    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    const accommodationsToSelect = selectedAccommodations.size > 0
+      ? accommodations.filter(acc => selectedAccommodations.has(acc.idHebergement))
+      : accommodations;
+    
+    if (accommodationsToSelect.length === 0) return;
+    
+    // Créer toutes les clés de cellules pour la sélection
+    // Exclure les dates occupées par une réservation (règle de sélection)
+    const newSelectedCells = new Set<string>();
+    for (const acc of accommodationsToSelect) {
+      for (const date of allDays) {
+        const dateStr = formatDate(date);
+        
+        // Vérifier si cette date est occupée par une réservation
+        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        
+        // Ne pas sélectionner les dates occupées (règle de sélection)
+        if (!isBooked) {
+          newSelectedCells.add(`${acc.idHebergement}|${dateStr}`);
+        }
+      }
+    }
+    
+    // Mettre à jour la sélection (et désélectionner la réservation si une est sélectionnée)
+    setSelectedCells(newSelectedCells);
+    setSelectedBookingId(null);
+  }, [activeSupplier, startDate, endDate, selectedAccommodations, supplierData, bookedDatesByAccommodation, setSelectedCells]);
+
+  // Gestionnaire pour le raccourci clavier Ctrl+A
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+A ou Cmd+A (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        // Ne pas intercepter si l'utilisateur est en train de modifier du texte dans un input
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return; // Laisser le comportement par défaut (sélectionner le texte)
+        }
+        
+        e.preventDefault();
+        handleSelectAllRange();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleSelectAllRange]);
+
   return (
     <div style={{ 
       padding: '16px', 
@@ -876,6 +937,7 @@ export function ProviderCalendars(): React.ReactElement {
         onStartInputChange={setStartInput}
         endInput={endInput}
         onEndInputChange={setEndInput}
+        onSelectAllRange={handleSelectAllRange}
       />
       <SupplierTabs
         suppliers={suppliers}

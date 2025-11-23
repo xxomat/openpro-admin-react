@@ -255,6 +255,15 @@ Vue d'ensemble :
 	- **Chargement lors du changement d'onglet** :
 		- **Aucun chargement automatique** : Lors du changement d'onglet (passage d'un fournisseur à un autre), les données ne sont **pas** rechargées automatiquement depuis le serveur.
 		- Les données déjà chargées en mémoire pour le fournisseur sélectionné sont réaffichées telles quelles.
+	- **Fusion des données lors de tout rechargement** :
+		- Lors de **tout** rechargement des données (bouton "Actualiser les données", après fermeture/ouverture de dates, après création/suppression de réservation, etc.), les nouvelles données pour la période `[startDate, endDate)` doivent être **fusionnées** avec les données existantes en mémoire, et non remplacées complètement.
+		- **Préservation des dates hors plage** : Les dates en dehors de la plage actuellement chargée (`[startDate, endDate)`) doivent être préservées pour éviter leur perte lors du scroll ou du changement de plage de dates.
+		- **Comportement de fusion** :
+			- Pour chaque hébergement, les données existantes (stock, tarifs, promotions, types de tarifs, durées minimales) sont conservées.
+			- Les nouvelles données chargées pour la période `[startDate, endDate)` sont fusionnées avec les données existantes, en écrasant uniquement les dates qui se trouvent dans cette plage.
+			- Les dates en dehors de la plage `[startDate, endDate)` conservent leurs valeurs précédentes.
+		- **Garantie de cohérence** : Cette fusion garantit que l'affichage reste cohérent même après avoir modifié le stock ou les tarifs pour une plage de dates spécifique, puis avoir fait défiler le calendrier pour afficher des dates en dehors de cette plage.
+		- **Exception** : Les réservations (`bookings`) sont toujours remplacées complètement lors de l'actualisation, car elles peuvent changer globalement et ne sont pas liées à une plage de dates spécifique.
 	- **Bouton "Actualiser les données"** :
 		- Un bouton **"Actualiser les données"** (ou "Fetch data") doit être affiché dans l'interface, à proximité du bouton de Sauvegarde des moficiations.
 		- **Action du bouton** : Lors du clic sur ce bouton :
@@ -345,7 +354,32 @@ A définir
 	- La sélection est **indépendante** pour chaque colonne (sélection multiple possible).
 	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
 
-5. **Sélection par drag de la souris**
+5. **Sélection de toute la plage de dates**
+	- **Bouton "Sélectionner toute la plage"** :
+		- Un bouton **"Sélectionner toute la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner toutes les dates entre `startDate` et `endDate` en un seul clic.
+		- **Action du bouton** : Lors du clic sur ce bouton :
+			- Sélectionner toutes les dates entre `startDate` (incluse) et `endDate` (incluse) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- **Respect des règles de sélection** : Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+			- Désélectionner automatiquement toute réservation sélectionnée (si une réservation était sélectionnée, elle est désélectionnée).
+		- **Visibilité** : Le bouton doit être visible pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
+		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)".
+	- **Raccourci clavier Ctrl+A (ou Cmd+A sur Mac)** :
+		- Le raccourci clavier **Ctrl+A** (Windows/Linux) ou **Cmd+A** (Mac) déclenche la même action que le bouton "Sélectionner toute la plage".
+		- **Conditions d'activation** :
+			- Le raccourci ne doit **pas** être activé si un champ de saisie (input, textarea) est actuellement en focus, pour éviter de sélectionner le texte dans le champ au lieu de sélectionner les dates du calendrier.
+			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
+		- **Comportement** :
+			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- **Respect des règles de sélection** : Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+			- Désélectionne automatiquement toute réservation sélectionnée.
+		- **Isolation par fournisseur** : Le raccourci fonctionne uniquement pour le fournisseur actif (onglet actuellement affiché).
+	- **Implémentation technique** :
+		- Le gestionnaire d'événement `keydown` doit écouter les événements `Ctrl+A` (ou `Cmd+A` sur Mac) au niveau du composant principal.
+		- Vérifier que `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie avant d'exécuter l'action.
+		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant les dates occupées par une réservation.
+		- Utiliser `selectedCells: Set<string>` au format `"accId|dateStr"` pour stocker la sélection.
+
+6. **Sélection par drag de la souris**
 	- **Déclenchement du drag**
 		- Le drag peut être initié **uniquement depuis les cellules d'en-tête** (ligne 1).
 		- Le drag commence lors d'un **mousedown** (clic maintenu) sur une cellule d'en-tête.
@@ -379,7 +413,7 @@ A définir
 		- Un clic simple sans mouvement de souris ne doit pas déclencher de drag.
 		- Le drag et le clic peuvent être combinés : l'utilisateur peut cliquer pour sélectionner des colonnes individuelles, puis utiliser le drag pour sélectionner une plage de colonnes supplémentaires.
 
-6. **Implémentation technique**
+7. **Implémentation technique**
 	- **Sélection par clic** :
 		- Chaque cellule d'en-tête doit avoir un gestionnaire d'événement `onClick` qui :
 			- Identifie l'index de la colonne (`columnIndex`) ou la date (`dateStr`) correspondante.
@@ -396,7 +430,7 @@ A définir
 		- Vérifier la touche Ctrl/Cmd pendant le drag pour déterminer le mode (ajout ou remplacement).
 		- Appliquer un style conditionnel basé sur `draggingState` pour la surbrillance temporaire.
 
-7. **Champ d'affichage du résumé de sélection (pour tests)**
+8. **Champ d'affichage du résumé de sélection (pour tests)**
 	- Un **champ texte en lecture seule** (`textarea`) doit être affiché sous le calendrier pour afficher un résumé formaté de la sélection.
 	- **Restriction de sélection pour les dates occupées** :
 		- Les dates occupées par une réservation ne doivent **pas** être sélectionnables (ni par clic, ni par drag).

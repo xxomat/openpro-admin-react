@@ -66,26 +66,116 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
     [idFournisseur]: new Set(accommodationsList.map(acc => acc.idHebergement))
   }));
 
-  setStockBySupplierAndAccommodation(prev => ({
-    ...prev,
-    [idFournisseur]: data.stock
-  }));
-  setRatesBySupplierAndAccommodation(prev => ({
-    ...prev,
-    [idFournisseur]: data.rates
-  }));
-  setPromoBySupplierAndAccommodation(prev => ({
-    ...prev,
-    [idFournisseur]: data.promo
-  }));
-  setRateTypesBySupplierAndAccommodation(prev => ({
-    ...prev,
-    [idFournisseur]: data.rateTypes
-  }));
-  setDureeMinByAccommodation(prev => ({
-    ...prev,
-    [idFournisseur]: data.dureeMin
-  }));
+  // Fusionner les données au lieu de les remplacer complètement
+  // Cela préserve les données pour les dates en dehors de la plage actuellement chargée
+  setStockBySupplierAndAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, number>> = {};
+    
+    // Fusionner les données existantes avec les nouvelles
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    // Mettre à jour avec les nouvelles données (écrase les dates existantes dans la plage)
+    for (const accId in data.stock) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      updated[Number(accId)] = { ...updated[Number(accId)], ...data.stock[Number(accId)] };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+  
+  setRatesBySupplierAndAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, Record<number, number>>> = {};
+    
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    for (const accId in data.rates) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      updated[Number(accId)] = { ...updated[Number(accId)], ...data.rates[Number(accId)] };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+  
+  setPromoBySupplierAndAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, boolean>> = {};
+    
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    for (const accId in data.promo) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      updated[Number(accId)] = { ...updated[Number(accId)], ...data.promo[Number(accId)] };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+  
+  setRateTypesBySupplierAndAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, string[]>> = {};
+    
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    for (const accId in data.rateTypes) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      updated[Number(accId)] = { ...updated[Number(accId)], ...data.rateTypes[Number(accId)] };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+  
+  setDureeMinByAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, number | null>> = {};
+    
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    for (const accId in data.dureeMin) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      updated[Number(accId)] = { ...updated[Number(accId)], ...data.dureeMin[Number(accId)] };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+  
+  // Les réservations sont toujours remplacées complètement car elles peuvent changer
   setBookingsBySupplierAndAccommodation(prev => ({
     ...prev,
     [idFournisseur]: data.bookings
