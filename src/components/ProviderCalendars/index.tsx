@@ -43,6 +43,7 @@ export function ProviderCalendars(): React.ReactElement {
   });
   const [saving, setSaving] = React.useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = React.useState(false);
+  const [reserveButtonHover, setReserveButtonHover] = React.useState(false);
 
   const supplierData = useSupplierData();
 
@@ -904,19 +905,67 @@ export function ProviderCalendars(): React.ReactElement {
     setSelectedBookingId(null);
   }, [activeSupplier, startDate, endDate, selectedAccommodations, supplierData, bookedDatesByAccommodation, setSelectedCells]);
 
-  // Gestionnaire pour le raccourci clavier Ctrl+A
+  // Gestionnaire pour tous les raccourcis clavier de l'interface principale
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+A ou Cmd+A (Mac)
+      // Ne pas intercepter si l'utilisateur est en train de modifier du texte dans un input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return; // Laisser le comportement par défaut
+      }
+      
+      // Ne pas intercepter si une modale est ouverte
+      if (isBookingModalOpen || isDeleteModalOpen) {
+        return;
+      }
+      
+      // Ne pas intercepter si l'utilisateur est en train d'éditer une cellule
+      // (vérification basée sur l'état d'édition, à adapter selon l'implémentation)
+      
+      // Ctrl+A ou Cmd+A (Mac) - Sélectionner toute la plage
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        // Ne pas intercepter si l'utilisateur est en train de modifier du texte dans un input
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-          return; // Laisser le comportement par défaut (sélectionner le texte)
-        }
-        
         e.preventDefault();
         handleSelectAllRange();
+        return;
+      }
+      
+      // Raccourcis simples
+      const key = e.key.toLowerCase();
+      
+      // Raccourci 'r' - Réserver (sans modificateurs)
+      if (key === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (hasValidBookingSelection) {
+          e.preventDefault();
+          setIsBookingModalOpen(true);
+        }
+        return;
+      }
+      
+      // Raccourci 'a' - Actualiser (sans modificateurs)
+      if (key === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (!supplierData.loading && !saving) {
+          e.preventDefault();
+          handleRefreshData();
+        }
+        return;
+      }
+      
+      // Raccourci '+' - Ouvrir (peut nécessiter Shift sur certains claviers)
+      if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (unavailableDatesCount > 0 && !supplierData.loading && !saving && handleOpenUnavailable) {
+          e.preventDefault();
+          handleOpenUnavailable();
+        }
+        return;
+      }
+      
+      // Raccourci '-' - Fermer (peut nécessiter Shift sur certains claviers)
+      if ((e.key === '-' || e.key === '_') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (availableDatesCount > 0 && !supplierData.loading && !saving && handleCloseAvailable) {
+          e.preventDefault();
+          handleCloseAvailable();
+        }
+        return;
       }
     };
 
@@ -924,7 +973,7 @@ export function ProviderCalendars(): React.ReactElement {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleSelectAllRange]);
+  }, [handleSelectAllRange, hasValidBookingSelection, isBookingModalOpen, isDeleteModalOpen, supplierData.loading, saving, unavailableDatesCount, availableDatesCount, handleOpenUnavailable, handleCloseAvailable, handleRefreshData]);
 
   return (
     <div style={{ 
@@ -1003,16 +1052,19 @@ export function ProviderCalendars(): React.ReactElement {
                   fontSize: 14,
                   fontWeight: 500,
                   cursor: 'pointer',
-                  boxShadow: darkTheme.shadowSm
+                  boxShadow: darkTheme.shadowSm,
+                  minWidth: 120 // Largeur minimale pour éviter le clignotement
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = darkTheme.buttonPrimaryHover;
+                  setReserveButtonHover(true);
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = darkTheme.buttonPrimaryBg;
+                  setReserveButtonHover(false);
                 }}
               >
-                Réserver
+                {reserveButtonHover ? '⌨️ r' : 'Réserver'}
               </button>
             )}
             <ActionButtons
