@@ -111,7 +111,7 @@ export function SelectionSummary({
   }, [selectedCells, selectedAccommodations, selectedRateTypeId, ratesByAccommodation, modifiedRates, dureeMinByAccommodation]);
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div style={{ marginTop: 16, width: '1000px' }}>
       <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: darkTheme.textSecondary }}>
         Résumé de sélection (pour tests)
       </label>

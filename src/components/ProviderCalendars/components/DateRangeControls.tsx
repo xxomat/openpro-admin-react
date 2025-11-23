@@ -24,6 +24,8 @@ export interface DateRangeControlsProps {
   onEndInputChange: (value: string) => void;
   /** Callback appelé quand l'utilisateur clique sur "Sélectionner toute la plage" */
   onSelectAllRange?: () => void;
+  /** Callback appelé quand l'utilisateur clique sur le bouton "Aujourd'hui" */
+  onResetToToday?: () => void;
 }
 
 /**
@@ -34,11 +36,13 @@ export function DateRangeControls({
   onStartInputChange,
   endInput,
   onEndInputChange,
-  onSelectAllRange
+  onSelectAllRange,
+  onResetToToday
 }: DateRangeControlsProps): React.ReactElement {
   const startDateId = React.useId();
   const endDateId = React.useId();
   const [selectAllHover, setSelectAllHover] = React.useState(false);
+  const [todayButtonHover, setTodayButtonHover] = React.useState(false);
   
   // Détecter si on est sur Mac pour afficher Cmd+A au lieu de Ctrl+A
   const isMac = React.useMemo(() => {
@@ -126,6 +130,37 @@ export function DateRangeControls({
               className="date-input-dark"
             />
           </label>
+          {onResetToToday && (
+            <button
+              onClick={onResetToToday}
+              style={{
+                padding: '6px 10px',
+                background: darkTheme.buttonSecondaryBg,
+                color: darkTheme.buttonText,
+                border: `1px solid ${darkTheme.borderColor}`,
+                borderRadius: 6,
+                fontSize: 16,
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 60,
+                height: 'fit-content'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
+                setTodayButtonHover(true);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
+                setTodayButtonHover(false);
+              }}
+              title="Remettre la date de début à aujourd'hui (t)"
+            >
+              {todayButtonHover ? '⌨️ t' : '📅'}
+            </button>
+          )}
           <label htmlFor={endDateId} style={{ display: 'flex', alignItems: 'center', gap: 8, color: darkTheme.textPrimary }}>
             <span>Date de fin</span>
             <input

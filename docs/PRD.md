@@ -230,6 +230,51 @@ Vue d'ensemble :
 		- Les deux champs doivent être accessibles au clavier et respecter les standards d'accessibilité (attributs `aria-label`)
 	- **Persistance** : Les dates de début et de fin peuvent être stockées dans l'état local du composant. Optionnel : persister les dates dans le localStorage pour conserver la sélection entre les sessions.
 
+#### Navigation et modification des dates — Exigences fonctionnelles
+
+1. **Modification des dates via les champs de saisie**
+	- Les champs "Date de début" et "Date de fin" sont des inputs HTML5 de type `date`.
+	- L'utilisateur peut modifier les dates en :
+		- Cliquant sur le champ et sélectionnant une date dans le sélecteur de date du navigateur.
+		- Saisissant directement la date au format `YYYY-MM-DD` dans le champ.
+
+2. **Modification des dates via la molette de la souris (scroll)**
+	- **Scroll sur les champs de date** : Lorsque le curseur de la souris est positionné sur un champ de date ("Date de début" ou "Date de fin"), l'utilisateur peut utiliser la molette de la souris pour modifier la date :
+		- **Scroll vers le bas** : Diminue la date d'un jour.
+			- **Scroll vers le haut** : Augmente la date d'un jour.
+	- **Comportement** :
+		- Le scroll sur les champs de date doit modifier uniquement la date du champ concerné.
+		- Le scroll de la page doit être empêché lorsque le curseur est sur un champ de date, pour éviter que la page ne défile pendant la modification de la date.
+		- Si la date de début dépasse la date de fin (ou vice versa), les deux dates sont ajustées automatiquement pour maintenir la cohérence.
+
+3. **Modification des dates via Ctrl+scroll (ou Cmd+scroll sur Mac)**
+	- **Scroll avec modificateur sur la page** : Lorsque l'utilisateur maintient la touche `Ctrl` (Windows/Linux) ou `Cmd` (Mac) et fait défiler la page avec la molette de la souris :
+		- **Scroll vers le bas** : Diminue la date de début et la date de fin d'un jour chacune.
+		- **Scroll vers le haut** : Augmente la date de début et la date de fin d'un jour chacune.
+	- **Maintien de l'écart** : L'écart en jours entre la date de début et la date de fin doit être maintenu lors de cette opération.
+		- Exemple : Si l'écart est de 30 jours (du 1er au 31 janvier), après un Ctrl+scroll vers le bas, les dates deviennent du 31 décembre au 30 janvier (écart de 30 jours maintenu).
+	- **Comportement** :
+		- Le zoom de Chrome (Ctrl+scroll) doit être empêché pour permettre cette fonctionnalité.
+		- Le scroll normal de la page (sans Ctrl/Cmd) continue de fonctionner normalement.
+		- Cette fonctionnalité ne doit pas être active lorsque le curseur est sur un champ de date (les champs de date ont leur propre gestionnaire de scroll).
+		- Cette fonctionnalité ne doit pas être active lorsque le curseur est dans un champ de saisie (input, textarea) ou lorsqu'une modale est ouverte.
+
+4. **Bouton "Aujourd'hui"**
+	- Un bouton avec une icône de calendrier (📅) doit être affiché entre les champs "Date de début" et "Date de fin".
+	- **Action du bouton** : Lors du clic sur ce bouton :
+		- La date de début est remise à aujourd'hui.
+		- La date de fin est ajustée pour maintenir l'écart en jours entre les deux dates.
+		- Exemple : Si l'écart est de 30 jours (du 1er au 31 janvier) et que l'utilisateur clique sur "Aujourd'hui" le 15 février, les dates deviennent du 15 février au 17 mars (écart de 30 jours maintenu).
+	- **Raccourci clavier** : Le raccourci `t` (touche "t" sans modificateur) déclenche la même action que le bouton.
+	- **Affichage au survol** : Au survol du bouton, le texte est remplacé par `⌨️ t` (icône clavier + raccourci).
+	- **Disponibilité** : Le bouton est toujours visible et actif.
+
+5. **Priorité des gestionnaires d'événements**
+	- Les gestionnaires de scroll sont organisés par priorité :
+		1. **Scroll sur les champs de date** : Priorité la plus élevée. Empêche le scroll de la page et modifie uniquement la date du champ concerné.
+		2. **Ctrl+scroll sur la page** : Priorité moyenne. Empêche le zoom de Chrome et modifie les deux dates en maintenant l'écart.
+		3. **Scroll normal sur la page** : Priorité la plus basse. Comportement par défaut du navigateur (défilement de la page).
+
 2. **Chargement des hébergements**
 	- **Chargement initial uniquement** : 
 		- Au chargement initial de la page web uniquement, pour **chaque fournisseur** (`suppliers: Supplier[]`), charger la liste complète des hébergements (`accommodations: Accommodation[]`).
@@ -902,6 +947,9 @@ A définir
 	- **Bouton "Actualiser les données"** : Raccourci `a`
 		- Action : Recharge les données depuis le serveur pour le fournisseur actif (voir section "Bouton d'actualisation des données" pour les détails).
 		- Disponibilité : Toujours visible.
+	- **Bouton "Aujourd'hui"** (remettre la date de début à aujourd'hui) : Raccourci `t`
+		- Action : Remet la date de début à aujourd'hui et ajuste la date de fin pour maintenir l'écart entre les deux dates (voir section "Navigation et modification des dates" pour les détails).
+		- Disponibilité : Toujours visible.
 
 3. **Comportement des raccourcis clavier**
 	- **Activation** : Les raccourcis clavier doivent être actifs uniquement lorsque :
@@ -922,6 +970,7 @@ A définir
 		- Exemple pour "Ouvrir" : `⌨️ +`
 		- Exemple pour "Fermer" : `⌨️ -`
 		- Exemple pour "Sélectionner toute la plage" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
+		- Exemple pour "Aujourd'hui" : `⌨️ t`
 	- **Retour au texte original** : Quand la souris quitte le bouton (événement `onMouseLeave`), le texte original du bouton doit être restauré.
 	- **État de chargement** : Si le bouton est en état de chargement (ex: "Actualisation...", "Fermeture..."), le comportement au survol doit être désactivé et le texte de chargement doit rester affiché.
 	- **Icône clavier** : L'icône clavier peut être un emoji (⌨️) ou une icône SVG/icon font selon les préférences de design.

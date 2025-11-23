@@ -23,7 +23,7 @@ import { DeleteBookingModal } from './components/DeleteBookingModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
-import { formatDate, addMonths, getDaysInRange, isPastDate } from './utils/dateUtils';
+import { formatDate, addMonths, addDays, getDaysInRange, isPastDate } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
 import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '../../services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
@@ -56,6 +56,7 @@ export function ProviderCalendars(): React.ReactElement {
     const d = new Date(endInput);
     return isNaN(d.getTime()) ? addMonths(startDate, 1) : d;
   }, [endInput, startDate]);
+
 
   // Dates pour le chargement initial des données (1 an)
   // Les données sont chargées pour 1 an, mais l'affichage est limité à [startDate; endDate]
@@ -140,6 +141,26 @@ export function ProviderCalendars(): React.ReactElement {
 
   // État pour la modale de suppression
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  
+  // Refs pour accéder aux valeurs les plus récentes dans le gestionnaire d'événement
+  const startInputRef = React.useRef(startInput);
+  const endInputRef = React.useRef(endInput);
+  const isBookingModalOpenRef = React.useRef(isBookingModalOpen);
+  const isDeleteModalOpenRef = React.useRef(isDeleteModalOpen);
+  
+  // Mettre à jour les refs quand les valeurs changent
+  React.useEffect(() => {
+    startInputRef.current = startInput;
+  }, [startInput]);
+  React.useEffect(() => {
+    endInputRef.current = endInput;
+  }, [endInput]);
+  React.useEffect(() => {
+    isBookingModalOpenRef.current = isBookingModalOpen;
+  }, [isBookingModalOpen]);
+  React.useEffect(() => {
+    isDeleteModalOpenRef.current = isDeleteModalOpen;
+  }, [isDeleteModalOpen]);
 
   // Trouver la réservation sélectionnée dans les données
   const selectedBooking = React.useMemo(() => {
@@ -865,6 +886,41 @@ export function ProviderCalendars(): React.ReactElement {
     }
   }, [activeSupplier, availableDatesCount, availableDatesByAccommodation, supplierData, handleRefreshData]);
 
+  // Fonction pour remettre la date de début à aujourd'hui en maintenant l'écart
+  const handleResetToToday = React.useCallback(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = formatDate(today);
+    
+    // Calculer l'écart en jours entre startDate et endDate
+    const startDateObj = new Date(startInput);
+    const endDateObj = new Date(endInput);
+    
+    if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+      // Si les dates sont invalides, mettre simplement aujourd'hui et un mois plus tard
+      setStartInput(todayStr);
+      const oneMonthLater = addMonths(today, 1);
+      setEndInput(formatDate(oneMonthLater));
+      return;
+    }
+    
+    // Normaliser les dates à minuit pour le calcul
+    startDateObj.setHours(0, 0, 0, 0);
+    endDateObj.setHours(0, 0, 0, 0);
+    
+    // Calculer l'écart en jours
+    const diffTime = endDateObj.getTime() - startDateObj.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Mettre à jour la date de début à aujourd'hui
+    setStartInput(todayStr);
+    
+    // Calculer la nouvelle date de fin en maintenant l'écart
+    const newEndDate = addDays(today, diffDays);
+    const newEndDateStr = formatDate(newEndDate);
+    setEndInput(newEndDateStr);
+  }, [startInput, endInput, setStartInput, setEndInput]);
+
   // Fonction pour sélectionner toutes les dates entre startDate et endDate
   // Respecte les règles de sélection : exclut les dates occupées par une réservation et les dates passées
   const handleSelectAllRange = React.useCallback(() => {
@@ -967,13 +1023,97 @@ export function ProviderCalendars(): React.ReactElement {
         }
         return;
       }
+      
+      // Raccourci 't' - Remettre la date de début à aujourd'hui
+      if (key === 't' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        handleResetToToday();
+        return;
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleSelectAllRange, hasValidBookingSelection, isBookingModalOpen, isDeleteModalOpen, supplierData.loading, saving, unavailableDatesCount, availableDatesCount, handleOpenUnavailable, handleCloseAvailable, handleRefreshData]);
+  }, [handleSelectAllRange, hasValidBookingSelection, isBookingModalOpen, isDeleteModalOpen, supplierData.loading, saving, unavailableDatesCount, availableDatesCount, handleOpenUnavailable, handleCloseAvailable, handleRefreshData, handleResetToToday]);
+
+  // Gestionnaire pour Ctrl+scroll (ou Cmd+scroll sur Mac) pour modifier startDate et endDate en maintenant l'écart
+  // Utilise la phase de capture pour intercepter avant Chrome (qui utilise Ctrl+scroll pour zoomer)
+  React.useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Toujours empêcher le scroll de la page sur les inputs de type date
+      // (le scroll sur ces champs est géré par leurs propres gestionnaires React)
+      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'date') {
+        e.preventDefault();
+        // Ne pas appeler stopPropagation() pour laisser les gestionnaires React locaux fonctionner
+        return;
+      }
+      
+      // Pour les autres inputs, textarea, etc., laisser le comportement par défaut
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // Vérifier que Ctrl (ou Cmd sur Mac) est maintenu pour le reste
+      if (!e.ctrlKey && !e.metaKey) {
+        return; // Laisser le comportement par défaut (scroll normal)
+      }
+
+      // Ne pas intercepter si une modale est ouverte (utiliser les refs pour les valeurs les plus récentes)
+      if (isBookingModalOpenRef.current || isDeleteModalOpenRef.current) {
+        return;
+      }
+
+      // Empêcher le zoom de Chrome en appelant preventDefault()
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Utiliser les refs pour obtenir les valeurs les plus récentes
+      const currentStartInput = startInputRef.current;
+      const currentEndInput = endInputRef.current;
+
+      // Calculer l'écart en jours entre startDate et endDate
+      const startDateObj = new Date(currentStartInput);
+      const endDateObj = new Date(currentEndInput);
+      
+      if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+        return; // Dates invalides, ne rien faire
+      }
+
+      // Normaliser les dates à minuit pour le calcul
+      startDateObj.setHours(0, 0, 0, 0);
+      endDateObj.setHours(0, 0, 0, 0);
+
+      // Calculer l'écart en jours
+      const diffTime = endDateObj.getTime() - startDateObj.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      // Déterminer la direction du scroll (deltaY > 0 = scroll down, deltaY < 0 = scroll up)
+      const delta = e.deltaY > 0 ? -1 : 1; // Scroll down = diminuer (-1), Scroll up = augmenter (+1)
+
+      // Calculer la nouvelle startDate
+      const newStartDate = addDays(startDateObj, delta);
+      const newStartDateStr = formatDate(newStartDate);
+
+      // Calculer la nouvelle endDate en maintenant l'écart
+      const newEndDate = addDays(newStartDate, diffDays);
+      const newEndDateStr = formatDate(newEndDate);
+
+      // Mettre à jour les dates
+      setStartInput(newStartDateStr);
+      setEndInput(newEndDateStr);
+    };
+
+    // Utiliser capture: true pour intercepter en phase de capture (avant Chrome)
+    // Utiliser passive: false pour pouvoir appeler preventDefault()
+    window.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    return () => {
+      window.removeEventListener('wheel', handleWheel, { capture: true });
+    };
+  }, []); // Dépendances vides car on utilise des refs
 
   return (
     <div style={{ 
@@ -983,12 +1123,13 @@ export function ProviderCalendars(): React.ReactElement {
       color: darkTheme.textPrimary
     }}>
       <DateRangeControls
-        startInput={startInput}
-        onStartInputChange={setStartInput}
-        endInput={endInput}
-        onEndInputChange={setEndInput}
-        onSelectAllRange={handleSelectAllRange}
-      />
+          startInput={startInput}
+          onStartInputChange={setStartInput}
+          endInput={endInput}
+          onEndInputChange={setEndInput}
+          onSelectAllRange={handleSelectAllRange}
+          onResetToToday={handleResetToToday}
+        />
       <SupplierTabs
         suppliers={suppliers}
         activeIdx={activeIdx}
