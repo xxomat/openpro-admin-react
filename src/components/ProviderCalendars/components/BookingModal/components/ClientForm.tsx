@@ -167,6 +167,7 @@ export function ClientForm({
       <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <input
           type="text"
+          autoComplete="family-name"
           value={clientData.nom || ''}
           onChange={(e) => onClientDataChange('nom', e.target.value)}
           disabled={disabled}
@@ -195,6 +196,7 @@ export function ClientForm({
       <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <input
           type="text"
+          autoComplete="given-name"
           value={clientData.prenom || ''}
           onChange={(e) => onClientDataChange('prenom', e.target.value)}
           disabled={disabled}
@@ -223,6 +225,7 @@ export function ClientForm({
       <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <input
           type="email"
+          autoComplete="email"
           value={clientData.email || ''}
           onChange={(e) => onClientDataChange('email', e.target.value)}
           disabled={disabled}
@@ -253,6 +256,7 @@ export function ClientForm({
         <PhoneInput
           international
           defaultCountry="FR"
+          autoComplete="tel"
           value={clientData.telephone || undefined}
           onChange={(value) => {
             if (!disabled) {
@@ -272,6 +276,7 @@ export function ClientForm({
       <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <input
           type="text"
+          autoComplete="street-address"
           value={clientData.adresse || ''}
           onChange={(e) => onClientDataChange('adresse', e.target.value)}
           disabled={disabled}
@@ -301,6 +306,7 @@ export function ClientForm({
         <div style={{ width: '100%', minWidth: 0 }}>
           <input
             type="text"
+            autoComplete="postal-code"
             value={clientData.codePostal || ''}
             onChange={(e) => onClientDataChange('codePostal', e.target.value)}
             disabled={disabled}
@@ -322,6 +328,7 @@ export function ClientForm({
         <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
           <input
             type="text"
+            autoComplete="address-level2"
             value={clientData.ville || ''}
             onChange={(e) => onClientDataChange('ville', e.target.value)}
             disabled={disabled}
@@ -351,6 +358,7 @@ export function ClientForm({
       <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <input
           type="text"
+          autoComplete="country"
           value={clientData.pays || ''}
           onChange={(e) => onClientDataChange('pays', e.target.value)}
           disabled={disabled}
@@ -433,6 +441,7 @@ export function ClientForm({
           <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
             <input
               type="text"
+              autoComplete="organization"
               value={clientData.societe || ''}
               onChange={(e) => onClientDataChange('societe', e.target.value)}
               disabled={disabled}

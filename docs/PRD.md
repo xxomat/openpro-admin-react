@@ -1324,6 +1324,31 @@ A définir
 	- L'état de sélection ne nécessite pas de recalcul des positions des rectangles.
 	- Le style conditionnel de sélection est appliqué uniquement aux rectangles Directe.
 
+##### Création d'une réservation Directe — Exigences fonctionnelles
+
+1. **Vue d'ensemble**
+	- L'utilisateur peut créer une nouvelle réservation Directe en sélectionnant des dates dans le calendrier et en ouvrant le formulaire de création.
+	- Le formulaire de création (`BookingModal`) permet de saisir les informations du client et de la réservation.
+	- Le formulaire doit supporter l'autocomplétion du navigateur pour améliorer l'expérience utilisateur.
+
+2. **Support de l'autocomplétion**
+	- Tous les champs du formulaire client doivent inclure l'attribut HTML `autoComplete` approprié pour permettre au navigateur de proposer l'autocomplétion.
+	- **Champs avec autocomplétion** :
+		- **Nom** : `autoComplete="family-name"`
+		- **Prénom** : `autoComplete="given-name"`
+		- **Email** : `autoComplete="email"` (en plus de `type="email"`)
+		- **Téléphone** : `autoComplete="tel"`
+		- **Adresse** : `autoComplete="street-address"`
+		- **Code postal** : `autoComplete="postal-code"`
+		- **Ville** : `autoComplete="address-level2"`
+		- **Pays** : `autoComplete="country"`
+		- **Société** (client professionnel) : `autoComplete="organization"`
+	- Cette fonctionnalité permet au navigateur (Chrome, Firefox, Safari, etc.) de proposer automatiquement les informations sauvegardées de l'utilisateur, améliorant ainsi la rapidité de saisie et réduisant les erreurs.
+
+3. **Composant ClientForm**
+	- Le composant `ClientForm` doit implémenter tous les attributs `autoComplete` appropriés sur les champs de saisie.
+	- Les attributs doivent être définis en camelCase React (`autoComplete` et non `autocomplete`).
+
 ##### Suppression d'une réservation Directe — Exigences fonctionnelles
 
 1. **Vue d'ensemble**
