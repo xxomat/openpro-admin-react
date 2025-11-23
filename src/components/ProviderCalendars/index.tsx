@@ -110,6 +110,95 @@ export function ProviderCalendars(): React.ReactElement {
     });
   }, [activeSupplier, supplierData]);
 
+  // Refs pour stocker les valeurs précédentes et éviter les boucles infinies
+  const prevSelectedAccommodationsRef = React.useRef<Set<number>>(new Set());
+  const prevStartDateRef = React.useRef<string>('');
+  const prevEndDateRef = React.useRef<string>('');
+
+  // Filtrer automatiquement la sélection quand selectedAccommodations change
+  // (retirer les cellules des hébergements qui ne sont plus sélectionnés)
+  React.useEffect(() => {
+    if (!activeSupplier) return;
+    
+    // Comparer avec la valeur précédente pour éviter les mises à jour inutiles
+    const prevSelected = prevSelectedAccommodationsRef.current;
+    const hasChanged = prevSelected.size !== selectedAccommodations.size || 
+      Array.from(prevSelected).some(id => !selectedAccommodations.has(id)) ||
+      Array.from(selectedAccommodations).some(id => !prevSelected.has(id));
+    
+    if (!hasChanged) return;
+    
+    prevSelectedAccommodationsRef.current = new Set(selectedAccommodations);
+    
+    setSelectedCells(prev => {
+      const filtered = new Set<string>();
+      let hasChanges = false;
+      
+      for (const cellKey of prev) {
+        const [accIdStr] = cellKey.split('|');
+        const accId = parseInt(accIdStr, 10);
+        if (isNaN(accId)) continue;
+        
+        // Garder la cellule seulement si l'hébergement est toujours sélectionné
+        // Si aucun hébergement n'est sélectionné, garder toutes les cellules
+        if (selectedAccommodations.size === 0 || selectedAccommodations.has(accId)) {
+          filtered.add(cellKey);
+        } else {
+          hasChanges = true; // Une cellule a été retirée
+        }
+      }
+      
+      // Ne mettre à jour que si des changements ont été détectés
+      return hasChanges ? filtered : prev;
+    });
+  }, [activeSupplier, selectedAccommodations, setSelectedCells]);
+
+  // Filtrer automatiquement la sélection quand startDate ou endDate change
+  // (retirer les cellules dont les dates sont en dehors de la nouvelle plage)
+  React.useEffect(() => {
+    if (!activeSupplier) return;
+    
+    // Comparer avec les valeurs précédentes pour éviter les mises à jour inutiles
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+    const hasChanged = prevStartDateRef.current !== startDateStr || prevEndDateRef.current !== endDateStr;
+    
+    if (!hasChanged) return;
+    
+    prevStartDateRef.current = startDateStr;
+    prevEndDateRef.current = endDateStr;
+    
+    setSelectedCells(prev => {
+      const filtered = new Set<string>();
+      let hasChanges = false;
+      
+      for (const cellKey of prev) {
+        const [, dateStr] = cellKey.split('|');
+        if (!dateStr) continue;
+        
+        // Vérifier si la date est dans la plage [startDate, endDate]
+        const cellDate = new Date(dateStr);
+        if (isNaN(cellDate.getTime())) continue;
+        
+        cellDate.setHours(0, 0, 0, 0);
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(0, 0, 0, 0);
+        
+        // Garder la cellule seulement si sa date est dans la plage [startDate, endDate] (inclusif)
+        if (cellDate >= start && cellDate <= end) {
+          filtered.add(cellKey);
+        } else {
+          hasChanges = true; // Une cellule a été retirée
+        }
+      }
+      
+      // Ne mettre à jour que si des changements ont été détectés
+      return hasChanges ? filtered : prev;
+    });
+  }, [activeSupplier, startDate, endDate, setSelectedCells]);
+
   // Fonction pour vider la sélection de dates
   const handleClearSelection = React.useCallback(() => {
     if (!activeSupplier) return;
