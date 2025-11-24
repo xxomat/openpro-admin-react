@@ -36,6 +36,7 @@ export async function loadRatesForAccommodation(
   promo: Record<string, boolean>;
   rateTypes: Record<string, string[]>;
   dureeMin: Record<string, number | null>;
+  occupations: Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>;
 }> {
   // Le paramètre discoveredRateTypes est conservé pour compatibilité mais n'est plus utilisé
   // car le traitement est maintenant effectué côté backend

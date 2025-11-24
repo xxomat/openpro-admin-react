@@ -34,6 +34,8 @@ export interface CompactGridProps {
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
   /** Map des durées minimales par hébergement et date */
   dureeMinByAccommodation: Record<number, Record<string, number | null>>;
+  /** Map des occupations par hébergement, date et type de tarif */
+  occupationsByAccommodation: Record<number, Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>>;
   /** Map des réservations par hébergement */
   bookingsByAccommodation: Record<number, BookingDisplay[]>;
   /** Set des cellules sélectionnées au format "accId|dateStr" */
@@ -69,6 +71,7 @@ export function CompactGrid({
   stockByAccommodation,
   ratesByAccommodation,
   dureeMinByAccommodation,
+  occupationsByAccommodation,
   bookingsByAccommodation,
   selectedCells,
   onSelectedCellsChange,
@@ -322,6 +325,9 @@ export function CompactGrid({
                   ? priceMap[dateStr]?.[selectedRateTypeId] 
                   : undefined;
                 const dureeMin = dureeMinMap[dateStr] ?? null;
+                const occupations = selectedRateTypeId !== null
+                  ? occupationsByAccommodation[acc.idHebergement]?.[dateStr]?.[selectedRateTypeId]
+                  : undefined;
                 const cellKey = `${acc.idHebergement}|${dateStr}`;
                 const isSelected = selectedCells.has(cellKey);
                 const isDragging = draggingCells.has(cellKey);
@@ -355,6 +361,7 @@ export function CompactGrid({
                     isNonReservable={isNonReservable}
                     isBooked={isBooked}
                     selectedRateTypeId={selectedRateTypeId}
+                    occupations={occupations}
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}
                     onCellClick={handleCellClick}

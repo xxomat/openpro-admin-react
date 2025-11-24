@@ -83,6 +83,7 @@ export async function fetchRates(
   promo: Record<string, boolean>;
   rateTypes: Record<string, string[]>;
   dureeMin: Record<string, number | null>;
+  occupations: Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>;
 }> {
   const res = await fetch(
     `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rates?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,

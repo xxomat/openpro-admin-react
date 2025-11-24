@@ -337,6 +337,11 @@ export function ProviderCalendars(): React.ReactElement {
     return supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.dureeMinBySupplierAndAccommodation]);
 
+  const occupationsByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    return supplierData.occupationsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+  }, [activeSupplier, supplierData.occupationsBySupplierAndAccommodation]);
+
   const bookingsByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
     return supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
@@ -1253,6 +1258,7 @@ export function ProviderCalendars(): React.ReactElement {
                 stockByAccommodation={stockByAccommodation}
                 ratesByAccommodation={ratesByAccommodation}
                 dureeMinByAccommodation={dureeMinByAccommodation}
+                occupationsByAccommodation={occupationsByAccommodation}
                 bookingsByAccommodation={bookingsByAccommodation}
                 selectedCells={selectedCells}
                 onSelectedCellsChange={setSelectedCells}

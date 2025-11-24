@@ -48,6 +48,8 @@ export interface GridDataCellProps {
   isBooked: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
+  /** Occupations disponibles pour cette date et ce type de tarif */
+  occupations?: Array<{ nbPers: number; prix: number }>;
   /** État du drag (pour empêcher les clics pendant le drag) */
   draggingState: { isDragging: boolean } | null;
   /** Référence pour détecter si un drag vient de se terminer */
@@ -93,6 +95,7 @@ export function GridDataCell({
   isNonReservable,
   isBooked,
   selectedRateTypeId,
+  occupations,
   draggingState,
   justFinishedDragRef,
   onCellClick,
@@ -107,6 +110,19 @@ export function GridDataCell({
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
   const isPast = isPastDate(dateStr);
+  
+  // Construire le texte du tooltip avec les occupations
+  const buildTooltipText = () => {
+    if (occupations && occupations.length > 0) {
+      const occText = occupations
+        .sort((a, b) => a.nbPers - b.nbPers)
+        .map(occ => `${occ.nbPers}p: ${Math.round(occ.prix)}€`)
+        .join(', ');
+      return `${dateStr}\n${occText}`;
+    }
+    
+    return dateStr;
+  };
   
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
   // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
@@ -189,7 +205,7 @@ export function GridDataCell({
         opacity: isPast ? 0.6 : (!isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7))),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible'))} (stock: ${stock})`}
+      title={buildTooltipText()}
     >
       {isEditing ? (
         <input

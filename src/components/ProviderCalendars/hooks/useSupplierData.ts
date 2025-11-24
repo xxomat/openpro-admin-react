@@ -27,6 +27,7 @@ export interface UseSupplierDataReturn {
   promoBySupplierAndAccommodation: Record<number, Record<number, Record<string, boolean>>>;
   rateTypesBySupplierAndAccommodation: Record<number, Record<number, Record<string, string[]>>>;
   dureeMinBySupplierAndAccommodation: Record<number, Record<number, Record<string, number | null>>>;
+  occupationsBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>>>;
   bookingsBySupplierAndAccommodation: Record<number, Record<number, BookingDisplay[]>>;
   rateTypeLabelsBySupplier: Record<number, Record<number, string>>;
   rateTypesBySupplier: Record<number, RateType[]>;
@@ -51,6 +52,7 @@ export interface UseSupplierDataReturn {
   setPromoBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
   setRateTypesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, string[]>>>>>;
   setDureeMinByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
+  setOccupationsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>>>>>;
   setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
@@ -83,6 +85,9 @@ export function useSupplierData(): UseSupplierDataReturn {
   >({});
   const [dureeMinBySupplierAndAccommodation, setDureeMinByAccommodation] = React.useState<
     Record<number, Record<number, Record<string, number | null>>>
+  >({});
+  const [occupationsBySupplierAndAccommodation, setOccupationsBySupplierAndAccommodation] = React.useState<
+    Record<number, Record<number, Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>>>
   >({});
   const [bookingsBySupplierAndAccommodation, setBookingsBySupplierAndAccommodation] = React.useState<
     Record<number, Record<number, BookingDisplay[]>>
@@ -134,6 +139,7 @@ export function useSupplierData(): UseSupplierDataReturn {
         setPromoBySupplierAndAccommodation,
         setRateTypesBySupplierAndAccommodation,
         setDureeMinByAccommodation,
+        setOccupationsBySupplierAndAccommodation,
         setRateTypeLabelsBySupplier,
         setRateTypesBySupplier,
         setBookingsBySupplierAndAccommodation,
@@ -194,6 +200,7 @@ export function useSupplierData(): UseSupplierDataReturn {
             setPromoBySupplierAndAccommodation,
             setRateTypesBySupplierAndAccommodation,
             setDureeMinByAccommodation,
+            setOccupationsBySupplierAndAccommodation,
             setBookingsBySupplierAndAccommodation,
             setRateTypeLabelsBySupplier,
             setRateTypesBySupplier,
@@ -235,6 +242,7 @@ export function useSupplierData(): UseSupplierDataReturn {
     promoBySupplierAndAccommodation,
     rateTypesBySupplierAndAccommodation,
     dureeMinBySupplierAndAccommodation,
+    occupationsBySupplierAndAccommodation,
     bookingsBySupplierAndAccommodation,
     rateTypeLabelsBySupplier,
     rateTypesBySupplier,
@@ -251,6 +259,7 @@ export function useSupplierData(): UseSupplierDataReturn {
     setPromoBySupplierAndAccommodation,
     setRateTypesBySupplierAndAccommodation,
     setDureeMinByAccommodation,
+    setOccupationsBySupplierAndAccommodation,
     setBookingsBySupplierAndAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,

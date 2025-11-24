@@ -25,6 +25,7 @@ export interface UpdateSupplierDataParams {
   setPromoBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
   setRateTypesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, string[]>>>>>;
   setDureeMinByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
+  setOccupationsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
   setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
@@ -50,6 +51,7 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
     setPromoBySupplierAndAccommodation,
     setRateTypesBySupplierAndAccommodation,
     setDureeMinByAccommodation,
+    setOccupationsBySupplierAndAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,
     setBookingsBySupplierAndAccommodation,
@@ -167,6 +169,27 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
         updated[Number(accId)] = {};
       }
       updated[Number(accId)] = { ...updated[Number(accId)], ...data.dureeMin[Number(accId)] };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+  
+  setOccupationsBySupplierAndAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, Record<number, Array<{ nbPers: number; prix: number }>>>> = {};
+    
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    for (const accId in data.occupations) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      updated[Number(accId)] = { ...updated[Number(accId)], ...data.occupations[Number(accId)] };
     }
     
     return {
