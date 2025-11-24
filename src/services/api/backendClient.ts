@@ -21,16 +21,28 @@ export async function fetchAccommodations(
   idFournisseur: number,
   signal?: AbortSignal
 ): Promise<Accommodation[]> {
-  const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations`,
-    { signal }
-  );
-  
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: Failed to fetch accommodations`);
+  try {
+    const res = await fetch(
+      `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations`,
+      { signal }
+    );
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: Failed to fetch accommodations`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    // Améliorer le message d'erreur pour les erreurs réseau
+    if (error instanceof TypeError && (
+      error.message.includes('fetch') || 
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('NetworkError')
+    )) {
+      throw new Error(`Impossible de se connecter au backend (${BACKEND_BASE_URL}). Vérifiez que le serveur est démarré.`);
+    }
+    throw error;
   }
-  
-  return res.json();
 }
 
 /**
