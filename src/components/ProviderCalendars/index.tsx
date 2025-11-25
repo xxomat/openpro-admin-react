@@ -20,6 +20,7 @@ import { SupplierTabs } from './components/SupplierTabs';
 import { AdminFooter } from './components/AdminFooter';
 import { BookingModal } from './components/BookingModal';
 import { DeleteBookingModal } from './components/DeleteBookingModal';
+import { ConnectionModal } from './components/ConnectionModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
@@ -46,6 +47,10 @@ export function ProviderCalendars(): React.ReactElement {
   const [reserveButtonHover, setReserveButtonHover] = React.useState(false);
 
   const supplierData = useSupplierData();
+  
+  // État pour gérer la modale de connexion
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = React.useState(false);
 
   const activeSupplier = suppliers[activeIdx];
   const startDate = React.useMemo(() => {
@@ -715,8 +720,22 @@ export function ProviderCalendars(): React.ReactElement {
   // Chargement initial des données pour tous les fournisseurs au montage du composant
   // Les données sont chargées pour 1 an, mais l'affichage est limité à [startDate; endDate]
   React.useEffect(() => {
-    supplierData.loadInitialData(suppliers, loadStartDate, loadEndDate);
-  }, []); // Seulement au montage du composant
+    if (!hasAttemptedInitialLoad) {
+      setHasAttemptedInitialLoad(true);
+      supplierData.loadInitialData(suppliers, loadStartDate, loadEndDate)
+        .finally(() => {
+          setIsInitialLoad(false);
+        });
+    }
+  }, [hasAttemptedInitialLoad]); // Seulement au montage du composant
+
+  // Fonction pour retenter la connexion
+  const handleRetryConnection = React.useCallback(() => {
+    setIsInitialLoad(true);
+    setHasAttemptedInitialLoad(false);
+    supplierData.setError(null);
+    // Le useEffect ci-dessus se déclenchera à nouveau car hasAttemptedInitialLoad redevient false
+  }, [supplierData]);
 
   // Callback pour mettre à jour le selectedRateTypeId
   const handleSelectedRateTypeIdChange = React.useCallback((newRateTypeId: number | null) => {
@@ -1204,6 +1223,13 @@ export function ProviderCalendars(): React.ReactElement {
     };
   }, []); // Dépendances vides car on utilise des refs
 
+  // Déterminer si la modale de connexion doit être affichée
+  // Elle doit être affichée si :
+  // 1. On est en train de charger initialement, OU
+  // 2. On a tenté de charger mais il y a une erreur ET aucune donnée n'a été chargée
+  const shouldShowConnectionModal = isInitialLoad || 
+    (hasAttemptedInitialLoad && supplierData.error !== null && Object.keys(supplierData.accommodations).length === 0);
+
   return (
     <div style={{ 
       padding: '16px', 
@@ -1211,22 +1237,33 @@ export function ProviderCalendars(): React.ReactElement {
       backgroundColor: darkTheme.bgPrimary,
       color: darkTheme.textPrimary
     }}>
-      <DateRangeControls
-          startInput={startInput}
-          onStartInputChange={setStartInput}
-          endInput={endInput}
-          onEndInputChange={setEndInput}
-          onSelectAllRange={handleSelectAllRange}
-          onResetToToday={handleResetToToday}
-        />
-      <SupplierTabs
-        suppliers={suppliers}
-        activeIdx={activeIdx}
-        onActiveIdxChange={setActiveIdx}
+      {/* Modale de connexion - bloquante au démarrage */}
+      <ConnectionModal
+        isOpen={shouldShowConnectionModal}
+        isLoading={isInitialLoad && supplierData.loading}
+        error={shouldShowConnectionModal && supplierData.error ? supplierData.error : null}
+        onRetry={handleRetryConnection}
       />
 
-      {supplierData.loading && <div style={{ color: darkTheme.textSecondary }}>Chargement…</div>}
-      {supplierData.error && <div style={{ color: darkTheme.error }}>Erreur: {supplierData.error}</div>}
+      {/* Contenu principal - masqué si la modale est ouverte */}
+      {!shouldShowConnectionModal && (
+        <>
+          <DateRangeControls
+            startInput={startInput}
+            onStartInputChange={setStartInput}
+            endInput={endInput}
+            onEndInputChange={setEndInput}
+            onSelectAllRange={handleSelectAllRange}
+            onResetToToday={handleResetToToday}
+          />
+          <SupplierTabs
+            suppliers={suppliers}
+            activeIdx={activeIdx}
+            onActiveIdxChange={setActiveIdx}
+          />
+
+          {supplierData.loading && <div style={{ color: darkTheme.textSecondary }}>Chargement…</div>}
+          {supplierData.error && <div style={{ color: darkTheme.error }}>Erreur: {supplierData.error}</div>}
 
       {activeSupplier && (
         <div>
@@ -1334,14 +1371,16 @@ export function ProviderCalendars(): React.ReactElement {
         onSelectionClear={handleClearSelection}
       />
 
-      {/* Modale de suppression de réservation */}
-      <DeleteBookingModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        booking={selectedBooking}
-        accommodationName={selectedBookingAccommodationName}
-        onConfirmDelete={handleDeleteBooking}
-      />
+          {/* Modale de suppression de réservation */}
+          <DeleteBookingModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            booking={selectedBooking}
+            accommodationName={selectedBookingAccommodationName}
+            onConfirmDelete={handleDeleteBooking}
+          />
+        </>
+      )}
     </div>
   );
 }

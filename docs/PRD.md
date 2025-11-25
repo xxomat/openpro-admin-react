@@ -152,6 +152,53 @@ Vue d'ensemble :
 - Les contrôleurs retournent des codes HTTP appropriés (200, 400, 500)
 - Logging des erreurs via `ILogger`
 
+#### 4.3.1 Modale de connexion au démarrage
+
+**Objectif :** Garantir que l'utilisateur est informé de l'état de la connexion au backend lors du démarrage de l'application et empêcher l'utilisation de l'interface si le backend n'est pas disponible.
+
+**Exigences fonctionnelles :**
+
+1. **Affichage bloquant au démarrage :**
+   - Une modale de connexion s'affiche automatiquement au démarrage de l'application
+   - La modale bloque complètement l'interface principale (overlay avec z-index élevé)
+   - L'interface principale est masquée tant que la connexion n'est pas établie ou qu'une erreur n'est pas affichée
+
+2. **États de la modale :**
+   - **État de chargement :** Affiche un indicateur de chargement (spinner) avec le message "Connexion au backend..."
+   - **État d'erreur :** Affiche un message d'erreur clair avec :
+     - Un titre "Erreur de connexion"
+     - Le message d'erreur détaillé
+     - Un message d'aide suggérant de vérifier que le backend est démarré
+     - Un bouton "Réessayer la connexion" pour relancer la tentative
+
+3. **Détection des erreurs de connexion :**
+   - Les erreurs réseau (TypeError avec message contenant "fetch", "network", "Failed to fetch") sont détectées et affichées avec un message utilisateur approprié
+   - Le message d'erreur doit être clair : "Impossible de se connecter au backend. Vérifiez que le serveur est démarré et accessible."
+
+4. **Gestion du retry :**
+   - Le bouton "Réessayer la connexion" relance le chargement initial des données
+   - L'état de chargement est réinitialisé
+   - La modale repasse en état de chargement pendant la nouvelle tentative
+
+5. **Conditions d'affichage :**
+   - La modale s'affiche si :
+     - Le chargement initial est en cours (`isInitialLoad === true`), OU
+     - Une erreur est survenue ET aucune donnée n'a été chargée avec succès (aucun hébergement chargé)
+   - La modale se masque automatiquement lorsque :
+     - Le chargement initial est terminé ET aucune erreur n'est présente, OU
+     - Le chargement initial est terminé ET au moins une donnée a été chargée avec succès (même si certaines requêtes ont échoué)
+
+6. **Comportement technique :**
+   - Le composant `ConnectionModal` est utilisé pour l'affichage
+   - Le hook `useSupplierData` gère la détection des erreurs réseau via la fonction `isNetworkError`
+   - Les erreurs sont collectées pour tous les fournisseurs et une erreur globale est affichée si toutes les requêtes échouent
+   - Le z-index de la modale est fixé à 10000 pour garantir qu'elle soit au-dessus de tous les autres éléments
+
+**Fichiers concernés :**
+- `src/components/ProviderCalendars/components/ConnectionModal.tsx` - Composant de la modale
+- `src/components/ProviderCalendars/index.tsx` - Intégration de la modale dans le composant principal
+- `src/components/ProviderCalendars/hooks/useSupplierData.ts` - Gestion des erreurs de connexion
+
 ### 4.4 Configuration
 
 - **Fichier :** `appsettings.json` ou `appsettings.Development.json`

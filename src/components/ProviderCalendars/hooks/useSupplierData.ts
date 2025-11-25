@@ -153,6 +153,31 @@ export function useSupplierData(): UseSupplierDataReturn {
   }, []);
 
   /**
+   * Vérifie si une erreur est une erreur de connexion réseau
+   * 
+   * @param error - Erreur à vérifier
+   * @returns true si l'erreur est une erreur de connexion réseau
+   */
+  const isNetworkError = React.useCallback((error: unknown): boolean => {
+    if (error instanceof TypeError) {
+      const message = error.message.toLowerCase();
+      return message.includes('fetch') || 
+             message.includes('network') || 
+             message.includes('failed to fetch') ||
+             message.includes('networkerror');
+    }
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return message.includes('fetch') || 
+             message.includes('network') || 
+             message.includes('failed to fetch') ||
+             message.includes('networkerror') ||
+             message.includes('impossible de se connecter');
+    }
+    return false;
+  }, []);
+
+  /**
    * Charge les données initiales pour tous les fournisseurs
    * 
    * @param suppliers - Liste des fournisseurs pour lesquels charger les données
@@ -168,6 +193,7 @@ export function useSupplierData(): UseSupplierDataReturn {
   ): Promise<void> => {
     let cancelled = false;
     const controller = new AbortController();
+    const errors: string[] = [];
     
     try {
       setLoading(true);
@@ -213,20 +239,46 @@ export function useSupplierData(): UseSupplierDataReturn {
         } catch (error: unknown) {
           if (!isCancellationError(error) && !controller.signal.aborted) {
             const errorMessage = getErrorMessage(error, `Erreur lors du chargement des données pour ${supplier.nom}`);
+            errors.push(errorMessage);
             // On continue le chargement pour les autres fournisseurs même si un échoue
           }
         }
       }
+      
+      // Si toutes les requêtes ont échoué, afficher une erreur globale
+      if (errors.length > 0 && errors.length === suppliers.length) {
+        const firstError = errors[0];
+        // Vérifier si c'est une erreur de connexion réseau (vérifier le message)
+        const firstErrorLower = firstError.toLowerCase();
+        if (firstErrorLower.includes('fetch') || 
+            firstErrorLower.includes('network') || 
+            firstErrorLower.includes('failed to fetch') ||
+            firstErrorLower.includes('networkerror') ||
+            firstErrorLower.includes('impossible de se connecter')) {
+          setError('Impossible de se connecter au backend. Vérifiez que le serveur est démarré et accessible.');
+        } else {
+          setError(`Erreur lors du chargement des données : ${firstError}`);
+        }
+      } else if (errors.length > 0) {
+        // Certaines requêtes ont échoué mais pas toutes
+        setError(`Certaines données n'ont pas pu être chargées : ${errors.join('; ')}`);
+      }
     } catch (error: unknown) {
       if (!cancelled && !controller.signal.aborted) {
-        setError(getErrorMessage(error, 'Erreur lors du chargement initial des données'));
+        const errorMessage = getErrorMessage(error, 'Erreur lors du chargement initial des données');
+        // Vérifier si c'est une erreur de connexion réseau
+        if (isNetworkError(error)) {
+          setError('Impossible de se connecter au backend. Vérifiez que le serveur est démarré et accessible.');
+        } else {
+          setError(errorMessage);
+        }
       }
     } finally {
       if (!cancelled) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [isNetworkError]);
 
   return {
     accommodations,
