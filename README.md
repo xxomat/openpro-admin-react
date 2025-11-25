@@ -33,23 +33,56 @@ npm install
 
 Astro expose uniquement les variables préfixées `PUBLIC_` au navigateur.
 
-- `PUBLIC_OPENPRO_BASE_URL` (ex: `https://api.open-pro.fr/tarif/multi/v1`)
-- `PUBLIC_OPENPRO_API_KEY` (clé API Alliance Réseaux)
+### Variables principales
 
-Créer un fichier `.env` (ou `.env.local`) dans `OpenPro.Admin/` :
+- `PUBLIC_BACKEND_BASE_URL` - URL du backend (par défaut: `http://localhost:3001`)
+- `PUBLIC_OPENPRO_SUPPLIERS` - Liste JSON des fournisseurs (optionnel, surcharge les constantes par défaut)
+
+### Configuration des fournisseurs
+
+Les fournisseurs peuvent être configurés de deux façons :
+
+1. **Via les constantes par défaut** (selon le mode) :
+   - Mode production (`npm run dev`) : `134737` - La Becterie
+   - Mode stub (`npm run dev:with-stub`) : `47186` - La Becterie, `55123` - Gîte en Cotentin
+
+2. **Via la variable d'environnement** `PUBLIC_OPENPRO_SUPPLIERS` (surcharge les constantes) :
 
 ```ini
-PUBLIC_OPENPRO_BASE_URL=https://api.open-pro.fr/tarif/multi/v1
-PUBLIC_OPENPRO_API_KEY=xxxxx
+PUBLIC_OPENPRO_SUPPLIERS=[{"idFournisseur":12345,"nom":"Mon Fournisseur"}]
+```
+
+### Exemple de fichier `.env`
+
+```ini
+PUBLIC_BACKEND_BASE_URL=http://localhost:8787
+PUBLIC_OPENPRO_SUPPLIERS=[{"idFournisseur":134737,"nom":"La Becterie"}]
 ```
 
 ## Démarrage
+
+### Mode production (connexion à l'API OpenPro réelle)
 
 ```sh
 npm run dev
 ```
 
 Par défaut sur `http://localhost:4321`.
+
+**Fournisseurs par défaut :**
+- `134737` - La Becterie
+
+### Mode stub (connexion au stub-server pour les tests)
+
+```sh
+npm run dev:with-stub
+```
+
+**Fournisseurs par défaut (IDs de test) :**
+- `47186` - La Becterie
+- `55123` - Gîte en Cotentin
+
+**Note :** Le mode stub utilise les identifiants de fournisseurs de test pour se connecter au stub-server local. Assurez-vous que le stub-server est démarré (`npm run stub` dans `openpro-api-react`).
 
 ## Build
 

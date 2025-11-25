@@ -10,6 +10,9 @@ import type { Supplier } from './types';
 
 export const backendUrl = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
 
+// Détecter si on est en mode stub
+const isStubMode = import.meta.env.PUBLIC_USE_STUB_MODE === 'true';
+
 // Configure default suppliers for DEV if not provided via env
 const suppliersFromEnv = (() => {
   try {
@@ -24,10 +27,18 @@ const suppliersFromEnv = (() => {
   return null;
 })();
 
+// Fournisseurs pour le mode stub (anciens IDs de test)
+const stubSuppliers: Supplier[] = [
+  { idFournisseur: 47186, nom: 'La Becterie' },
+  { idFournisseur: 55123, nom: 'Gîte en Cotentin' }
+];
+
+// Fournisseurs pour le mode production (nouveaux IDs)
+const productionSuppliers: Supplier[] = [
+  { idFournisseur: 134737, nom: 'La Becterie' }
+];
+
 export const defaultSuppliers: Supplier[] =
   suppliersFromEnv ??
-  [
-    { idFournisseur: 47186, nom: 'La Becterie' },
-    { idFournisseur: 55123, nom: 'Gîte en Cotentin' }
-  ];
+  (isStubMode ? stubSuppliers : productionSuppliers);
 

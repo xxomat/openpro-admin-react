@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
+    "dev:with-stub": "cross-env PUBLIC_USE_STUB_MODE=true astro dev",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
@@ -14,5 +15,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-phone-number-input": "^3.4.14"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }

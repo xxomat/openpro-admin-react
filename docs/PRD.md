@@ -68,6 +68,17 @@ Consommation du backend :
 - Le frontend utilise le client HTTP (`src/services/api/backendClient.ts`) pour appeler les endpoints du backend.
 - Les endpoints du backend sont configurés via la variable d'environnement `PUBLIC_BACKEND_BASE_URL`.
 
+### 2.4 Configuration des fournisseurs
+
+Les identifiants des fournisseurs sont gérés dans `src/components/ProviderCalendars/config.ts` :
+
+- **Mode production** (`npm run dev`) : utilise les identifiants de production
+  - Par défaut : `134737` - La Becterie
+- **Mode stub** (`npm run dev:with-stub`) : utilise les identifiants de test
+  - Par défaut : `47186` - La Becterie, `55123` - Gîte en Cotentin
+
+La configuration peut être surchargée via la variable d'environnement `PUBLIC_OPENPRO_SUPPLIERS` (format JSON).
+
 ### 2.3 Architecture actuelle
 
 Vue d'ensemble :
@@ -208,9 +219,31 @@ Vue d'ensemble :
 
 ### 4.5 Données en environnement de développement
 
-- **Source des données (DEV) :** les écrans d’administration doivent consommer le **stub-server** fourni par le sous-module `openpro-api-react` (`openpro-api-react/stub-server/`) comme backend de développement.
-- **Objectif :** garantir un affichage fidèle (calendriers par hébergement et états de disponibilité) sans dépendre de l’API distante pendant le développement.
-- **Production :** en production, les données proviennent de l’API Open Pro (voir 2.2 et 4.2).
+- **Source des données (DEV) :** les écrans d'administration doivent consommer le **stub-server** fourni par le sous-module `openpro-api-react` (`openpro-api-react/stub-server/`) comme backend de développement.
+- **Objectif :** garantir un affichage fidèle (calendriers par hébergement et états de disponibilité) sans dépendre de l'API distante pendant le développement.
+- **Production :** en production, les données proviennent de l'API Open Pro (voir 2.2 et 4.2).
+
+#### 4.5.1 Modes de développement
+
+L'application supporte deux modes de développement :
+
+**Mode production** (`npm run dev`) :
+- Utilise les identifiants de fournisseurs de production
+- Par défaut : `134737` - La Becterie
+- Se connecte à l'API OpenPro réelle via le backend
+
+**Mode stub** (`npm run dev:with-stub`) :
+- Utilise les identifiants de fournisseurs de test
+- Par défaut : `47186` - La Becterie, `55123` - Gîte en Cotentin
+- Se connecte au stub-server local pour les tests
+- Nécessite que le stub-server soit démarré (`npm run stub` dans `openpro-api-react`)
+
+**Configuration des fournisseurs :**
+
+Les fournisseurs sont définis dans `src/components/ProviderCalendars/config.ts` :
+- Les constantes par défaut varient selon le mode (stub vs production)
+- Peuvent être surchargées via la variable d'environnement `PUBLIC_OPENPRO_SUPPLIERS`
+- Format JSON : `[{"idFournisseur":12345,"nom":"Nom du fournisseur"}]`
 
 ---
 
