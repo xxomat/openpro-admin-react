@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import type { Supplier, Accommodation, RateType, BookingDisplay } from '../types';
+import type { Supplier, Accommodation, RateType, BookingDisplay } from '@/types';
 import { loadAccommodations, loadSupplierData } from '../services/dataLoader';
 import { updateSupplierDataStates } from './utils/supplierDataUtils';
 import { getErrorMessage, isCancellationError } from '../utils/errorUtils';
@@ -30,6 +30,7 @@ export interface UseSupplierDataReturn {
   bookingsBySupplierAndAccommodation: Record<number, Record<number, BookingDisplay[]>>;
   rateTypeLabelsBySupplier: Record<number, Record<number, string>>;
   rateTypesBySupplier: Record<number, RateType[]>;
+  rateTypeLinksBySupplierAndAccommodation: Record<number, Record<number, number[]>>;
   selectedRateTypeIdBySupplier: Record<number, number | null>;
   
   // États de sélection
@@ -54,6 +55,7 @@ export interface UseSupplierDataReturn {
   setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
+  setRateTypeLinksBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, number[]>>>>;
   setSelectedRateTypeIdBySupplier: React.Dispatch<React.SetStateAction<Record<number, number | null>>>;
   setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
   setSelectedCellsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
@@ -92,6 +94,9 @@ export function useSupplierData(): UseSupplierDataReturn {
   >({});
   const [rateTypesBySupplier, setRateTypesBySupplier] = React.useState<
     Record<number, RateType[]>
+  >({});
+  const [rateTypeLinksBySupplierAndAccommodation, setRateTypeLinksBySupplierAndAccommodation] = React.useState<
+    Record<number, Record<number, number[]>>
   >({});
   const [selectedRateTypeIdBySupplier, setSelectedRateTypeIdBySupplier] = React.useState<Record<number, number | null>>({});
   const [selectedAccommodationsBySupplier, setSelectedAccommodationsBySupplier] = React.useState<Record<number, Set<number>>>({});
@@ -136,6 +141,7 @@ export function useSupplierData(): UseSupplierDataReturn {
         setDureeMinByAccommodation,
         setRateTypeLabelsBySupplier,
         setRateTypesBySupplier,
+        setRateTypeLinksBySupplierAndAccommodation,
         setBookingsBySupplierAndAccommodation,
         setSelectedAccommodationsBySupplier,
         setSelectedRateTypeIdBySupplier,
@@ -220,9 +226,10 @@ export function useSupplierData(): UseSupplierDataReturn {
             setPromoBySupplierAndAccommodation,
             setRateTypesBySupplierAndAccommodation,
             setDureeMinByAccommodation,
-            setBookingsBySupplierAndAccommodation,
             setRateTypeLabelsBySupplier,
             setRateTypesBySupplier,
+            setRateTypeLinksBySupplierAndAccommodation,
+            setBookingsBySupplierAndAccommodation,
             setSelectedAccommodationsBySupplier,
             setSelectedRateTypeIdBySupplier,
             setModifiedRatesBySupplier,
@@ -290,6 +297,7 @@ export function useSupplierData(): UseSupplierDataReturn {
     bookingsBySupplierAndAccommodation,
     rateTypeLabelsBySupplier,
     rateTypesBySupplier,
+    rateTypeLinksBySupplierAndAccommodation,
     selectedRateTypeIdBySupplier,
     selectedAccommodationsBySupplier,
     selectedCellsBySupplier,
@@ -306,6 +314,7 @@ export function useSupplierData(): UseSupplierDataReturn {
     setBookingsBySupplierAndAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,
+    setRateTypeLinksBySupplierAndAccommodation,
     setSelectedRateTypeIdBySupplier,
     setSelectedAccommodationsBySupplier,
     setSelectedCellsBySupplier,

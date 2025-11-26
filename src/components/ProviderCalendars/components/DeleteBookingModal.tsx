@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { BookingDisplay } from '../types';
+import type { BookingDisplay } from '@/types';
 import { formatDateDisplay } from '../utils/dateUtils';
 import { darkTheme } from '../utils/theme';
 

@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import type { Accommodation, BookingDisplay } from '../../../types';
-import { PlateformeReservation } from '../../../types';
+import type { Accommodation, BookingDisplay } from '@/types';
+import { PlateformeReservation } from '@/types';
 import { formatDate } from '../../../utils/dateUtils';
 import { filterBookingsByDateRange } from '../utils/gridUtils';
 import { darkTheme, getBookingColor } from '../../../utils/theme';

@@ -114,19 +114,22 @@ export function GridDataCell({
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
   // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
   // Si la date est passée, appliquer un fond sombre comme l'en-tête
+  // IMPORTANT : La sélection (isSelected/isDragging) doit être prioritaire sur isNonReservable
   let bgColor: string;
   if (isPast) {
     // Date passée : fond sombre identique à l'en-tête
     bgColor = darkTheme.gridHeaderBg;
-  } else if (isNonReservable) {
-    // Jour non réservable : fond gris avec opacité réduite
-    bgColor = darkTheme.bgTertiary;
   } else if (isDragging) {
+    // Drag en cours : fond de drag (prioritaire sur tout sauf isPast)
     bgColor = darkTheme.selectionDraggingBg;
   } else if (isSelected) {
+    // Sélection : fond de sélection (prioritaire sur isNonReservable)
     bgColor = isAvailable 
       ? darkTheme.selectionBg
       : darkTheme.infoBg;
+  } else if (isNonReservable) {
+    // Jour non réservable : fond gris avec opacité réduite (seulement si pas sélectionné)
+    bgColor = darkTheme.bgTertiary;
   } else {
     if (isWeekend) {
       bgColor = isAvailable ? darkTheme.successBgStrong : darkTheme.errorBgStrong;

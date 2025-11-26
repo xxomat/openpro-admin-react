@@ -15,7 +15,7 @@ import { formatDateDisplay } from '../utils/dateUtils';
 import { darkTheme } from '../utils/theme';
 import { useBookingForm } from './BookingModal/hooks/useBookingForm';
 import { ClientForm } from './BookingModal/components/ClientForm';
-import { createBooking } from '../../../services/api/backendClient';
+import { createBooking } from '@/services/api/backendClient';
 
 
 /**

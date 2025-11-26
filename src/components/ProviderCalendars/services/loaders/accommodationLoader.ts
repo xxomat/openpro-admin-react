@@ -5,8 +5,8 @@
  * depuis le backend OpenPro.Backend.
  */
 
-import type { Accommodation } from '../../types';
-import { fetchAccommodations } from '../../../../services/api/backendClient';
+import type { Accommodation } from '@/types';
+import { fetchAccommodations } from '@/services/api/backendClient';
 
 /**
  * Charge la liste des hébergements pour un fournisseur donné

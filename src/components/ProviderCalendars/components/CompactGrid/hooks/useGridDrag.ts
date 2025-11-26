@@ -36,6 +36,7 @@ export interface DraggingState {
  * @param editingCell - État de la cellule en cours d'édition (pour empêcher le drag pendant l'édition)
  * @param accommodations - Liste des hébergements
  * @param stockByAccommodation - Map du stock par hébergement et date
+ * @param rateTypeLinksByAccommodation - Map des IDs de types de tarif liés par hébergement
  * @returns État du drag et gestionnaires d'événements
  */
 export function useGridDrag(
@@ -46,7 +47,7 @@ export function useGridDrag(
   accommodations: Array<{ idHebergement: number }>,
   stockByAccommodation: Record<number, Record<string, number>>,
   bookedDatesByAccommodation: Record<number, Set<string>>,
-  ratesByAccommodation: Record<number, Record<string, Record<number, number>>>
+  rateTypeLinksByAccommodation: Record<number, number[]>
 ): {
   draggingState: DraggingState | null;
   draggingCells: Set<string>;
@@ -57,19 +58,11 @@ export function useGridDrag(
   const justFinishedDragRef = React.useRef(false);
 
   // Fonction helper pour vérifier si un hébergement a des types de tarifs
+  // Utilise les liaisons entre hébergements et types de tarif (pas les tarifs définis)
   const hasRateTypes = React.useCallback((accId: number): boolean => {
-    const rates = ratesByAccommodation[accId];
-    if (!rates) return false;
-    
-    // Vérifier si au moins une date a au moins un tarif
-    for (const dateStr in rates) {
-      const rateTypesForDate = rates[dateStr];
-      if (rateTypesForDate && Object.keys(rateTypesForDate).length > 0) {
-        return true;
-      }
-    }
-    return false;
-  }, [ratesByAccommodation]);
+    const linkedRateTypeIds = rateTypeLinksByAccommodation[accId];
+    return linkedRateTypeIds !== undefined && linkedRateTypeIds.length > 0;
+  }, [rateTypeLinksByAccommodation]);
 
   // Gestionnaire pour démarrer le drag
   const handleMouseDown = React.useCallback((e: React.MouseEvent, dateStr: string, accId?: number) => {
@@ -170,32 +163,38 @@ export function useGridDrag(
           if (!isBooked && !isPast && accHasRateTypes) {
             // Clic sur une cellule spécifique : basculer cette cellule (si non occupée)
             const cellKey = `${accId}|${prev.startDate}`;
-            onSelectedCellsChange((prevSelected: Set<string>) => {
-              const newSet = new Set(prevSelected);
-              if (newSet.has(cellKey)) {
-                newSet.delete(cellKey);
-              } else {
-                newSet.add(cellKey);
-              }
-              return newSet;
-            });
+            // Utiliser setTimeout pour éviter d'appeler setState pendant le rendu
+            setTimeout(() => {
+              onSelectedCellsChange((prevSelected: Set<string>) => {
+                const newSet = new Set(prevSelected);
+                if (newSet.has(cellKey)) {
+                  newSet.delete(cellKey);
+                } else {
+                  newSet.add(cellKey);
+                }
+                return newSet;
+              });
+            }, 0);
           }
         } else {
           // Clic sur un header : basculer toutes les cellules pour cette date (même avec stock à 0)
           const cellsForDate = generateCellsForDateRange(prev.startDate, prev.startDate);
-          onSelectedCellsChange((prevSelected: Set<string>) => {
-            const newSet = new Set(prevSelected);
-            const allSelected = cellsForDate.every(cell => newSet.has(cell));
-            
-            for (const cell of cellsForDate) {
-              if (allSelected) {
-                newSet.delete(cell);
-              } else {
-                newSet.add(cell);
+          // Utiliser setTimeout pour éviter d'appeler setState pendant le rendu
+          setTimeout(() => {
+            onSelectedCellsChange((prevSelected: Set<string>) => {
+              const newSet = new Set(prevSelected);
+              const allSelected = cellsForDate.every(cell => newSet.has(cell));
+              
+              for (const cell of cellsForDate) {
+                if (allSelected) {
+                  newSet.delete(cell);
+                } else {
+                  newSet.add(cell);
+                }
               }
-            }
-            return newSet;
-          });
+              return newSet;
+            });
+          }, 0);
         }
         
         setTimeout(() => {
@@ -208,17 +207,20 @@ export function useGridDrag(
       const cellsInRange = generateCellsForDateRange(prev.startDate, prev.currentDate);
       const isReplaceMode = e.ctrlKey || e.metaKey;
       
-      onSelectedCellsChange((prevSelected: Set<string>) => {
-        if (isReplaceMode) {
-          return new Set(cellsInRange);
-        } else {
-          const newSet = new Set(prevSelected);
-          for (const cell of cellsInRange) {
-            newSet.add(cell);
+      // Utiliser setTimeout pour éviter d'appeler setState pendant le rendu
+      setTimeout(() => {
+        onSelectedCellsChange((prevSelected: Set<string>) => {
+          if (isReplaceMode) {
+            return new Set(cellsInRange);
+          } else {
+            const newSet = new Set(prevSelected);
+            for (const cell of cellsInRange) {
+              newSet.add(cell);
+            }
+            return newSet;
           }
-          return newSet;
-        }
-      });
+        });
+      }, 0);
       
       justFinishedDragRef.current = true;
       setTimeout(() => {

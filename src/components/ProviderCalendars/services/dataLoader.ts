@@ -5,10 +5,10 @@
  * depuis le backend OpenPro.Backend. Le backend gère toute la logique de traitement.
  */
 
-import type { Accommodation, SupplierData } from '../types';
+import type { Accommodation, SupplierData } from '@/types';
 import { formatDate } from '../utils/dateUtils';
 import { loadAccommodations } from './loaders/accommodationLoader';
-import { fetchSupplierData } from '../../../services/api/backendClient';
+import { fetchSupplierData } from '@/services/api/backendClient';
 
 /**
  * Charge toutes les données (stock, tarifs, types de tarifs) pour un fournisseur

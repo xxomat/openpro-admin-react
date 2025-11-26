@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import type { Accommodation, BookingDisplay } from '../types';
+import type { Accommodation, BookingDisplay } from '@/types';
 import { formatDate, getDaysInRange, isPastDate } from '../utils/dateUtils';
 import { GridDataCell } from './CompactGrid/components/GridDataCell';
 import { GridHeaderCell } from './CompactGrid/components/GridHeaderCell';
@@ -22,21 +22,12 @@ import { darkTheme } from '../utils/theme';
  * Vérifie si un hébergement a des types de tarifs associés
  * 
  * @param accId - ID de l'hébergement
- * @param ratesByAccommodation - Map des tarifs par hébergement, date et type de tarif
- * @returns true si l'hébergement a au moins un tarif pour au moins une date
+ * @param rateTypeLinksByAccommodation - Map des IDs de types de tarif liés par hébergement
+ * @returns true si l'hébergement a au moins un type de tarif lié
  */
-function hasRateTypes(accId: number, ratesByAccommodation: Record<number, Record<string, Record<number, number>>>): boolean {
-  const rates = ratesByAccommodation[accId];
-  if (!rates) return false;
-  
-  // Vérifier si au moins une date a au moins un tarif
-  for (const dateStr in rates) {
-    const rateTypesForDate = rates[dateStr];
-    if (rateTypesForDate && Object.keys(rateTypesForDate).length > 0) {
-      return true;
-    }
-  }
-  return false;
+function hasRateTypes(accId: number, rateTypeLinksByAccommodation: Record<number, number[]>): boolean {
+  const linkedRateTypeIds = rateTypeLinksByAccommodation[accId];
+  return linkedRateTypeIds !== undefined && linkedRateTypeIds.length > 0;
 }
 
 /**
@@ -53,6 +44,8 @@ export interface CompactGridProps {
   stockByAccommodation: Record<number, Record<string, number>>;
   /** Map des tarifs par hébergement, date et type de tarif */
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
+  /** Map des IDs de types de tarif liés par hébergement (clé: idHebergement, valeur: array d'idTypeTarif) */
+  rateTypeLinksByAccommodation: Record<number, number[]>;
   /** Map des durées minimales par hébergement et date */
   dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>;
   /** Map des réservations par hébergement */
@@ -89,6 +82,7 @@ export function CompactGrid({
   accommodations,
   stockByAccommodation,
   ratesByAccommodation,
+  rateTypeLinksByAccommodation,
   dureeMinByAccommodation,
   bookingsByAccommodation,
   selectedCells,
@@ -156,11 +150,11 @@ export function CompactGrid({
     accommodations,
     stockByAccommodation,
     bookedDatesByAccommodation,
-    ratesByAccommodation
+    rateTypeLinksByAccommodation
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
-  // Sélectionne toutes les cellules non occupées par une réservation et non passées
+  // Sélectionne toutes les cellules non occupées par une réservation, non passées, et pour les hébergements avec types de tarifs
   const handleHeaderClick = React.useCallback((dateStr: string) => {
     // Ne pas permettre la sélection si la date est passée
     if (isPastDate(dateStr)) {
@@ -174,7 +168,7 @@ export function CompactGrid({
       let allSelected = true;
       for (const acc of accommodations) {
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-        const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+        const accHasRateTypes = hasRateTypes(acc.idHebergement, rateTypeLinksByAccommodation);
         if (isBooked || !accHasRateTypes) continue; // Ignorer les dates occupées et les hébergements sans types de tarifs
         
         const cellKey = `${acc.idHebergement}|${dateStr}`;
@@ -188,7 +182,7 @@ export function CompactGrid({
       // Sinon, sélectionner toutes les cellules non occupées
       for (const acc of accommodations) {
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-        const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+        const accHasRateTypes = hasRateTypes(acc.idHebergement, rateTypeLinksByAccommodation);
         if (isBooked || !accHasRateTypes) continue; // Ne pas sélectionner les dates occupées ni les hébergements sans types de tarifs
         
         const cellKey = `${acc.idHebergement}|${dateStr}`;
@@ -201,7 +195,7 @@ export function CompactGrid({
       
       return newSet;
     });
-  }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation, ratesByAccommodation]);
+  }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation, rateTypeLinksByAccommodation]);
 
   // Plus de gestionnaire de scroll nécessaire : le scroll horizontal a été supprimé
   // La navigation se fait désormais uniquement via les contrôles de plage de dates (startDate/endDate)
@@ -315,7 +309,7 @@ export function CompactGrid({
           const stockMap = stockByAccommodation[acc.idHebergement] || {};
           const priceMap = ratesByAccommodation[acc.idHebergement] || {};
           const dureeMinMap = dureeMinByAccommodation[acc.idHebergement] || {};
-          const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+          const accHasRateTypes = hasRateTypes(acc.idHebergement, rateTypeLinksByAccommodation);
           // rowIndex dans la grille CSS : header est row 1, première ligne d'hébergement est row 2, etc.
           const gridRow = accIdx + 2; // +2 car row 1 est le header
 

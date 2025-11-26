@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import type { Supplier } from '../types';
+import type { Supplier } from '@/types';
 import { darkTheme } from '../utils/theme';
 
 /**

@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import type { Supplier, BookingDisplay } from './types';
-import { PlateformeReservation } from './types';
+import type { Supplier, BookingDisplay } from '@/types';
+import { PlateformeReservation } from '@/types';
 import { ActionButtons } from './components/ActionButtons';
 import { AccommodationList } from './components/AccommodationList';
 import { CompactGrid } from './components/CompactGrid';
@@ -21,12 +21,13 @@ import { AdminFooter } from './components/AdminFooter';
 import { BookingModal } from './components/BookingModal';
 import { DeleteBookingModal } from './components/DeleteBookingModal';
 import { ConnectionModal } from './components/ConnectionModal';
+import { RateTypeManagementModal } from './components/RateTypeManagementModal/RateTypeManagementModal';
 import { defaultSuppliers } from './config';
 import { useSupplierData } from './hooks/useSupplierData';
 import { useSyncStatusPolling } from './hooks/useSyncStatusPolling';
 import { formatDate, addMonths, addDays, getDaysInRange, isPastDate } from './utils/dateUtils';
 import { darkTheme } from './utils/theme';
-import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '../../services/api/backendClient';
+import { saveBulkUpdates, type BulkUpdateRequest, updateStock, deleteBooking } from '@/services/api/backendClient';
 import { generateBookingSummaries, isValidBookingSelection } from './utils/bookingUtils';
 import { getNonReservableDays } from './utils/availabilityUtils';
 
@@ -45,6 +46,7 @@ export function ProviderCalendars(): React.ReactElement {
   const [saving, setSaving] = React.useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = React.useState(false);
   const [reserveButtonHover, setReserveButtonHover] = React.useState(false);
+  const [isRateTypeManagementModalOpen, setIsRateTypeManagementModalOpen] = React.useState(false);
 
   const supplierData = useSupplierData();
   
@@ -99,21 +101,22 @@ export function ProviderCalendars(): React.ReactElement {
   const [selectedBookingId, setSelectedBookingId] = React.useState<number | null>(null);
 
   // Fonction pour mettre à jour la sélection de cellules du fournisseur actif
-  // Vide automatiquement la sélection de réservation quand des dates sont sélectionnées
   const setSelectedCells = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedCellsBySupplier(prev => {
       const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
-      
-      // Si la nouvelle sélection n'est pas vide, vider la sélection de réservation
-      if (newSet.size > 0) {
-        setSelectedBookingId(null);
-      }
-      
       return { ...prev, [activeSupplier.idFournisseur]: newSet };
     });
   }, [activeSupplier, supplierData]);
+
+  // Vider automatiquement la sélection de réservation quand des dates sont sélectionnées
+  // Utiliser un useEffect pour éviter d'appeler setState pendant le rendu
+  React.useEffect(() => {
+    if (selectedCells.size > 0 && selectedBookingId !== null) {
+      setSelectedBookingId(null);
+    }
+  }, [selectedCells.size, selectedBookingId]);
 
   // Refs pour stocker les valeurs précédentes et éviter les boucles infinies
   const prevSelectedAccommodationsRef = React.useRef<Set<number>>(new Set());
@@ -336,6 +339,11 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return {};
     return supplierData.ratesBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
   }, [activeSupplier, supplierData.ratesBySupplierAndAccommodation]);
+
+  const rateTypeLinksByAccommodation = React.useMemo(() => {
+    if (!activeSupplier) return {};
+    return supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+  }, [activeSupplier, supplierData.rateTypeLinksBySupplierAndAccommodation]);
 
   const dureeMinByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
@@ -1073,9 +1081,14 @@ export function ProviderCalendars(): React.ReactElement {
     if (accommodationsToSelect.length === 0) return;
     
     // Créer toutes les clés de cellules pour la sélection
-    // Exclure les dates occupées par une réservation et les dates passées (règles de sélection)
+    // Exclure les dates occupées par une réservation, les dates passées, et les hébergements sans types de tarifs (règles de sélection)
+    const rateTypeLinksByAccommodation = supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
     const newSelectedCells = new Set<string>();
     for (const acc of accommodationsToSelect) {
+      // Vérifier si l'hébergement a des types de tarifs liés
+      const accHasRateTypes = (rateTypeLinksByAccommodation[acc.idHebergement]?.length ?? 0) > 0;
+      if (!accHasRateTypes) continue; // Ignorer les hébergements sans types de tarifs
+      
       for (const date of allDays) {
         const dateStr = formatDate(date);
         
@@ -1093,7 +1106,7 @@ export function ProviderCalendars(): React.ReactElement {
     // Mettre à jour la sélection (et désélectionner la réservation si une est sélectionnée)
     setSelectedCells(newSelectedCells);
     setSelectedBookingId(null);
-  }, [activeSupplier, startDate, endDate, selectedAccommodations, supplierData, bookedDatesByAccommodation, setSelectedCells]);
+  }, [activeSupplier, startDate, endDate, selectedAccommodations, supplierData, bookedDatesByAccommodation, setSelectedCells, rateTypeLinksByAccommodation]);
 
   // Gestionnaire pour tous les raccourcis clavier de l'interface principale
   React.useEffect(() => {
@@ -1299,14 +1312,15 @@ export function ProviderCalendars(): React.ReactElement {
             onSelectedAccommodationsChange={setSelectedAccommodations}
           />
           
+          <RateTypeSelector
+            rateTypes={supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] ?? []}
+            rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur] ?? {}}
+            selectedRateTypeId={selectedRateTypeId}
+            onSelectedRateTypeIdChange={handleSelectedRateTypeIdChange}
+            onManageRateTypes={() => setIsRateTypeManagementModalOpen(true)}
+          />
           {selectedAccommodations.size > 0 && (
             <>
-              <RateTypeSelector
-                rateTypes={supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] ?? []}
-                rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur] ?? {}}
-                selectedRateTypeId={selectedRateTypeId}
-                onSelectedRateTypeIdChange={handleSelectedRateTypeIdChange}
-              />
               <CompactGrid
                 startDate={startDate}
                 endDate={endDate}
@@ -1315,6 +1329,7 @@ export function ProviderCalendars(): React.ReactElement {
                   .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
                 stockByAccommodation={stockByAccommodation}
                 ratesByAccommodation={ratesByAccommodation}
+                rateTypeLinksByAccommodation={rateTypeLinksByAccommodation}
                 dureeMinByAccommodation={dureeMinByAccommodation}
                 bookingsByAccommodation={bookingsByAccommodation}
                 selectedCells={selectedCells}
@@ -1405,6 +1420,17 @@ export function ProviderCalendars(): React.ReactElement {
             accommodationName={selectedBookingAccommodationName}
             onConfirmDelete={handleDeleteBooking}
           />
+
+          {/* Modale de gestion des types de tarif */}
+          {activeSupplier && (
+            <RateTypeManagementModal
+              isOpen={isRateTypeManagementModalOpen}
+              onClose={() => setIsRateTypeManagementModalOpen(false)}
+              idFournisseur={activeSupplier.idFournisseur}
+              accommodations={supplierData.accommodations[activeSupplier.idFournisseur] ?? []}
+              onDataChanged={handleRefreshData}
+            />
+          )}
         </>
       )}
     </div>

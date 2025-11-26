@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { Accommodation } from '../types';
+import type { Accommodation } from '@/types';
 import { darkTheme } from '../utils/theme';
 import { isValidBookingSelectionForAccommodation } from '../utils/bookingUtils';
 

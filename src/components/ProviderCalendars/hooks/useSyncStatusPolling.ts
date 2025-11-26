@@ -61,13 +61,6 @@ export function useSyncStatusPolling(
         if (status.lastChange && status.lastChange !== currentLastChange) {
           if (currentLastChange !== null) {
             // Ce n'est pas le premier appel, il y a eu un changement
-            console.log('Sync status changed, triggering refresh', {
-              lastChange: status.lastChange,
-              previousChange: currentLastChange,
-              pendingSyncCount: status.pendingSyncCount,
-              syncedCount: status.syncedCount,
-              obsoleteCount: status.obsoleteCount
-            });
             onStatusChange();
           }
           lastKnownChangeRef.current = status.lastChange;

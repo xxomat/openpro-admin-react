@@ -5,7 +5,7 @@
  * pour un hébergement sur une plage de dates donnée depuis le backend.
  */
 
-import { fetchStock } from '../../../../services/api/backendClient';
+import { fetchStock } from '@/services/api/backendClient';
 
 /**
  * Charge le stock disponible pour un hébergement sur une plage de dates

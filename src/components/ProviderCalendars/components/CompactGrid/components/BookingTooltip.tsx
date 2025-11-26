@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import type { BookingDisplay } from '../../../types';
-import { PlateformeReservation } from '../../../types';
+import type { BookingDisplay } from '@/types';
+import { PlateformeReservation } from '@/types';
 import { darkTheme, getBookingColor } from '../../../utils/theme';
 import { formatDateDisplay } from '../../../utils/dateUtils';
 

@@ -6,8 +6,7 @@
  */
 
 import React from 'react';
-import type { SupplierData, BookingDisplay } from '../../types';
-import type { RateType } from '../../types';
+import type { SupplierData, BookingDisplay, RateType } from '@/types';
 
 /**
  * Paramètres pour la fonction updateSupplierDataStates
@@ -27,6 +26,7 @@ export interface UpdateSupplierDataParams {
   setDureeMinByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
+  setRateTypeLinksBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, number[]>>>>;
   setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
   setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
   setSelectedRateTypeIdBySupplier: React.Dispatch<React.SetStateAction<Record<number, number | null>>>;
@@ -52,6 +52,7 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
     setDureeMinByAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,
+    setRateTypeLinksBySupplierAndAccommodation,
     setBookingsBySupplierAndAccommodation,
     setSelectedAccommodationsBySupplier,
     setSelectedRateTypeIdBySupplier,
@@ -201,6 +202,11 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   }));
   setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypeLabels }));
   setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypesList }));
+  // Les liaisons sont toujours remplacées complètement car elles peuvent changer
+  setRateTypeLinksBySupplierAndAccommodation(prev => ({
+    ...prev,
+    [idFournisseur]: data.rateTypeLinksByAccommodation
+  }));
 
   if (data.rateTypesList.length > 0) {
     setSelectedRateTypeIdBySupplier(prev => {

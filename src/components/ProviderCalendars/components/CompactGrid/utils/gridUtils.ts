@@ -6,7 +6,7 @@
  */
 
 import { formatDate } from '../../../utils/dateUtils';
-import type { BookingDisplay, Accommodation } from '../../../types';
+import type { BookingDisplay, Accommodation } from '@/types';
 
 /**
  * Obtient la date à partir d'un élément DOM

@@ -6,7 +6,7 @@
  */
 
 import type { DiscoveredRateType } from './rateTypeLoader';
-import { fetchRates } from '../../../../services/api/backendClient';
+import { fetchRates } from '@/services/api/backendClient';
 
 /**
  * Charge les tarifs, promotions, types de tarifs et durées minimales pour un hébergement
