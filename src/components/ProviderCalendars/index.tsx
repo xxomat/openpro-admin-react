@@ -390,6 +390,8 @@ export function ProviderCalendars(): React.ReactElement {
   ) => {
     if (!activeSupplier || selectedRateTypeId === null) return;
     const modifications = new Set<string>();
+    const datesToCheckForDureeMin: Array<{ accId: number; dateStr: string }> = [];
+    
     supplierData.setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
       const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
@@ -414,6 +416,7 @@ export function ProviderCalendars(): React.ReactElement {
           }
           supplierDataState[accId][dateStr][selectedRateTypeId] = newPrice;
           modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
+          datesToCheckForDureeMin.push({ accId, dateStr });
         }
       } else if (editingCell) {
         // Clic normal : appliquer seulement à la cellule en cours d'édition
@@ -426,10 +429,12 @@ export function ProviderCalendars(): React.ReactElement {
         }
         supplierDataState[accId][dateStr][selectedRateTypeId] = newPrice;
         modifications.add(`${accId}-${dateStr}-${selectedRateTypeId}`);
+        datesToCheckForDureeMin.push({ accId, dateStr });
       }
       
       return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
     });
+    
     // Marquer comme modifié après la mise à jour des prix (pour le fournisseur actif)
     supplierData.setModifiedRatesBySupplier(prev => {
       const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
@@ -439,6 +444,48 @@ export function ProviderCalendars(): React.ReactElement {
       }
       return { ...prev, [activeSupplier.idFournisseur]: newMod };
     });
+    
+    // Vérifier et forcer la durée minimale à 1 si elle n'est pas définie pour chaque date modifiée
+    const currentDureeMinByAccommodation = supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    const dureeMinModifications = new Set<string>();
+    
+    for (const { accId, dateStr } of datesToCheckForDureeMin) {
+      const currentDureeMin = currentDureeMinByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId];
+      
+      // Si la durée minimale n'est pas définie (null, undefined, ou 0), forcer à 1
+      if (currentDureeMin === null || currentDureeMin === undefined || currentDureeMin === 0) {
+        // Mettre à jour la durée minimale
+        supplierData.setDureeMinByAccommodation(prev => {
+          const updated = { ...prev };
+          const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
+          
+          if (!supplierDataState[accId]) {
+            supplierDataState[accId] = {};
+          }
+          if (!supplierDataState[accId][dateStr]) {
+            supplierDataState[accId][dateStr] = {};
+          }
+          supplierDataState[accId][dateStr][selectedRateTypeId] = 1;
+          
+          return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
+        });
+        
+        // Marquer comme modifié
+        dureeMinModifications.add(`${accId}-${dateStr}`);
+      }
+    }
+    
+    // Marquer les durées minimales comme modifiées
+    if (dureeMinModifications.size > 0) {
+      supplierData.setModifiedDureeMinBySupplier(prev => {
+        const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
+        const newMod = new Set(current);
+        for (const mod of dureeMinModifications) {
+          newMod.add(mod);
+        }
+        return { ...prev, [activeSupplier.idFournisseur]: newMod };
+      });
+    }
   }, [selectedCells, selectedAccommodations, activeSupplier, selectedRateTypeId, supplierData]);
 
   // Fonction pour mettre à jour la durée minimale localement

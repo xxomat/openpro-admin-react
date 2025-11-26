@@ -337,6 +337,12 @@ export function GridDataCell({
                   e.stopPropagation();
                   return;
                 }
+                // Ne pas autoriser le clic si le prix n'est pas défini
+                if (price === null || price === undefined || price === 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
                 if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
                   e.preventDefault();
                   return;
@@ -351,7 +357,8 @@ export function GridDataCell({
                 color: isNonReservable ? darkTheme.error : darkTheme.textMuted, 
                 fontWeight: 400,
                 marginTop: price != null ? 2 : 0,
-                cursor: hasRateTypes && isSelected ? 'pointer' : 'default',
+                cursor: (hasRateTypes && isSelected && price != null && price > 0) ? 'pointer' : 'not-allowed',
+                opacity: (price != null && price > 0) ? 1 : 0.5,
                 userSelect: 'none'
               }}
             >

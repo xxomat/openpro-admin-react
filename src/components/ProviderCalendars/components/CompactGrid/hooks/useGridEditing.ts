@@ -123,6 +123,33 @@ export function useGridEditing(
       }
     }
     
+    // Vérifier que le prix est défini pour cette date avant d'autoriser l'édition de la durée minimale
+    if (selectedRateTypeId !== null) {
+      const price = ratesByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId];
+      // Si le prix n'est pas défini (null, undefined, ou 0), ne pas autoriser l'édition
+      if (price === null || price === undefined || price === 0) {
+        return;
+      }
+      
+      // Si édition de toute la sélection, vérifier que toutes les cellules ont un prix défini
+      if (editAllSelection) {
+        for (const cell of selectedCells) {
+          const [cellAccIdStr, cellDateStr] = cell.split('|');
+          const cellAccId = parseInt(cellAccIdStr, 10);
+          if (isNaN(cellAccId) || !cellDateStr) continue;
+          
+          const cellPrice = ratesByAccommodation[cellAccId]?.[cellDateStr]?.[selectedRateTypeId];
+          // Si une cellule n'a pas de prix défini, ne pas autoriser l'édition
+          if (cellPrice === null || cellPrice === undefined || cellPrice === 0) {
+            return;
+          }
+        }
+      }
+    } else {
+      // Pas de type de tarif sélectionné, ne pas autoriser l'édition
+      return;
+    }
+    
     if (editingCell) {
       setEditingCell(null);
       setEditingValue('');
@@ -151,7 +178,7 @@ export function useGridEditing(
     
     setEditingDureeMinCell({ accId, dateStr, editAllSelection });
     setEditingDureeMinValue(currentDureeMin != null && currentDureeMin > 0 ? String(currentDureeMin) : '');
-  }, [selectedCells, dureeMinByAccommodation, editingCell, selectedRateTypeId]);
+  }, [selectedCells, dureeMinByAccommodation, ratesByAccommodation, editingCell, selectedRateTypeId]);
 
   // Gestionnaire pour valider l'édition (prix)
   const handleEditSubmit = React.useCallback(() => {
