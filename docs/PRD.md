@@ -447,6 +447,29 @@ Les fournisseurs sont définis dans `src/components/ProviderCalendars/config.ts`
 		- **Cellules de données** : fond normal (`rgba(34, 197, 94, 0.2)` pour disponible, `rgba(220, 38, 38, 0.2)` pour indisponible), opacité complète (`opacity: 1`), texte en **gras** (`fontWeight: 700`).
 	- **Objectif** : Mettre visuellement en évidence les weekends par rapport aux jours de semaine pour faciliter la lecture du calendrier.
 
+6. **Gestion des hébergements sans plan tarifaire associé**
+	- **Définition** : Un hébergement est considéré comme "sans plan tarifaire" si aucune donnée de tarif n'est présente dans `ratesByAccommodation[acc.idHebergement]` pour aucune date de la période affichée. Plus précisément, un hébergement n'a pas de plan tarifaire si `ratesByAccommodation[acc.idHebergement]` est vide ou si aucune date n'a de tarif défini (aucun `idTypeTarif` associé à aucune date).
+	- **Détection** : La fonction `hasRateTypes(accId, ratesByAccommodation)` vérifie si un hébergement a au moins un tarif pour au moins une date dans la période affichée.
+	- **Style visuel du nom de l'hébergement** :
+		- **Couleur du texte** : Le nom de l'hébergement doit être affiché en couleur grisée (`darkTheme.textSecondary`) au lieu de la couleur normale (`darkTheme.textPrimary`).
+		- **Style de texte** : Le nom de l'hébergement doit être barré (`textDecoration: 'line-through'`) pour indiquer visuellement qu'il n'est pas utilisable.
+		- **Icône d'avertissement** : Une icône de warning (⚠️) doit être affichée à côté du nom de l'hébergement, en couleur orange/amber (`#f59e0b`), avec un curseur `help` pour indiquer qu'un tooltip est disponible.
+		- **Tooltip** : Au survol du nom de l'hébergement ou de l'icône, un tooltip doit afficher le message "Aucun typeTarif associé".
+	- **Désactivation de la sélection des dates** :
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées par clic sur la cellule de données.
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées par drag (glisser-déposer).
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le clic sur l'en-tête de colonne (sélection de colonne entière).
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le bouton "Sélectionner toute la plage" ou le raccourci Ctrl+A.
+		- Les dates d'un hébergement sans plan tarifaire ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
+	- **Désactivation de l'édition** :
+		- Les prix ne peuvent **pas** être édités pour un hébergement sans plan tarifaire (le clic sur le prix ne déclenche pas l'édition).
+		- Les durées minimales ne peuvent **pas** être éditées pour un hébergement sans plan tarifaire (le clic sur la durée minimale ne déclenche pas l'édition).
+	- **Indicateur visuel d'interaction** :
+		- Le curseur doit être `not-allowed` au survol des cellules de dates d'un hébergement sans plan tarifaire pour indiquer qu'elles ne sont pas sélectionnables.
+		- Le tooltip des cellules de dates doit afficher "Aucun typeTarif associé" en plus des autres informations (date, disponibilité, stock).
+	- **Comportement avec les autres restrictions** : Les hébergements sans plan tarifaire sont soumis aux mêmes restrictions que les dates passées et les dates occupées par une réservation. Ces restrictions sont cumulatives : une date passée ET sans plan tarifaire ne peut pas être sélectionnée, de même qu'une date occupée ET sans plan tarifaire.
+	- **Objectif** : Permettre aux utilisateurs d'identifier rapidement les hébergements qui nécessitent une configuration (association de types de tarifs) avant de pouvoir les utiliser pour la gestion des tarifs et des réservations.
+
 
 ##### Badge journalier — Spécifications UI
 

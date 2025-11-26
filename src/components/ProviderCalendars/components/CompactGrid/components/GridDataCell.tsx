@@ -46,6 +46,8 @@ export interface GridDataCellProps {
   isNonReservable: boolean;
   /** Indique si cette date est occupée par une réservation */
   isBooked: boolean;
+  /** Indique si l'hébergement a des types de tarifs associés */
+  hasRateTypes: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** État du drag (pour empêcher les clics pendant le drag) */
@@ -92,6 +94,7 @@ export function GridDataCell({
   isWeekend,
   isNonReservable,
   isBooked,
+  hasRateTypes,
   selectedRateTypeId,
   draggingState,
   justFinishedDragRef,
@@ -143,8 +146,8 @@ export function GridDataCell({
       data-date={dateStr}
       data-acc-id={accId}
       onMouseDown={(e) => {
-        // Ne pas démarrer le drag si la date est occupée par une réservation ou passée
-        if (isBooked || isPast) {
+        // Ne pas démarrer le drag si la date est occupée par une réservation, passée, ou si l'hébergement n'a pas de types de tarifs
+        if (isBooked || isPast || !hasRateTypes) {
           e.preventDefault();
           e.stopPropagation();
           return;
@@ -182,14 +185,14 @@ export function GridDataCell({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: (isBooked || isPast) ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
+        cursor: (isBooked || isPast || !hasRateTypes) ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
         // Les jours avec stock à 0 ont toujours une opacité de 0.5, même s'ils sont des weekends
         // Les jours non réservables ont une opacité normale (1.0)
         // Les dates passées ont une opacité réduite pour indiquer leur état désactivé
         opacity: isPast ? 0.6 : (!isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7))),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible'))} (stock: ${stock})`}
+      title={`${dateStr} — ${!hasRateTypes ? 'Aucun typeTarif associé' : (isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')))} (stock: ${stock})`}
     >
       {isEditing ? (
         <input
@@ -225,8 +228,8 @@ export function GridDataCell({
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
-          {/* Afficher le prix seulement si le stock est disponible */}
-          {stock > 0 && selectedRateTypeId !== null ? (
+          {/* Afficher le prix même si le stock est à 0 (pour permettre la modification) */}
+          {selectedRateTypeId !== null ? (
             price != null ? (
               <span 
                 onMouseDown={(e) => {
@@ -255,11 +258,38 @@ export function GridDataCell({
                 )}
               </span>
             ) : (
-              <span style={{ userSelect: 'none', color: darkTheme.textTertiary }}>-</span>
+              <span 
+                onMouseDown={(e) => {
+                  // Empêcher le drag de se déclencher
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  if (!hasRateTypes) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.stopPropagation();
+                  // CTRL+clic : éditer toute la sélection
+                  const editAllSelection = e.ctrlKey || e.metaKey;
+                  onCellClick(accId, dateStr, editAllSelection);
+                }}
+                style={{ 
+                  userSelect: 'none', 
+                  cursor: hasRateTypes && isSelected ? 'pointer' : 'default',
+                  color: darkTheme.textTertiary 
+                }}
+              >
+                -
+              </span>
             )
           ) : null}
-          {/* Afficher la durée minimale seulement si le stock est disponible */}
-          {stock > 0 && isEditingDureeMin ? (
+          {/* Afficher la durée minimale même si le stock est à 0 (pour permettre la modification) */}
+          {isEditingDureeMin ? (
             <input
               type="number"
               value={editingDureeMinValue}
@@ -292,13 +322,18 @@ export function GridDataCell({
               step="1"
               placeholder="-"
             />
-          ) : stock > 0 ? (
+          ) : (
             <span 
               onMouseDown={(e) => {
                 // Empêcher le drag de se déclencher
                 e.stopPropagation();
               }}
               onClick={(e) => {
+                if (!hasRateTypes) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
                 if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
                   e.preventDefault();
                   return;
@@ -313,7 +348,7 @@ export function GridDataCell({
                 color: isNonReservable ? darkTheme.error : darkTheme.textMuted, 
                 fontWeight: 400,
                 marginTop: price != null ? 2 : 0,
-                cursor: isSelected ? 'pointer' : 'default',
+                cursor: hasRateTypes && isSelected ? 'pointer' : 'default',
                 userSelect: 'none'
               }}
             >
@@ -322,7 +357,7 @@ export function GridDataCell({
                 <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
               )}
             </span>
-          ) : null}
+          )}
         </div>
       )}
     </div>

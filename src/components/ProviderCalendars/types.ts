@@ -74,7 +74,7 @@ export type SupplierData = {
   rates: Record<number, Record<string, Record<number, number>>>;
   promo: Record<number, Record<string, boolean>>;
   rateTypes: Record<number, Record<string, string[]>>;
-  dureeMin: Record<number, Record<string, number | null>>;
+  dureeMin: Record<number, Record<string, Record<number, number | null>>>;
   rateTypeLabels: Record<number, string>;
   rateTypesList: RateType[];
   bookings: Record<number, BookingDisplay[]>;

@@ -19,6 +19,27 @@ import { getDateFromElement, getDateRange, filterBookingsByDateRange } from './C
 import { darkTheme } from '../utils/theme';
 
 /**
+ * Vérifie si un hébergement a des types de tarifs associés
+ * 
+ * @param accId - ID de l'hébergement
+ * @param ratesByAccommodation - Map des tarifs par hébergement, date et type de tarif
+ * @returns true si l'hébergement a au moins un tarif pour au moins une date
+ */
+function hasRateTypes(accId: number, ratesByAccommodation: Record<number, Record<string, Record<number, number>>>): boolean {
+  const rates = ratesByAccommodation[accId];
+  if (!rates) return false;
+  
+  // Vérifier si au moins une date a au moins un tarif
+  for (const dateStr in rates) {
+    const rateTypesForDate = rates[dateStr];
+    if (rateTypesForDate && Object.keys(rateTypesForDate).length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Props du composant CompactGrid
  */
 export interface CompactGridProps {
@@ -33,7 +54,7 @@ export interface CompactGridProps {
   /** Map des tarifs par hébergement, date et type de tarif */
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>;
   /** Map des durées minimales par hébergement et date */
-  dureeMinByAccommodation: Record<number, Record<string, number | null>>;
+  dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>;
   /** Map des réservations par hébergement */
   bookingsByAccommodation: Record<number, BookingDisplay[]>;
   /** Set des cellules sélectionnées au format "accId|dateStr" */
@@ -134,7 +155,8 @@ export function CompactGrid({
     editingCell,
     accommodations,
     stockByAccommodation,
-    bookedDatesByAccommodation
+    bookedDatesByAccommodation,
+    ratesByAccommodation
   );
 
   // Gestionnaire de clic pour sélectionner/désélectionner une colonne
@@ -152,7 +174,8 @@ export function CompactGrid({
       let allSelected = true;
       for (const acc of accommodations) {
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-        if (isBooked) continue; // Ignorer les dates occupées
+        const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+        if (isBooked || !accHasRateTypes) continue; // Ignorer les dates occupées et les hébergements sans types de tarifs
         
         const cellKey = `${acc.idHebergement}|${dateStr}`;
         if (!newSet.has(cellKey)) {
@@ -165,7 +188,8 @@ export function CompactGrid({
       // Sinon, sélectionner toutes les cellules non occupées
       for (const acc of accommodations) {
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-        if (isBooked) continue; // Ne pas sélectionner les dates occupées
+        const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+        if (isBooked || !accHasRateTypes) continue; // Ne pas sélectionner les dates occupées ni les hébergements sans types de tarifs
         
         const cellKey = `${acc.idHebergement}|${dateStr}`;
         if (allSelected) {
@@ -177,7 +201,7 @@ export function CompactGrid({
       
       return newSet;
     });
-  }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation]);
+  }, [onSelectedCellsChange, accommodations, bookedDatesByAccommodation, ratesByAccommodation]);
 
   // Plus de gestionnaire de scroll nécessaire : le scroll horizontal a été supprimé
   // La navigation se fait désormais uniquement via les contrôles de plage de dates (startDate/endDate)
@@ -250,20 +274,23 @@ export function CompactGrid({
           // - Il y a au moins une cellule non occupée
           // - ET toutes les cellules non occupées sont sélectionnées
           // Si toutes les cellules sont occupées, la colonne n'est pas sélectionnée
-          const nonBookedAccommodations = accommodations.filter(acc => 
-            !(bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false)
-          );
+          const selectableAccommodations = accommodations.filter(acc => {
+            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+            const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+            return !isBooked && accHasRateTypes;
+          });
           
           const isSelected = accommodations.length > 0 
-            && nonBookedAccommodations.length > 0 // Au moins une cellule non occupée
-            && nonBookedAccommodations.every(acc => {
+            && selectableAccommodations.length > 0 // Au moins une cellule sélectionnable
+            && selectableAccommodations.every(acc => {
               const cellKey = `${acc.idHebergement}|${dateStr}`;
               return selectedCells.has(cellKey);
             });
-          // Une colonne est en drag si au moins une cellule non occupée est en drag
+          // Une colonne est en drag si au moins une cellule sélectionnable est en drag
           const isDragging = accommodations.some(acc => {
             const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-            if (isBooked) return false; // Ignorer les dates occupées
+            const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+            if (isBooked || !accHasRateTypes) return false; // Ignorer les dates occupées et les hébergements sans types de tarifs
             const cellKey = `${acc.idHebergement}|${dateStr}`;
             return draggingCells.has(cellKey);
           });
@@ -288,6 +315,7 @@ export function CompactGrid({
           const stockMap = stockByAccommodation[acc.idHebergement] || {};
           const priceMap = ratesByAccommodation[acc.idHebergement] || {};
           const dureeMinMap = dureeMinByAccommodation[acc.idHebergement] || {};
+          const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
           // rowIndex dans la grille CSS : header est row 1, première ligne d'hébergement est row 2, etc.
           const gridRow = accIdx + 2; // +2 car row 1 est le header
 
@@ -307,11 +335,43 @@ export function CompactGrid({
                   zIndex: 5,
                   fontWeight: 500,
                   fontSize: 13,
-                  color: darkTheme.textPrimary,
-                  userSelect: 'none'
+                  userSelect: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
                 }}
+                title={accHasRateTypes 
+                  ? undefined 
+                  : 'Aucun typeTarif associé'}
               >
-                {acc.nomHebergement}
+                <span
+                  style={{
+                    color: accHasRateTypes 
+                      ? darkTheme.textPrimary 
+                      : darkTheme.textSecondary,
+                    textDecoration: accHasRateTypes 
+                      ? 'none' 
+                      : 'line-through'
+                  }}
+                >
+                  {acc.nomHebergement}
+                </span>
+                {!accHasRateTypes && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      color: '#f59e0b', // Couleur warning (orange/amber)
+                      fontSize: 16,
+                      cursor: 'help'
+                    }}
+                    title="Aucun typeTarif associé"
+                    role="img"
+                    aria-label="Avertissement: aucun type de tarif associé"
+                  >
+                    ⚠️
+                  </span>
+                )}
               </div>
 
               {/* Cellules de données pour chaque jour */}
@@ -321,7 +381,9 @@ export function CompactGrid({
                 const price = selectedRateTypeId !== null 
                   ? priceMap[dateStr]?.[selectedRateTypeId] 
                   : undefined;
-                const dureeMin = dureeMinMap[dateStr] ?? null;
+                const dureeMin = selectedRateTypeId !== null
+                  ? (dureeMinMap[dateStr]?.[selectedRateTypeId] ?? null)
+                  : null;
                 const cellKey = `${acc.idHebergement}|${dateStr}`;
                 const isSelected = selectedCells.has(cellKey);
                 const isDragging = draggingCells.has(cellKey);
@@ -354,6 +416,7 @@ export function CompactGrid({
                     isWeekend={isWeekend}
                     isNonReservable={isNonReservable}
                     isBooked={isBooked}
+                    hasRateTypes={accHasRateTypes}
                     selectedRateTypeId={selectedRateTypeId}
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}

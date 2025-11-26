@@ -156,17 +156,36 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   
   setDureeMinByAccommodation(prev => {
     const existing = prev[idFournisseur] ?? {};
-    const updated: Record<number, Record<string, number | null>> = {};
+    const updated: Record<number, Record<string, Record<number, number | null>>> = {};
     
     for (const accId in existing) {
       updated[Number(accId)] = { ...existing[Number(accId)] };
+      // S'assurer que chaque date a un objet Record<number, number | null>
+      for (const dateStr in updated[Number(accId)]) {
+        if (typeof updated[Number(accId)][dateStr] === 'number' || updated[Number(accId)][dateStr] === null) {
+          // Migration de l'ancien format vers le nouveau
+          const oldValue = updated[Number(accId)][dateStr] as number | null;
+          updated[Number(accId)][dateStr] = {} as Record<number, number | null>;
+          // On ne peut pas migrer sans connaître le selectedRateTypeId, donc on laisse vide
+        }
+      }
     }
     
     for (const accId in data.dureeMin) {
       if (!updated[Number(accId)]) {
         updated[Number(accId)] = {};
       }
-      updated[Number(accId)] = { ...updated[Number(accId)], ...data.dureeMin[Number(accId)] };
+      // data.dureeMin[accId] est maintenant Record<string, Record<number, number | null>>
+      const accDureeMin = data.dureeMin[Number(accId)];
+      if (accDureeMin) {
+        for (const dateStr in accDureeMin) {
+          if (!updated[Number(accId)][dateStr]) {
+            updated[Number(accId)][dateStr] = {};
+          }
+          // Copier tous les idTypeTarif pour cette date
+          updated[Number(accId)][dateStr] = { ...updated[Number(accId)][dateStr], ...accDureeMin[dateStr] };
+        }
+      }
     }
     
     return {

@@ -26,7 +26,7 @@ export interface UseSupplierDataReturn {
   ratesBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number>>>>;
   promoBySupplierAndAccommodation: Record<number, Record<number, Record<string, boolean>>>;
   rateTypesBySupplierAndAccommodation: Record<number, Record<number, Record<string, string[]>>>;
-  dureeMinBySupplierAndAccommodation: Record<number, Record<number, Record<string, number | null>>>;
+  dureeMinBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number | null>>>>;
   bookingsBySupplierAndAccommodation: Record<number, Record<number, BookingDisplay[]>>;
   rateTypeLabelsBySupplier: Record<number, Record<number, string>>;
   rateTypesBySupplier: Record<number, RateType[]>;

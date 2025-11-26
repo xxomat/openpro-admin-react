@@ -36,7 +36,7 @@ export interface EditingCell {
 export function useGridEditing(
   selectedCells: Set<string>,
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>,
-  dureeMinByAccommodation: Record<number, Record<string, number | null>>,
+  dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>,
   selectedRateTypeId: number | null,
   onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: EditingCell | null) => void,
   onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: EditingCell | null) => void
@@ -130,26 +130,28 @@ export function useGridEditing(
     
     // Si édition de toute la sélection, trouver une valeur représentative
     let currentDureeMin: number | null = null;
-    if (editAllSelection) {
-      // Prendre la durée min de la première cellule sélectionnée qui en a une
-      for (const cell of selectedCells) {
-        const [cellAccIdStr, cellDateStr] = cell.split('|');
-        const cellAccId = parseInt(cellAccIdStr, 10);
-        if (isNaN(cellAccId) || !cellDateStr) continue;
-        
-        const dureeMin = dureeMinByAccommodation[cellAccId]?.[cellDateStr];
-        if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
-          currentDureeMin = dureeMin;
-          break;
+    if (selectedRateTypeId !== null) {
+      if (editAllSelection) {
+        // Prendre la durée min de la première cellule sélectionnée qui en a une
+        for (const cell of selectedCells) {
+          const [cellAccIdStr, cellDateStr] = cell.split('|');
+          const cellAccId = parseInt(cellAccIdStr, 10);
+          if (isNaN(cellAccId) || !cellDateStr) continue;
+          
+          const dureeMin = dureeMinByAccommodation[cellAccId]?.[cellDateStr]?.[selectedRateTypeId];
+          if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
+            currentDureeMin = dureeMin;
+            break;
+          }
         }
+      } else {
+        currentDureeMin = dureeMinByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId] ?? null;
       }
-    } else {
-      currentDureeMin = dureeMinByAccommodation[accId]?.[dateStr] ?? null;
     }
     
     setEditingDureeMinCell({ accId, dateStr, editAllSelection });
     setEditingDureeMinValue(currentDureeMin != null && currentDureeMin > 0 ? String(currentDureeMin) : '');
-  }, [selectedCells, dureeMinByAccommodation, editingCell]);
+  }, [selectedCells, dureeMinByAccommodation, editingCell, selectedRateTypeId]);
 
   // Gestionnaire pour valider l'édition (prix)
   const handleEditSubmit = React.useCallback(() => {
