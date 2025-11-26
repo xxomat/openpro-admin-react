@@ -1063,9 +1063,12 @@ export function ProviderCalendars(): React.ReactElement {
     setEndInput(newEndDateStr);
   }, [startInput, endInput, setStartInput, setEndInput]);
 
-  // Fonction pour sélectionner toutes les dates entre startDate et endDate
+  // Référence pour obtenir les jours sélectionnés depuis DateRangeControls
+  const getSelectedDaysRef = React.useRef<(() => Set<number>) | null>(null);
+
+  // Fonction pour sélectionner les dates entre startDate et endDate selon les jours de la semaine sélectionnés
   // Respecte les règles de sélection : exclut les dates occupées par une réservation et les dates passées
-  const handleSelectAllRange = React.useCallback(() => {
+  const handleSelectAllRange = React.useCallback((selectedDays: Set<number>) => {
     if (!activeSupplier) return;
     
     // Obtenir toutes les dates entre startDate et endDate
@@ -1082,6 +1085,7 @@ export function ProviderCalendars(): React.ReactElement {
     
     // Créer toutes les clés de cellules pour la sélection
     // Exclure les dates occupées par une réservation, les dates passées, et les hébergements sans types de tarifs (règles de sélection)
+    // Filtrer également selon les jours de la semaine sélectionnés
     const rateTypeLinksByAccommodation = supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
     const newSelectedCells = new Set<string>();
     for (const acc of accommodationsToSelect) {
@@ -1096,8 +1100,14 @@ export function ProviderCalendars(): React.ReactElement {
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
         const isPast = isPastDate(dateStr);
         
-        // Ne pas sélectionner les dates occupées ou passées (règles de sélection)
-        if (!isBooked && !isPast) {
+        // Calculer le jour de la semaine (0 = Lundi, 6 = Dimanche)
+        // JavaScript getDay() retourne 0 = Dimanche, 1 = Lundi, ..., 6 = Samedi
+        // On convertit pour avoir 0 = Lundi, 6 = Dimanche
+        const dayOfWeek = (date.getDay() + 6) % 7;
+        
+        // Ne sélectionner que si le jour de la semaine est dans selectedDays
+        // Et ne pas sélectionner les dates occupées ou passées (règles de sélection)
+        if (selectedDays.has(dayOfWeek) && !isBooked && !isPast) {
           newSelectedCells.add(`${acc.idHebergement}|${dateStr}`);
         }
       }
@@ -1125,10 +1135,22 @@ export function ProviderCalendars(): React.ReactElement {
       // Ne pas intercepter si l'utilisateur est en train d'éditer une cellule
       // (vérification basée sur l'état d'édition, à adapter selon l'implémentation)
       
-      // Ctrl+A ou Cmd+A (Mac) - Sélectionner toute la plage
+      // Ctrl+A ou Cmd+A (Mac) - Sélectionner toute la plage (tous les jours)
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
-        handleSelectAllRange();
+        // Sélectionner tous les jours (0 = Lundi, 6 = Dimanche)
+        handleSelectAllRange(new Set([0, 1, 2, 3, 4, 5, 6]));
+        return;
+      }
+      
+      // Ctrl+S ou Cmd+S (Mac) - Sélectionner sur la plage selon les jours sélectionnés dans les checkboxes
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        // Utiliser les jours sélectionnés depuis DateRangeControls
+        if (getSelectedDaysRef.current) {
+          const selectedDays = getSelectedDaysRef.current();
+          handleSelectAllRange(selectedDays);
+        }
         return;
       }
       
@@ -1294,6 +1316,9 @@ export function ProviderCalendars(): React.ReactElement {
             onEndInputChange={setEndInput}
             onSelectAllRange={handleSelectAllRange}
             onResetToToday={handleResetToToday}
+            onGetSelectedDays={(getter) => {
+              getSelectedDaysRef.current = getter;
+            }}
           />
           <SupplierTabs
             suppliers={suppliers}

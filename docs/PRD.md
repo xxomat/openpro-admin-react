@@ -463,7 +463,7 @@ Les fournisseurs sont définis dans `src/components/ProviderCalendars/config.ts`
 		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées par clic sur la cellule de données.
 		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées par drag (glisser-déposer).
 		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le clic sur l'en-tête de colonne (sélection de colonne entière).
-		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le bouton "Sélectionner toute la plage" ou le raccourci Ctrl+A.
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le bouton "Sélectionner sur la plage" ou le raccourci Ctrl+A.
 		- Les dates d'un hébergement sans plan tarifaire ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
 	- **Désactivation de l'édition** :
 		- Les prix ne peuvent **pas** être édités pour un hébergement sans plan tarifaire (le clic sur le prix ne déclenche pas l'édition).
@@ -501,7 +501,7 @@ A définir
 	- **Désactivation de la sélection** :
 		- Les dates passées ne peuvent **pas** être sélectionnées par clic sur la cellule d'en-tête.
 		- Les dates passées ne peuvent **pas** être sélectionnées par drag.
-		- Les dates passées ne peuvent **pas** être sélectionnées via le bouton "Sélectionner toute la plage" ou le raccourci Ctrl+A.
+		- Les dates passées ne peuvent **pas** être sélectionnées via le bouton "Sélectionner sur la plage" ou le raccourci Ctrl+A.
 		- Les dates passées ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
 	- **Indicateur visuel d'interaction** :
 		- Le curseur doit être `not-allowed` au survol des dates passées (cellules de données et d'en-tête) pour indiquer qu'elles ne sont pas sélectionnables.
@@ -531,23 +531,42 @@ A définir
 	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
 
 5. **Sélection de toute la plage de dates**
-	- **Bouton "Sélectionner toute la plage"** :
-		- Un bouton **"Sélectionner toute la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner toutes les dates entre `startDate` et `endDate` en un seul clic.
+	- **Bouton "Sélectionner sur la plage"** :
+		- Un bouton **"Sélectionner sur la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner les dates entre `startDate` et `endDate` selon les jours de la semaine sélectionnés.
+		- **Checkboxes des jours de la semaine** :
+			- À gauche du bouton "Sélectionner sur la plage", des checkboxes représentant les jours de la semaine doivent être affichées.
+			- Format d'affichage : `'L', 'M', 'M', 'J', 'V', 'S', 'D'` (identique à l'affichage dans le calendrier).
+			- Par défaut, toutes les checkboxes sont cochées (tous les jours sont sélectionnés).
+			- L'utilisateur peut cocher/décocher les checkboxes pour filtrer les jours à sélectionner.
+			- Chaque checkbox affiche un tooltip avec le nom complet du jour (Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche).
 		- **Action du bouton** : Lors du clic sur ce bouton :
-			- Sélectionner toutes les dates entre `startDate` (incluse) et `endDate` (incluse) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- Sélectionner uniquement les dates entre `startDate` (incluse) et `endDate` (incluse) correspondant aux jours de la semaine cochés, pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- Exemple : Si seules les checkboxes V, S, D sont cochées, seuls les vendredis, samedis et dimanches de la plage seront sélectionnés.
 			- **Respect des règles de sélection** : 
 				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
 				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
 			- Désélectionner automatiquement toute réservation sélectionnée (si une réservation était sélectionnée, elle est désélectionnée).
-		- **Visibilité** : Le bouton doit être visible pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
-		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)".
+		- **Visibilité** : Le bouton et les checkboxes doivent être visibles pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
+		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner les dates correspondant aux jours sélectionnés entre la date de début et la date de fin (Ctrl+S)".
+	- **Raccourci clavier Ctrl+S (ou Cmd+S sur Mac)** :
+		- Le raccourci clavier **Ctrl+S** (Windows/Linux) ou **Cmd+S** (Mac) déclenche la même action que le bouton "Sélectionner sur la plage", en utilisant les jours sélectionnés dans les checkboxes.
+		- **Conditions d'activation** :
+			- Le raccourci ne doit **pas** être activé si un champ de saisie (input, textarea) est actuellement en focus, pour éviter de déclencher la sauvegarde du navigateur au lieu de sélectionner les dates du calendrier.
+			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
+		- **Comportement** :
+			- Sélectionne les dates entre `startDate` et `endDate` (incluses) correspondant aux jours de la semaine cochés dans les checkboxes, pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- **Respect des règles de sélection** : 
+				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
+			- Désélectionne automatiquement toute réservation sélectionnée.
+		- **Isolation par fournisseur** : Le raccourci fonctionne uniquement pour le fournisseur actif (onglet actuellement affiché).
 	- **Raccourci clavier Ctrl+A (ou Cmd+A sur Mac)** :
-		- Le raccourci clavier **Ctrl+A** (Windows/Linux) ou **Cmd+A** (Mac) déclenche la même action que le bouton "Sélectionner toute la plage".
+		- Le raccourci clavier **Ctrl+A** (Windows/Linux) ou **Cmd+A** (Mac) sélectionne **toutes les dates** de la plage, indépendamment des checkboxes des jours de la semaine.
 		- **Conditions d'activation** :
 			- Le raccourci ne doit **pas** être activé si un champ de saisie (input, textarea) est actuellement en focus, pour éviter de sélectionner le texte dans le champ au lieu de sélectionner les dates du calendrier.
 			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
 		- **Comportement** :
-			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué), sans tenir compte de l'état des checkboxes.
 			- **Respect des règles de sélection** : 
 				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
 				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
@@ -556,7 +575,7 @@ A définir
 	- **Implémentation technique** :
 		- Le gestionnaire d'événement `keydown` doit écouter les événements `Ctrl+A` (ou `Cmd+A` sur Mac) au niveau du composant principal.
 		- Vérifier que `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie avant d'exécuter l'action.
-		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant :
+		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en filtrant selon les jours de la semaine sélectionnés (pour le bouton) ou en sélectionnant tous les jours (pour le raccourci), et en excluant :
 			- Les dates occupées par une réservation.
 			- Les dates passées (antérieures à aujourd'hui).
 		- Utiliser `selectedCells: Set<string>` au format `"accId|dateStr"` pour stocker la sélection.
@@ -1044,10 +1063,14 @@ A définir
 	- **Bouton "Fermer"** (dates) : Raccourci `-` (touche moins)
 		- Action : Ferme les dates disponibles sélectionnées (met le stock à 0).
 		- Disponibilité : Le bouton n'est visible que si `availableDatesCount > 0`.
-	- **Bouton "Sélectionner toute la plage"** : Raccourci `Ctrl+A` (Windows/Linux) ou `Cmd+A` (Mac)
-		- Action : Sélectionne toutes les dates entre `startDate` et `endDate` (voir section 5 pour les détails).
+	- **Bouton "Sélectionner sur la plage"** : Raccourci `Ctrl+S` (Windows/Linux) ou `Cmd+S` (Mac)
+		- Action : Sélectionne les dates entre `startDate` et `endDate` selon les jours sélectionnés dans les checkboxes (voir section 5 pour les détails).
 		- Disponibilité : Toujours visible.
-		- **Note** : Ce raccourci est déjà fonctionnel et documenté dans la section 5.
+		- **Note** : Ce raccourci est déjà fonctionnel et documenté dans la section 5. Le raccourci utilise les jours sélectionnés dans les checkboxes.
+	- **Raccourci "Sélectionner tout"** : Raccourci `Ctrl+A` (Windows/Linux) ou `Cmd+A` (Mac)
+		- Action : Sélectionne toutes les dates entre `startDate` et `endDate` (tous les jours, indépendamment des checkboxes).
+		- Disponibilité : Toujours disponible via le raccourci clavier.
+		- **Note** : Ce raccourci sélectionne tous les jours indépendamment de l'état des checkboxes. Voir section 5 pour les détails.
 	- **Bouton "Réserver"** : Raccourci `r`
 		- Action : Ouvre la modale de création de réservation pour les dates sélectionnées.
 		- Disponibilité : Le bouton n'est visible que si une sélection de dates est active.
@@ -1076,7 +1099,8 @@ A définir
 		- Exemple pour "Actualiser les données" : `⌨️ a`
 		- Exemple pour "Ouvrir" : `⌨️ +`
 		- Exemple pour "Fermer" : `⌨️ -`
-		- Exemple pour "Sélectionner toute la plage" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
+		- Exemple pour "Sélectionner sur la plage" : `⌨️ Ctrl+S` (ou `⌨️ Cmd+S` sur Mac)
+		- Exemple pour "Sélectionner tout" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
 		- Exemple pour "Aujourd'hui" : `⌨️ t`
 	- **Retour au texte original** : Quand la souris quitte le bouton (événement `onMouseLeave`), le texte original du bouton doit être restauré.
 	- **État de chargement** : Si le bouton est en état de chargement (ex: "Actualisation...", "Fermeture..."), le comportement au survol doit être désactivé et le texte de chargement doit rester affiché.
@@ -1093,7 +1117,8 @@ A définir
 		- `-` → `handleCloseAvailable` (si le bouton est visible)
 		- `r` → `setIsBookingModalOpen(true)` (si une sélection est active)
 		- `a` → `handleRefreshData` (toujours disponible)
-		- `Ctrl+A` / `Cmd+A` → `handleSelectAllRange` (déjà implémenté)
+		- `Ctrl+A` / `Cmd+A` → `handleSelectAllRange` avec tous les jours (déjà implémenté)
+		- `Ctrl+S` / `Cmd+S` → `handleSelectAllRange` avec les jours sélectionnés dans les checkboxes (déjà implémenté)
 	- **Affichage au survol** : Pour chaque bouton, ajouter des gestionnaires `onMouseEnter` et `onMouseLeave` qui :
 		- Stockent le texte original du bouton dans un état local ou une ref.
 		- Au survol, remplacent le texte par `⌨️ [raccourci]`.
