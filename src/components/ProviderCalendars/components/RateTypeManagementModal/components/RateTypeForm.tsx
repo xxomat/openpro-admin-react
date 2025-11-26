@@ -11,15 +11,16 @@ import { darkTheme } from '../../../utils/theme';
 
 /**
  * Langues supportées par OpenPro
+ * Ordre : langues obligatoires (fr, en) en premier, puis les autres par ordre alphabétique
  */
 const SUPPORTED_LANGUAGES = [
+  { code: 'fr', label: 'Français' },
+  { code: 'en', label: 'Anglais' },
   { code: 'ca', label: 'Catalan' },
   { code: 'de', label: 'Allemand' },
   { code: 'es', label: 'Espagnol' },
-  { code: 'fr', label: 'Français' },
   { code: 'it', label: 'Italien' },
-  { code: 'nl', label: 'Néerlandais' },
-  { code: 'en', label: 'Anglais' }
+  { code: 'nl', label: 'Néerlandais' }
 ] as const;
 
 /**
@@ -147,106 +148,7 @@ export function RateTypeForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Section Libellé */}
-      <div>
-        <h3 style={{ 
-          color: darkTheme.textPrimary, 
-          fontSize: 16, 
-          fontWeight: 600, 
-          marginBottom: 12 
-        }}>
-          Libellé <span style={{ color: darkTheme.error }}>*</span>
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {SUPPORTED_LANGUAGES.map(({ code, label }) => (
-            <div key={code}>
-              <label style={{ 
-                display: 'block', 
-                color: darkTheme.textSecondary, 
-                fontSize: 14, 
-                marginBottom: 4,
-                fontWeight: (code === 'fr' || code === 'en') ? 600 : 400
-              }}>
-                {label}
-                {(code === 'fr' || code === 'en') && (
-                  <span style={{ color: darkTheme.error, marginLeft: 4 }}>*</span>
-                )}
-              </label>
-              <input
-                type="text"
-                value={libelles[code] || ''}
-                onChange={(e) => handleLibelleChange(code, e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: `1px solid ${validationErrors[`libelle_${code}`] ? darkTheme.error : darkTheme.inputBorder}`,
-                  borderRadius: 6,
-                  fontSize: 14,
-                  background: darkTheme.inputBg,
-                  color: darkTheme.inputText,
-                  boxSizing: 'border-box'
-                }}
-                placeholder={`Saisir le libellé en ${label.toLowerCase()}`}
-              />
-              {validationErrors[`libelle_${code}`] && (
-                <div style={{ 
-                  color: darkTheme.error, 
-                  fontSize: 12, 
-                  marginTop: 4 
-                }}>
-                  {validationErrors[`libelle_${code}`]}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Section Description */}
-      <div>
-        <h3 style={{ 
-          color: darkTheme.textPrimary, 
-          fontSize: 16, 
-          fontWeight: 600, 
-          marginBottom: 12 
-        }}>
-          Description
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {SUPPORTED_LANGUAGES.map(({ code, label }) => (
-            <div key={code}>
-              <label style={{ 
-                display: 'block', 
-                color: darkTheme.textSecondary, 
-                fontSize: 14, 
-                marginBottom: 4 
-              }}>
-                {label}
-              </label>
-              <textarea
-                value={descriptions[code] || ''}
-                onChange={(e) => handleDescriptionChange(code, e.target.value)}
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: `1px solid ${darkTheme.inputBorder}`,
-                  borderRadius: 6,
-                  fontSize: 14,
-                  background: darkTheme.inputBg,
-                  color: darkTheme.inputText,
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box'
-                }}
-                placeholder={`Saisir la description en ${label.toLowerCase()}`}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Champ Ordre */}
+      {/* Champ Ordre - en premier */}
       <div>
         <label style={{ 
           display: 'block', 
@@ -271,12 +173,115 @@ export function RateTypeForm({
             boxSizing: 'border-box'
           }}
         />
-        <div style={{ 
-          color: darkTheme.textTertiary, 
-          fontSize: 12, 
-          marginTop: 4 
+      </div>
+
+      {/* Grille 3 colonnes × 8 lignes pour les langues */}
+      <div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '150px 1fr 1fr',
+          gap: '12px',
+          alignItems: 'start'
         }}>
-          Ce champ est obligatoire mais sans intérêt fonctionnel pour l'admin
+          {/* Ligne 1 : En-tête */}
+          <div style={{
+            fontWeight: 600,
+            color: darkTheme.textPrimary,
+            fontSize: 14,
+            paddingBottom: 8,
+            borderBottom: `1px solid ${darkTheme.inputBorder}`
+          }}>
+            Langue
+          </div>
+          <div style={{
+            fontWeight: 600,
+            color: darkTheme.textPrimary,
+            fontSize: 14,
+            paddingBottom: 8,
+            borderBottom: `1px solid ${darkTheme.inputBorder}`
+          }}>
+            Libellé <span style={{ color: darkTheme.error }}>*</span>
+          </div>
+          <div style={{
+            fontWeight: 600,
+            color: darkTheme.textPrimary,
+            fontSize: 14,
+            paddingBottom: 8,
+            borderBottom: `1px solid ${darkTheme.inputBorder}`
+          }}>
+            Description
+          </div>
+
+          {/* Lignes 2-8 : Une ligne par langue */}
+          {SUPPORTED_LANGUAGES.map(({ code, label }) => (
+            <React.Fragment key={code}>
+              {/* Colonne Langue */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                color: darkTheme.textSecondary,
+                fontSize: 14,
+                fontWeight: (code === 'fr' || code === 'en') ? 600 : 400,
+                paddingTop: 8
+              }}>
+                {label}
+                {(code === 'fr' || code === 'en') && (
+                  <span style={{ color: darkTheme.error, marginLeft: 4 }}>*</span>
+                )}
+              </div>
+
+              {/* Colonne Libellé */}
+              <div style={{ paddingTop: 8 }}>
+                <input
+                  type="text"
+                  value={libelles[code] || ''}
+                  onChange={(e) => handleLibelleChange(code, e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: `1px solid ${validationErrors[`libelle_${code}`] ? darkTheme.error : darkTheme.inputBorder}`,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    background: darkTheme.inputBg,
+                    color: darkTheme.inputText,
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder={`Saisir le libellé en ${label.toLowerCase()}`}
+                />
+                {validationErrors[`libelle_${code}`] && (
+                  <div style={{ 
+                    color: darkTheme.error, 
+                    fontSize: 12, 
+                    marginTop: 4 
+                  }}>
+                    {validationErrors[`libelle_${code}`]}
+                  </div>
+                )}
+              </div>
+
+              {/* Colonne Description */}
+              <div style={{ paddingTop: 8 }}>
+                <textarea
+                  value={descriptions[code] || ''}
+                  onChange={(e) => handleDescriptionChange(code, e.target.value)}
+                  rows={1}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: `1px solid ${darkTheme.inputBorder}`,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    background: darkTheme.inputBg,
+                    color: darkTheme.inputText,
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder={`Saisir la description en ${label.toLowerCase()}`}
+                />
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
