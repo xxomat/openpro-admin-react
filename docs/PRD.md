@@ -30,7 +30,7 @@ L'application couvre les domaines fonctionnels suivants :
 - Gestion des fournisseurs
 - Gestion des hébergements
 - Gestion des stocks
-- Gestion des tarifs et types de tarifs
+- Gestion des tarifs et types de tarifs (création, modification, suppression, liaison aux hébergements)
 - Gestion des dossiers de réservation
 
 ---
@@ -124,10 +124,14 @@ Vue d'ensemble :
 
 **Note :** Pour obtenir la liste des types de tarif disponibles pour un hébergement, utiliser l'endpoint de la section 3.2.5 (Liaisons Hébergement-TypeTarif) ou extraire les types de tarif depuis les données de tarifs récupérées (section 3.2.6).
 
+**Interface utilisateur :** Ces endpoints sont utilisés par la modale de gestion des types de tarif (voir section 6.1 - Gestion des types de tarif) permettant aux utilisateurs de créer, modifier et supprimer des types de tarif directement depuis l'interface admin.
+
 #### 3.2.5 Liaisons Hébergement-TypeTarif
 - `GET /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs` - Liste des liaisons
 - `POST /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}` - Ajouter une liaison
 - `DELETE /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}` - Supprimer une liaison
+
+**Interface utilisateur :** Ces endpoints sont utilisés par la modale de gestion des types de tarif (voir section 6.1 - Gestion des types de tarif) permettant aux utilisateurs de lier et délier des types de tarif aux hébergements directement depuis l'interface admin.
 
 #### 3.2.6 Tarifs
 - `GET /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/tarif` - Récupérer les tarifs
@@ -447,6 +451,29 @@ Les fournisseurs sont définis dans `src/components/ProviderCalendars/config.ts`
 		- **Cellules de données** : fond normal (`rgba(34, 197, 94, 0.2)` pour disponible, `rgba(220, 38, 38, 0.2)` pour indisponible), opacité complète (`opacity: 1`), texte en **gras** (`fontWeight: 700`).
 	- **Objectif** : Mettre visuellement en évidence les weekends par rapport aux jours de semaine pour faciliter la lecture du calendrier.
 
+6. **Gestion des hébergements sans plan tarifaire associé**
+	- **Définition** : Un hébergement est considéré comme "sans plan tarifaire" s'il n'a aucun type de tarif lié via l'endpoint `/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs`. Plus précisément, un hébergement n'a pas de plan tarifaire si `rateTypeLinksByAccommodation[acc.idHebergement]` est vide ou ne contient aucun `idTypeTarif`.
+	- **Détection** : La fonction `hasRateTypes(accId, rateTypeLinksByAccommodation)` vérifie si un hébergement a au moins un type de tarif lié en vérifiant si `rateTypeLinksByAccommodation[accId]` existe et contient au moins un élément.
+	- **Style visuel du nom de l'hébergement** :
+		- **Couleur du texte** : Le nom de l'hébergement doit être affiché en couleur grisée (`darkTheme.textSecondary`) au lieu de la couleur normale (`darkTheme.textPrimary`).
+		- **Style de texte** : Le nom de l'hébergement doit être barré (`textDecoration: 'line-through'`) pour indiquer visuellement qu'il n'est pas utilisable.
+		- **Icône d'avertissement** : Une icône de warning (⚠️) doit être affichée à côté du nom de l'hébergement, en couleur orange/amber (`#f59e0b`), avec un curseur `help` pour indiquer qu'un tooltip est disponible.
+		- **Tooltip** : Au survol du nom de l'hébergement ou de l'icône, un tooltip doit afficher le message "Aucun typeTarif associé".
+	- **Désactivation de la sélection des dates** :
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées par clic sur la cellule de données.
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées par drag (glisser-déposer).
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le clic sur l'en-tête de colonne (sélection de colonne entière).
+		- Les dates d'un hébergement sans plan tarifaire ne peuvent **pas** être sélectionnées via le bouton "Sélectionner sur la plage" ou le raccourci Ctrl+A.
+		- Les dates d'un hébergement sans plan tarifaire ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
+	- **Désactivation de l'édition** :
+		- Les prix ne peuvent **pas** être édités pour un hébergement sans plan tarifaire (le clic sur le prix ne déclenche pas l'édition).
+		- Les durées minimales ne peuvent **pas** être éditées pour un hébergement sans plan tarifaire (le clic sur la durée minimale ne déclenche pas l'édition).
+	- **Indicateur visuel d'interaction** :
+		- Le curseur doit être `not-allowed` au survol des cellules de dates d'un hébergement sans plan tarifaire pour indiquer qu'elles ne sont pas sélectionnables.
+		- Le tooltip des cellules de dates doit afficher "Aucun typeTarif associé" en plus des autres informations (date, disponibilité, stock).
+	- **Comportement avec les autres restrictions** : Les hébergements sans plan tarifaire sont soumis aux mêmes restrictions que les dates passées et les dates occupées par une réservation. Ces restrictions sont cumulatives : une date passée ET sans plan tarifaire ne peut pas être sélectionnée, de même qu'une date occupée ET sans plan tarifaire.
+	- **Objectif** : Permettre aux utilisateurs d'identifier rapidement les hébergements qui nécessitent une configuration (association de types de tarifs) avant de pouvoir les utiliser pour la gestion des tarifs et des réservations.
+
 
 ##### Badge journalier — Spécifications UI
 
@@ -474,7 +501,7 @@ A définir
 	- **Désactivation de la sélection** :
 		- Les dates passées ne peuvent **pas** être sélectionnées par clic sur la cellule d'en-tête.
 		- Les dates passées ne peuvent **pas** être sélectionnées par drag.
-		- Les dates passées ne peuvent **pas** être sélectionnées via le bouton "Sélectionner toute la plage" ou le raccourci Ctrl+A.
+		- Les dates passées ne peuvent **pas** être sélectionnées via le bouton "Sélectionner sur la plage" ou le raccourci Ctrl+A.
 		- Les dates passées ne doivent **pas** apparaître dans `selectedCells` ou `selectedDates`.
 	- **Indicateur visuel d'interaction** :
 		- Le curseur doit être `not-allowed` au survol des dates passées (cellules de données et d'en-tête) pour indiquer qu'elles ne sont pas sélectionnables.
@@ -504,23 +531,42 @@ A définir
 	- Un **appui sur la touche Échap (Escape)** annule toute sélection : toutes les colonnes sont désélectionnées et la surbrillance est retirée.
 
 5. **Sélection de toute la plage de dates**
-	- **Bouton "Sélectionner toute la plage"** :
-		- Un bouton **"Sélectionner toute la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner toutes les dates entre `startDate` et `endDate` en un seul clic.
+	- **Bouton "Sélectionner sur la plage"** :
+		- Un bouton **"Sélectionner sur la plage"** doit être affiché à proximité des contrôles de date (DateRangeControls), permettant de sélectionner les dates entre `startDate` et `endDate` selon les jours de la semaine sélectionnés.
+		- **Checkboxes des jours de la semaine** :
+			- À gauche du bouton "Sélectionner sur la plage", des checkboxes représentant les jours de la semaine doivent être affichées.
+			- Format d'affichage : `'L', 'M', 'M', 'J', 'V', 'S', 'D'` (identique à l'affichage dans le calendrier).
+			- Par défaut, toutes les checkboxes sont cochées (tous les jours sont sélectionnés).
+			- L'utilisateur peut cocher/décocher les checkboxes pour filtrer les jours à sélectionner.
+			- Chaque checkbox affiche un tooltip avec le nom complet du jour (Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche).
 		- **Action du bouton** : Lors du clic sur ce bouton :
-			- Sélectionner toutes les dates entre `startDate` (incluse) et `endDate` (incluse) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- Sélectionner uniquement les dates entre `startDate` (incluse) et `endDate` (incluse) correspondant aux jours de la semaine cochés, pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- Exemple : Si seules les checkboxes V, S, D sont cochées, seuls les vendredis, samedis et dimanches de la plage seront sélectionnés.
 			- **Respect des règles de sélection** : 
 				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
 				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
 			- Désélectionner automatiquement toute réservation sélectionnée (si une réservation était sélectionnée, elle est désélectionnée).
-		- **Visibilité** : Le bouton doit être visible pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
-		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner toutes les dates entre la date de début et la date de fin (Ctrl+A)".
+		- **Visibilité** : Le bouton et les checkboxes doivent être visibles pour tous les fournisseurs et fonctionner indépendamment pour chaque onglet.
+		- **Tooltip** : Le bouton doit afficher un tooltip indiquant le raccourci clavier équivalent : "Sélectionner les dates correspondant aux jours sélectionnés entre la date de début et la date de fin (Ctrl+S)".
+	- **Raccourci clavier Ctrl+S (ou Cmd+S sur Mac)** :
+		- Le raccourci clavier **Ctrl+S** (Windows/Linux) ou **Cmd+S** (Mac) déclenche la même action que le bouton "Sélectionner sur la plage", en utilisant les jours sélectionnés dans les checkboxes.
+		- **Conditions d'activation** :
+			- Le raccourci ne doit **pas** être activé si un champ de saisie (input, textarea) est actuellement en focus, pour éviter de déclencher la sauvegarde du navigateur au lieu de sélectionner les dates du calendrier.
+			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
+		- **Comportement** :
+			- Sélectionne les dates entre `startDate` et `endDate` (incluses) correspondant aux jours de la semaine cochés dans les checkboxes, pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- **Respect des règles de sélection** : 
+				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
+				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
+			- Désélectionne automatiquement toute réservation sélectionnée.
+		- **Isolation par fournisseur** : Le raccourci fonctionne uniquement pour le fournisseur actif (onglet actuellement affiché).
 	- **Raccourci clavier Ctrl+A (ou Cmd+A sur Mac)** :
-		- Le raccourci clavier **Ctrl+A** (Windows/Linux) ou **Cmd+A** (Mac) déclenche la même action que le bouton "Sélectionner toute la plage".
+		- Le raccourci clavier **Ctrl+A** (Windows/Linux) ou **Cmd+A** (Mac) sélectionne **toutes les dates** de la plage, indépendamment des checkboxes des jours de la semaine.
 		- **Conditions d'activation** :
 			- Le raccourci ne doit **pas** être activé si un champ de saisie (input, textarea) est actuellement en focus, pour éviter de sélectionner le texte dans le champ au lieu de sélectionner les dates du calendrier.
 			- Le raccourci doit être désactivé si l'utilisateur est en train d'éditer un prix ou une durée minimale dans une cellule du calendrier.
 		- **Comportement** :
-			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué).
+			- Sélectionne toutes les dates entre `startDate` et `endDate` (incluses) pour tous les hébergements sélectionnés (ou tous les hébergements si aucun filtre n'est appliqué), sans tenir compte de l'état des checkboxes.
 			- **Respect des règles de sélection** : 
 				- Les dates occupées par une réservation ne doivent **pas** être sélectionnées (voir section 8 pour les restrictions).
 				- Les dates passées (antérieures à aujourd'hui) ne doivent **pas** être sélectionnées.
@@ -529,7 +575,7 @@ A définir
 	- **Implémentation technique** :
 		- Le gestionnaire d'événement `keydown` doit écouter les événements `Ctrl+A` (ou `Cmd+A` sur Mac) au niveau du composant principal.
 		- Vérifier que `event.target` n'est pas un élément de type `input`, `textarea`, ou autre champ de saisie avant d'exécuter l'action.
-		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en excluant :
+		- La fonction de sélection doit itérer sur toutes les dates entre `startDate` et `endDate` et sur tous les hébergements concernés, en filtrant selon les jours de la semaine sélectionnés (pour le bouton) ou en sélectionnant tous les jours (pour le raccourci), et en excluant :
 			- Les dates occupées par une réservation.
 			- Les dates passées (antérieures à aujourd'hui).
 		- Utiliser `selectedCells: Set<string>` au format `"accId|dateStr"` pour stocker la sélection.
@@ -1017,10 +1063,14 @@ A définir
 	- **Bouton "Fermer"** (dates) : Raccourci `-` (touche moins)
 		- Action : Ferme les dates disponibles sélectionnées (met le stock à 0).
 		- Disponibilité : Le bouton n'est visible que si `availableDatesCount > 0`.
-	- **Bouton "Sélectionner toute la plage"** : Raccourci `Ctrl+A` (Windows/Linux) ou `Cmd+A` (Mac)
-		- Action : Sélectionne toutes les dates entre `startDate` et `endDate` (voir section 5 pour les détails).
+	- **Bouton "Sélectionner sur la plage"** : Raccourci `Ctrl+S` (Windows/Linux) ou `Cmd+S` (Mac)
+		- Action : Sélectionne les dates entre `startDate` et `endDate` selon les jours sélectionnés dans les checkboxes (voir section 5 pour les détails).
 		- Disponibilité : Toujours visible.
-		- **Note** : Ce raccourci est déjà fonctionnel et documenté dans la section 5.
+		- **Note** : Ce raccourci est déjà fonctionnel et documenté dans la section 5. Le raccourci utilise les jours sélectionnés dans les checkboxes.
+	- **Raccourci "Sélectionner tout"** : Raccourci `Ctrl+A` (Windows/Linux) ou `Cmd+A` (Mac)
+		- Action : Sélectionne toutes les dates entre `startDate` et `endDate` (tous les jours, indépendamment des checkboxes).
+		- Disponibilité : Toujours disponible via le raccourci clavier.
+		- **Note** : Ce raccourci sélectionne tous les jours indépendamment de l'état des checkboxes. Voir section 5 pour les détails.
 	- **Bouton "Réserver"** : Raccourci `r`
 		- Action : Ouvre la modale de création de réservation pour les dates sélectionnées.
 		- Disponibilité : Le bouton n'est visible que si une sélection de dates est active.
@@ -1049,7 +1099,8 @@ A définir
 		- Exemple pour "Actualiser les données" : `⌨️ a`
 		- Exemple pour "Ouvrir" : `⌨️ +`
 		- Exemple pour "Fermer" : `⌨️ -`
-		- Exemple pour "Sélectionner toute la plage" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
+		- Exemple pour "Sélectionner sur la plage" : `⌨️ Ctrl+S` (ou `⌨️ Cmd+S` sur Mac)
+		- Exemple pour "Sélectionner tout" : `⌨️ Ctrl+A` (ou `⌨️ Cmd+A` sur Mac)
 		- Exemple pour "Aujourd'hui" : `⌨️ t`
 	- **Retour au texte original** : Quand la souris quitte le bouton (événement `onMouseLeave`), le texte original du bouton doit être restauré.
 	- **État de chargement** : Si le bouton est en état de chargement (ex: "Actualisation...", "Fermeture..."), le comportement au survol doit être désactivé et le texte de chargement doit rester affiché.
@@ -1066,7 +1117,8 @@ A définir
 		- `-` → `handleCloseAvailable` (si le bouton est visible)
 		- `r` → `setIsBookingModalOpen(true)` (si une sélection est active)
 		- `a` → `handleRefreshData` (toujours disponible)
-		- `Ctrl+A` / `Cmd+A` → `handleSelectAllRange` (déjà implémenté)
+		- `Ctrl+A` / `Cmd+A` → `handleSelectAllRange` avec tous les jours (déjà implémenté)
+		- `Ctrl+S` / `Cmd+S` → `handleSelectAllRange` avec les jours sélectionnés dans les checkboxes (déjà implémenté)
 	- **Affichage au survol** : Pour chaque bouton, ajouter des gestionnaires `onMouseEnter` et `onMouseLeave` qui :
 		- Stockent le texte original du bouton dans un état local ou une ref.
 		- Au survol, remplacent le texte par `⌨️ [raccourci]`.
@@ -1947,6 +1999,249 @@ A définir
 - La génération du calendrier liste toutes les dates entre `startDate` et `endDate` (incluses), sans limitation à des durées prédéfinies
 - La validation des dates doit être ajoutée pour s'assurer que `endDate >= startDate`
 
+#### Gestion des types de tarif — Exigences fonctionnelles
+
+**Objectif :** Permettre aux utilisateurs de créer, modifier, supprimer des types de tarif et de gérer les liaisons entre types de tarif et hébergements directement depuis l'interface admin.
+
+##### Vue d'ensemble
+
+L'interface doit fournir une modale dédiée (`RateTypeManagementModal`) permettant de :
+1. Afficher la liste des types de tarif disponibles pour un fournisseur
+2. Créer un nouveau type de tarif
+3. Modifier un type de tarif existant
+4. Supprimer un type de tarif (avec confirmation)
+5. Lier un type de tarif à un hébergement
+6. Supprimer la liaison entre un type de tarif et un hébergement
+
+##### Accès à la modale
+
+- **Emplacement :** La modale doit être accessible depuis l'interface principale, à proximité du composant `RateTypeSelector`
+- **Bouton d'accès :** Un bouton "Gérer les types de tarif" ou une icône d'engrenage doit être affiché à côté du sélecteur de type de tarif
+- **Visibilité :** Le bouton doit être visible en permanence, indépendamment de la sélection d'hébergements
+
+##### Structure de la modale
+
+**Composants principaux :**
+
+1. **En-tête de la modale**
+	- Titre : "Gestion des types de tarif"
+	- Fermeture : Uniquement par appui sur la touche Échap (Escape), sans propagation à la fenêtre principale
+	- Indicateur du fournisseur actif (nom ou ID)
+
+2. **Liste des types de tarif**
+	- Tableau ou liste affichant tous les types de tarif du fournisseur
+	- Colonnes affichées :
+		- ID du type de tarif (`idTypeTarif`)
+		- Libellé (affichage du texte français du libellé, ou premier libellé disponible)
+		- Description (affichage du texte français de la description, ou première description disponible)
+		- Ordre (`ordre`)
+		- Actions (boutons Modifier, Supprimer, Gérer les liaisons)
+
+3. **Formulaire de création/modification**
+	- Mode création : formulaire vide
+	- Mode modification : formulaire pré-rempli avec les données du type de tarif sélectionné
+	- Champs du formulaire :
+		- **Libellé multilingue** : Section permettant de saisir le libellé pour chaque langue
+			- Langues supportées : ca (Catalan), de (Allemand), es (Espagnol), fr (Français), it (Italien), nl (Néerlandais), en (Anglais)
+			- Interface : Liste de champs texte, un par langue, avec label indiquant la langue
+			- Validation : Le libellé français ET anglais doivent être renseignés au minimum
+		- **Description multilingue** : Section similaire au libellé pour la description
+			- Même structure que le libellé
+			- Optionnel selon les règles métier
+		- **Ordre** : Champ numérique (obligatoire, valeur par défaut : 0)
+			- Note : Ce champ est obligatoire mais sans intérêt fonctionnel pour l'admin
+	- Boutons d'action :
+		- "Annuler" : Ferme le formulaire sans sauvegarder
+		- "Enregistrer" : Valide et sauvegarde les modifications
+
+4. **Gestion des liaisons hébergement-type de tarif**
+	- Section dédiée ou sous-modale pour gérer les liaisons
+	- Affichage :
+		- Liste des hébergements du fournisseur
+		- Pour chaque hébergement, affichage des types de tarif liés (checkboxes ou badges)
+	- Actions :
+		- Cocher/décocher pour lier/délier un type de tarif à un hébergement
+		- Bouton "Appliquer" pour sauvegarder les modifications de liaisons
+	- Alternative : Actions directes depuis la liste des types de tarif
+		- Bouton "Lier à un hébergement" ouvrant un sélecteur d'hébergements
+		- Bouton "Voir les liaisons" affichant la liste des hébergements liés
+
+##### Flux fonctionnels
+
+**1. Création d'un type de tarif**
+
+1. L'utilisateur clique sur le bouton "Gérer les types de tarif"
+2. La modale s'ouvre affichant la liste des types de tarif existants
+3. L'utilisateur clique sur le bouton "Créer un type de tarif"
+4. Le formulaire de création s'affiche (vide)
+5. L'utilisateur saisit :
+	- Le libellé pour le français ET l'anglais au minimum (obligatoire)
+	- Optionnellement le libellé pour les autres langues
+	- Optionnellement la description pour une ou plusieurs langues
+	- L'ordre (par défaut 0)
+6. L'utilisateur clique sur "Enregistrer"
+7. Le backend est appelé via `POST /api/fournisseur/{idFournisseur}/typetarifs`
+8. Le payload envoyé :
+	```json
+	{
+		"typeTarifModif": {
+			"libelle": [
+				{ "langue": "fr", "texte": "..." },
+				{ "langue": "en", "texte": "..." }
+			],
+			"description": [
+				{ "langue": "fr", "texte": "..." },
+				{ "langue": "en", "texte": "..." }
+			],
+			"ordre": 0
+		}
+	}
+	```
+9. En cas de succès :
+	- La liste des types de tarif est rafraîchie
+	- Un message de confirmation est affiché
+	- Le formulaire est fermé
+10. En cas d'erreur :
+	- Un message d'erreur est affiché
+	- Le formulaire reste ouvert pour correction
+
+**2. Modification d'un type de tarif**
+
+1. L'utilisateur clique sur "Modifier" pour un type de tarif dans la liste
+2. Le formulaire de modification s'affiche pré-rempli avec les données actuelles
+3. L'utilisateur modifie les champs souhaités
+4. L'utilisateur clique sur "Enregistrer"
+5. Le backend est appelé via `PUT /api/fournisseur/{idFournisseur}/typetarifs/{idTypeTarif}`
+6. Le payload envoyé est identique à la création (structure `typeTarifModif`)
+7. En cas de succès :
+	- La liste est rafraîchie
+	- Un message de confirmation est affiché
+	- Le formulaire est fermé
+8. En cas d'erreur :
+	- Un message d'erreur est affiché
+	- Le formulaire reste ouvert
+
+**3. Suppression d'un type de tarif**
+
+1. L'utilisateur clique sur "Supprimer" pour un type de tarif dans la liste
+2. Une modale de confirmation s'affiche :
+	- Message : "Êtes-vous sûr de vouloir supprimer ce type de tarif ?"
+	- Avertissement : "Cette action est irréversible. Les liaisons avec les hébergements seront également supprimées."
+	- Boutons : "Annuler" et "Confirmer la suppression"
+3. Si l'utilisateur confirme :
+	- Le backend est appelé via `DELETE /api/fournisseur/{idFournisseur}/typetarifs/{idTypeTarif}`
+4. En cas de succès :
+	- La liste est rafraîchie
+	- Un message de confirmation est affiché
+	- La modale de confirmation est fermée
+5. En cas d'erreur :
+	- Un message d'erreur est affiché
+	- La modale de confirmation reste ouverte
+
+**4. Liaison d'un type de tarif à un hébergement**
+
+1. L'utilisateur sélectionne un type de tarif dans la liste
+2. L'utilisateur clique sur "Lier à un hébergement" ou ouvre la section de gestion des liaisons
+3. Une liste des hébergements du fournisseur s'affiche
+4. L'utilisateur sélectionne un ou plusieurs hébergements (checkboxes)
+5. L'utilisateur clique sur "Appliquer" ou "Lier"
+6. Pour chaque hébergement sélectionné :
+	- Le backend est appelé via `POST /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}`
+7. En cas de succès :
+	- Un message de confirmation est affiché
+	- La liste des liaisons est rafraîchie
+8. En cas d'erreur :
+	- Un message d'erreur est affiché pour chaque échec
+
+**5. Suppression de la liaison entre un type de tarif et un hébergement**
+
+1. L'utilisateur ouvre la section de gestion des liaisons pour un type de tarif
+2. La liste des hébergements liés s'affiche
+3. L'utilisateur décoche un ou plusieurs hébergements
+4. L'utilisateur clique sur "Appliquer" ou "Enregistrer"
+5. Pour chaque hébergement décoché :
+	- Le backend est appelé via `DELETE /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}`
+6. En cas de succès :
+	- Un message de confirmation est affiché
+	- La liste des liaisons est rafraîchie
+7. En cas d'erreur :
+	- Un message d'erreur est affiché pour chaque échec
+
+##### Gestion des erreurs
+
+- **Erreurs réseau :** Afficher un message d'erreur générique avec possibilité de réessayer
+- **Erreurs de validation :** Afficher les erreurs de validation directement dans le formulaire (champs concernés)
+- **Erreurs serveur :** Afficher le message d'erreur retourné par le backend
+- **Erreurs de permissions :** Afficher un message indiquant que l'action n'est pas autorisée
+
+##### Rafraîchissement des données
+
+- Après chaque opération réussie (création, modification, suppression, liaison, déliaison) :
+	- La liste des types de tarif doit être rafraîchie
+	- Si l'interface principale affiche des types de tarif, ceux-ci doivent être mis à jour
+	- Le composant `RateTypeSelector` doit être rafraîchi pour afficher les nouveaux types de tarif
+
+##### Intégration avec l'interface existante
+
+- La modale doit s'intégrer harmonieusement avec le design existant (thème sombre, styles cohérents)
+- Les types de tarif créés/modifiés doivent être immédiatement disponibles dans le `RateTypeSelector`
+- Les liaisons créées/supprimées doivent être reflétées dans l'affichage des tarifs de la grille
+
+##### Endpoints backend utilisés
+
+Les endpoints suivants sont déjà documentés dans la section 3.2.4 et 3.2.5 :
+
+- `GET /api/fournisseur/{idFournisseur}/typetarifs` - Liste des types de tarifs
+- `POST /api/fournisseur/{idFournisseur}/typetarifs` - Créer un type de tarif
+- `PUT /api/fournisseur/{idFournisseur}/typetarifs/{idTypeTarif}` - Modifier un type de tarif
+- `DELETE /api/fournisseur/{idFournisseur}/typetarifs/{idTypeTarif}` - Supprimer un type de tarif
+- `GET /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs` - Liste des liaisons
+- `POST /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}` - Ajouter une liaison
+- `DELETE /api/fournisseur/{idFournisseur}/hebergements/{idHebergement}/typetarifs/{idTypeTarif}` - Supprimer une liaison
+
+##### Structure des données
+
+**Format du payload pour création/modification :**
+
+```typescript
+{
+	typeTarifModif: {
+		libelle: Array<{
+			langue: string; // 'ca' | 'de' | 'es' | 'fr' | 'it' | 'nl' | 'en'
+			texte: string;
+		}>;
+		description: Array<{
+			langue: string;
+			texte: string;
+		}>;
+		ordre: number; // Obligatoire, valeur par défaut: 0
+	}
+}
+```
+
+**Langues supportées :**
+- `ca` : Catalan
+- `de` : Allemand
+- `es` : Espagnol
+- `fr` : Français
+- `it` : Italien
+- `nl` : Néerlandais
+- `en` : Anglais
+
+##### Fichiers à créer/modifier
+
+**Nouveaux fichiers :**
+- `src/components/ProviderCalendars/components/RateTypeManagementModal/RateTypeManagementModal.tsx` - Composant principal de la modale
+- `src/components/ProviderCalendars/components/RateTypeManagementModal/components/RateTypeForm.tsx` - Formulaire de création/modification
+- `src/components/ProviderCalendars/components/RateTypeManagementModal/components/RateTypeList.tsx` - Liste des types de tarif
+- `src/components/ProviderCalendars/components/RateTypeManagementModal/components/AccommodationLinkManager.tsx` - Gestionnaire de liaisons hébergement-type de tarif
+- `src/components/ProviderCalendars/components/RateTypeManagementModal/hooks/useRateTypeManagement.ts` - Hook pour la logique métier
+
+**Fichiers à modifier :**
+- `src/components/ProviderCalendars/components/RateTypeSelector.tsx` - Ajouter le bouton d'accès à la modale
+- `src/components/ProviderCalendars/index.tsx` - Intégrer la modale dans le composant principal
+- `src/services/api/backendClient.ts` - Ajouter les méthodes pour appeler les endpoints backend (si nécessaire, vérifier si elles existent déjà)
+
 ### 6.2 Exigences non-fonctionnelles
 
 - [ ] Performances (temps de réponse, débit)
@@ -1988,6 +2283,7 @@ A définir
 | Version | Date | Auteur | Modifications |
 |---------|------|--------|---------------|
 | 1.0.0 | 2024 | - | Création initiale du PRD basé sur la documentation API |
+| 1.1.0 | 2025 | - | Ajout de la section "Gestion des types de tarif" avec spécifications détaillées pour la création, modification, suppression et gestion des liaisons hébergement-type de tarif |
 
 ---
 

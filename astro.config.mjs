@@ -10,8 +10,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
 	integrations: [react()],
 	vite: {
-			resolve: {
-				alias: {}
+		resolve: {
+			alias: {
+				'@/services': path.resolve(__dirname, './src/services'),
+				'@/components': path.resolve(__dirname, './src/components'),
+				'@/types': path.resolve(__dirname, './src/components/ProviderCalendars/types')
 			}
+		}
 	}
 });

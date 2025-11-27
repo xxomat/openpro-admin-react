@@ -118,7 +118,7 @@ export function getAvailabilityRanges(
  * - OU le tarif n'est pas défini pour ce jour
  * 
  * @param stockByDate - Map du stock par date (clé: YYYY-MM-DD, valeur: quantité)
- * @param dureeMinByDate - Map de la durée minimale par date (clé: YYYY-MM-DD, valeur: durée minimale ou null)
+ * @param dureeMinByDate - Map de la durée minimale par date et type de tarif (clé: YYYY-MM-DD, valeur: Record<idTypeTarif, dureeMin>)
  * @param ratesByDate - Map des tarifs par date (clé: YYYY-MM-DD, valeur: prix ou undefined)
  * @param selectedRateTypeId - ID du type de tarif sélectionné (null si aucun)
  * @param startDate - Date de début de la période à analyser
@@ -127,7 +127,7 @@ export function getAvailabilityRanges(
  */
 export function getNonReservableDays(
   stockByDate: Record<string, number>,
-  dureeMinByDate: Record<string, number | null>,
+  dureeMinByDate: Record<string, Record<number, number | null>>,
   ratesByDate: Record<string, Record<number, number>> | undefined,
   selectedRateTypeId: number | null,
   startDate: Date,
@@ -153,7 +153,9 @@ export function getNonReservableDays(
   for (const day of allDays) {
     const dateStr = formatDate(day);
     const stock = stockByDate[dateStr] ?? 0;
-    const dureeMin = dureeMinByDate[dateStr] ?? null;
+    const dureeMin = selectedRateTypeId !== null
+      ? (dureeMinByDate[dateStr]?.[selectedRateTypeId] ?? null)
+      : null;
     
     // Si le stock n'est pas à 1, on ne considère pas le jour comme non réservable
     // (il sera affiché en rouge normalement, pas en gris)

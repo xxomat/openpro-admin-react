@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { BookingDisplay } from '../types';
+import type { BookingDisplay } from '@/types';
 import { formatDateDisplay } from '../utils/dateUtils';
 import { darkTheme } from '../utils/theme';
 
@@ -75,7 +75,6 @@ export function DeleteBookingModal({
       await onConfirmDelete(booking);
       // La fermeture et le rafraîchissement sont gérés par le parent
     } catch (error) {
-      console.error('Error deleting booking:', error);
       setDeleteError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression de la réservation');
       setIsDeleting(false);
     }

@@ -6,8 +6,7 @@
  */
 
 import React from 'react';
-import type { SupplierData, BookingDisplay } from '../../types';
-import type { RateType } from '../../types';
+import type { SupplierData, BookingDisplay, RateType } from '@/types';
 
 /**
  * Paramètres pour la fonction updateSupplierDataStates
@@ -25,13 +24,16 @@ export interface UpdateSupplierDataParams {
   setPromoBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
   setRateTypesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, string[]>>>>>;
   setDureeMinByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
+  setArriveeAutoriseeByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
+  setRateTypeLinksBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, number[]>>>>;
   setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
   setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
   setSelectedRateTypeIdBySupplier: React.Dispatch<React.SetStateAction<Record<number, number | null>>>;
   setModifiedRatesBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setModifiedDureeMinBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
+  setModifiedArriveeAutoriseeBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
 }
 
 /**
@@ -50,8 +52,10 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
     setPromoBySupplierAndAccommodation,
     setRateTypesBySupplierAndAccommodation,
     setDureeMinByAccommodation,
+    setArriveeAutoriseeByAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,
+    setRateTypeLinksBySupplierAndAccommodation,
     setBookingsBySupplierAndAccommodation,
     setSelectedAccommodationsBySupplier,
     setSelectedRateTypeIdBySupplier,
@@ -154,19 +158,65 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
     };
   });
   
-  setDureeMinByAccommodation(prev => {
+  setArriveeAutoriseeByAccommodation(prev => {
     const existing = prev[idFournisseur] ?? {};
-    const updated: Record<number, Record<string, number | null>> = {};
+    const updated: Record<number, Record<string, Record<number, boolean>>> = {};
     
     for (const accId in existing) {
       updated[Number(accId)] = { ...existing[Number(accId)] };
+    }
+    
+    // Initialiser arriveeAutorisee par défaut à true pour toutes les dates
+    // Si les données du backend contiennent arriveeAutorisee, on les utilisera
+    // Sinon, on initialise à true par défaut
+    for (const accId in data.arriveeAutorisee) {
+      if (!updated[Number(accId)]) {
+        updated[Number(accId)] = {};
+      }
+      // Fusionner les données existantes avec les nouvelles
+      const existingDates = updated[Number(accId)] ?? {};
+      const newDates = data.arriveeAutorisee[Number(accId)] ?? {};
+      updated[Number(accId)] = { ...existingDates, ...newDates };
+    }
+    
+    return {
+      ...prev,
+      [idFournisseur]: updated
+    };
+  });
+
+  setDureeMinByAccommodation(prev => {
+    const existing = prev[idFournisseur] ?? {};
+    const updated: Record<number, Record<string, Record<number, number | null>>> = {};
+    
+    for (const accId in existing) {
+      updated[Number(accId)] = { ...existing[Number(accId)] };
+      // S'assurer que chaque date a un objet Record<number, number | null>
+      for (const dateStr in updated[Number(accId)]) {
+        if (typeof updated[Number(accId)][dateStr] === 'number' || updated[Number(accId)][dateStr] === null) {
+          // Migration de l'ancien format vers le nouveau
+          const oldValue = updated[Number(accId)][dateStr] as number | null;
+          updated[Number(accId)][dateStr] = {} as Record<number, number | null>;
+          // On ne peut pas migrer sans connaître le selectedRateTypeId, donc on laisse vide
+        }
+      }
     }
     
     for (const accId in data.dureeMin) {
       if (!updated[Number(accId)]) {
         updated[Number(accId)] = {};
       }
-      updated[Number(accId)] = { ...updated[Number(accId)], ...data.dureeMin[Number(accId)] };
+      // data.dureeMin[accId] est maintenant Record<string, Record<number, number | null>>
+      const accDureeMin = data.dureeMin[Number(accId)];
+      if (accDureeMin) {
+        for (const dateStr in accDureeMin) {
+          if (!updated[Number(accId)][dateStr]) {
+            updated[Number(accId)][dateStr] = {};
+          }
+          // Copier tous les idTypeTarif pour cette date
+          updated[Number(accId)][dateStr] = { ...updated[Number(accId)][dateStr], ...accDureeMin[dateStr] };
+        }
+      }
     }
     
     return {
@@ -182,6 +232,11 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   }));
   setRateTypeLabelsBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypeLabels }));
   setRateTypesBySupplier(prev => ({ ...prev, [idFournisseur]: data.rateTypesList }));
+  // Les liaisons sont toujours remplacées complètement car elles peuvent changer
+  setRateTypeLinksBySupplierAndAccommodation(prev => ({
+    ...prev,
+    [idFournisseur]: data.rateTypeLinksByAccommodation
+  }));
 
   if (data.rateTypesList.length > 0) {
     setSelectedRateTypeIdBySupplier(prev => {

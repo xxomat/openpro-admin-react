@@ -50,7 +50,6 @@ export function useSyncStatusPolling(
         );
 
         if (!response.ok) {
-          console.warn('Failed to fetch sync status:', response.status);
           return;
         }
 
@@ -61,13 +60,6 @@ export function useSyncStatusPolling(
         if (status.lastChange && status.lastChange !== currentLastChange) {
           if (currentLastChange !== null) {
             // Ce n'est pas le premier appel, il y a eu un changement
-            console.log('Sync status changed, triggering refresh', {
-              lastChange: status.lastChange,
-              previousChange: currentLastChange,
-              pendingSyncCount: status.pendingSyncCount,
-              syncedCount: status.syncedCount,
-              obsoleteCount: status.obsoleteCount
-            });
             onStatusChange();
           }
           lastKnownChangeRef.current = status.lastChange;
@@ -76,7 +68,7 @@ export function useSyncStatusPolling(
           lastKnownChangeRef.current = status.lastChange;
         }
       } catch (error) {
-        console.error('Error polling sync status:', error);
+        // Ignore polling errors
       }
     };
 

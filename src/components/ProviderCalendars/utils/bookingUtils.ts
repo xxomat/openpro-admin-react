@@ -222,20 +222,23 @@ export function generateBookingSummaries(
  * - Pour chaque hébergement, les dates sélectionnées sont consécutives (ou une seule date)
  * - ET la durée de la sélection est supérieure ou égale à la durée minimale de séjour de chaque date
  * - ET chaque date de la sélection a un tarif défini pour le type de tarif sélectionné
+ * - ET chaque date de la sélection a un stock disponible (stock > 0)
  * 
  * @param selectedCells - Set de cellules sélectionnées (format: "accId|dateStr")
- * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date (format: Record<accId, Record<dateStr, dureeMin>>)
+ * @param dureeMinByAccommodation - Map des durées minimales par hébergement, date et type de tarif (format: Record<accId, Record<dateStr, Record<idTypeTarif, dureeMin>>>)
  * @param selectedAccommodations - Set des IDs d'hébergements sélectionnés dans le filtre (optionnel, si non fourni, tous les hébergements sont considérés)
  * @param ratesByAccommodation - Map des tarifs par hébergement, date et type de tarif (format: Record<accId, Record<dateStr, Record<rateTypeId, price>>>)
  * @param selectedRateTypeId - ID du type de tarif sélectionné (null si aucun)
+ * @param stockByAccommodation - Map du stock par hébergement et date (format: Record<accId, Record<dateStr, stock>>)
  * @returns true si la sélection est valide pour afficher le bouton Réserver
  */
 export function isValidBookingSelection(
   selectedCells: Set<string>,
-  dureeMinByAccommodation?: Record<number, Record<string, number | null>>,
+  dureeMinByAccommodation?: Record<number, Record<string, Record<number, number | null>>>,
   selectedAccommodations?: Set<number>,
   ratesByAccommodation?: Record<number, Record<string, Record<number, number>>>,
-  selectedRateTypeId?: number | null
+  selectedRateTypeId?: number | null,
+  stockByAccommodation?: Record<number, Record<string, number>>
 ): boolean {
   if (selectedCells.size === 0) return false;
   
@@ -264,9 +267,25 @@ export function isValidBookingSelection(
     datesByAccommodation.get(accId)!.push(dateStr);
   }
   
-  // Vérifier que pour chaque hébergement, les dates sont consécutives ET respectent les durées minimales ET ont un tarif
+  // Vérifier que pour chaque hébergement, les dates sont consécutives ET respectent les durées minimales ET ont un tarif ET ont du stock
   for (const [accId, dates] of datesByAccommodation.entries()) {
     if (dates.length === 0) continue;
+    
+    // Vérifier que chaque date a un stock disponible (stock > 0)
+    // Si stockByAccommodation n'est pas fourni, on ne peut pas vérifier le stock
+    // Dans ce cas, on considère que la sélection n'est pas valide par sécurité
+    if (!stockByAccommodation) {
+      return false;
+    }
+    
+    for (const dateStr of dates) {
+      // Si le stock n'est pas défini pour une date, on considère qu'il est à 0
+      const stock = stockByAccommodation[accId]?.[dateStr] ?? 0;
+      // Si le stock est à 0 ou inférieur, la sélection n'est pas valide
+      if (stock <= 0) {
+        return false;
+      }
+    }
     
     // Vérifier que chaque date a un tarif défini (si un type de tarif est sélectionné)
     if (selectedRateTypeId !== null && selectedRateTypeId !== undefined && ratesByAccommodation) {
@@ -288,8 +307,8 @@ export function isValidBookingSelection(
     // Cas spécial : une seule date = valide pour la consécutivité
     if (dates.length === 1) {
       // Vérifier quand même la durée minimale si elle existe
-      if (dureeMinByAccommodation) {
-        const dureeMin = dureeMinByAccommodation[accId]?.[dates[0]];
+      if (dureeMinByAccommodation && selectedRateTypeId !== null) {
+        const dureeMin = dureeMinByAccommodation[accId]?.[dates[0]]?.[selectedRateTypeId];
         // Si dureeMin est définie et > 0, la durée de sélection (1 nuit) doit être >= dureeMin
         if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0 && 1 < dureeMin) {
           return false;
@@ -319,11 +338,11 @@ export function isValidBookingSelection(
     const selectionDuration = range.nights;
     
     // Vérifier que la durée de sélection respecte la durée minimale de chaque date
-    if (dureeMinByAccommodation) {
+    if (dureeMinByAccommodation && selectedRateTypeId !== null) {
       const dureeMinMap = dureeMinByAccommodation[accId];
       if (dureeMinMap) {
         for (const dateStr of dates) {
-          const dureeMin = dureeMinMap[dateStr];
+          const dureeMin = dureeMinMap[dateStr]?.[selectedRateTypeId];
           // Si dureeMin est définie et > 0, la durée de sélection doit être >= dureeMin
           if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
             if (selectionDuration < dureeMin) {
@@ -343,13 +362,15 @@ export function isValidBookingSelection(
  * 
  * @param accId - ID de l'hébergement
  * @param selectedCells - Set de cellules sélectionnées (format: "accId|dateStr")
- * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date (format: Record<accId, Record<dateStr, dureeMin>>)
+ * @param dureeMinByAccommodation - Map des durées minimales par hébergement, date et type de tarif (format: Record<accId, Record<dateStr, Record<idTypeTarif, dureeMin>>>)
+ * @param selectedRateTypeId - ID du type de tarif sélectionné (null si aucun)
  * @returns true si la sélection pour cet hébergement est valide
  */
 export function isValidBookingSelectionForAccommodation(
   accId: number,
   selectedCells: Set<string>,
-  dureeMinByAccommodation?: Record<number, Record<string, number | null>>
+  dureeMinByAccommodation?: Record<number, Record<string, Record<number, number | null>>>,
+  selectedRateTypeId?: number | null
 ): boolean {
   // Extraire les dates pour cet hébergement
   const dates: string[] = [];
@@ -369,8 +390,8 @@ export function isValidBookingSelectionForAccommodation(
   // Cas spécial : une seule date = valide pour la consécutivité
   if (dates.length === 1) {
     // Vérifier quand même la durée minimale si elle existe
-    if (dureeMinByAccommodation) {
-      const dureeMin = dureeMinByAccommodation[accId]?.[dates[0]];
+    if (dureeMinByAccommodation && selectedRateTypeId !== null) {
+      const dureeMin = dureeMinByAccommodation[accId]?.[dates[0]]?.[selectedRateTypeId];
       // Si dureeMin est définie et > 0, la durée de sélection (1 nuit) doit être >= dureeMin
       if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0 && 1 < dureeMin) {
         return false;
@@ -400,11 +421,11 @@ export function isValidBookingSelectionForAccommodation(
   const selectionDuration = range.nights;
   
   // Vérifier que la durée de sélection respecte la durée minimale de chaque date
-  if (dureeMinByAccommodation) {
+  if (dureeMinByAccommodation && selectedRateTypeId !== null) {
     const dureeMinMap = dureeMinByAccommodation[accId];
     if (dureeMinMap) {
       for (const dateStr of dates) {
-        const dureeMin = dureeMinMap[dateStr];
+        const dureeMin = dureeMinMap[dateStr]?.[selectedRateTypeId];
         // Si dureeMin est définie et > 0, la durée de sélection doit être >= dureeMin
         if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
           if (selectionDuration < dureeMin) {

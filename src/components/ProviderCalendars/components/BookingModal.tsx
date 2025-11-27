@@ -15,7 +15,7 @@ import { formatDateDisplay } from '../utils/dateUtils';
 import { darkTheme } from '../utils/theme';
 import { useBookingForm } from './BookingModal/hooks/useBookingForm';
 import { ClientForm } from './BookingModal/components/ClientForm';
-import { createBooking } from '../../../services/api/backendClient';
+import { createBooking } from '@/services/api/backendClient';
 
 
 /**
@@ -154,7 +154,6 @@ export function BookingModal({
       }
       onClose();
     } catch (error) {
-      console.error('Error creating bookings:', error);
       setCreationError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la création des réservations');
     } finally {
       setIsCreating(false);

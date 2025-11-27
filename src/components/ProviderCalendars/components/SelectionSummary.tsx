@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { Accommodation } from '../types';
+import type { Accommodation } from '@/types';
 import { darkTheme } from '../utils/theme';
 import { isValidBookingSelectionForAccommodation } from '../utils/bookingUtils';
 
@@ -25,7 +25,7 @@ export interface SelectionSummaryProps {
   /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
   /** Map des durées minimales par hébergement et date */
-  dureeMinByAccommodation: Record<number, Record<string, number | null>>;
+  dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>;
 }
 
 /**
@@ -80,7 +80,7 @@ export function SelectionSummary({
     
     // Ajouter un résumé par hébergement avec statut de validité
     for (const [accId, { accName, dates }] of accommodationsMap.entries()) {
-      const isValid = isValidBookingSelectionForAccommodation(accId, selectedCells, dureeMinByAccommodation);
+      const isValid = isValidBookingSelectionForAccommodation(accId, selectedCells, dureeMinByAccommodation, selectedRateTypeId);
       const status = isValid ? '✓ VALIDE' : '✗ INVALIDE';
       const datesStr = dates.sort().join(', ');
       lines.push(`${accName} (${status}): ${datesStr}`);

@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { RateType } from '../types';
+import type { RateType } from '@/types';
 import { darkTheme } from '../utils/theme';
 
 /**
@@ -21,6 +21,8 @@ export interface RateTypeSelectorProps {
   selectedRateTypeId: number | null;
   /** Callback appelé quand l'utilisateur change de type de tarif */
   onSelectedRateTypeIdChange: (id: number | null) => void;
+  /** Callback appelé pour ouvrir la modale de gestion des types de tarif */
+  onManageRateTypes?: () => void;
 }
 
 /**
@@ -30,7 +32,8 @@ export function RateTypeSelector({
   rateTypes,
   rateTypeLabels,
   selectedRateTypeId,
-  onSelectedRateTypeIdChange
+  onSelectedRateTypeIdChange,
+  onManageRateTypes
 }: RateTypeSelectorProps): React.ReactElement {
   return (
     <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -67,6 +70,34 @@ export function RateTypeSelector({
           )}
         </select>
       </label>
+      {onManageRateTypes && (
+        <button
+          onClick={onManageRateTypes}
+          title="Gérer les types de tarif"
+          style={{
+            padding: '6px 12px',
+            background: darkTheme.buttonSecondaryBg,
+            color: darkTheme.buttonText,
+            border: 'none',
+            borderRadius: 6,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = darkTheme.buttonSecondaryHover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = darkTheme.buttonSecondaryBg;
+          }}
+        >
+          <span>⚙️</span>
+          <span>Gérer</span>
+        </button>
+      )}
     </div>
   );
 }

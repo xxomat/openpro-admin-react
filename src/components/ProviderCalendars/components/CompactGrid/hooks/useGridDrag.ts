@@ -36,6 +36,7 @@ export interface DraggingState {
  * @param editingCell - État de la cellule en cours d'édition (pour empêcher le drag pendant l'édition)
  * @param accommodations - Liste des hébergements
  * @param stockByAccommodation - Map du stock par hébergement et date
+ * @param rateTypeLinksByAccommodation - Map des IDs de types de tarif liés par hébergement
  * @returns État du drag et gestionnaires d'événements
  */
 export function useGridDrag(
@@ -45,7 +46,8 @@ export function useGridDrag(
   editingCell: { accId: number; dateStr: string } | null,
   accommodations: Array<{ idHebergement: number }>,
   stockByAccommodation: Record<number, Record<string, number>>,
-  bookedDatesByAccommodation: Record<number, Set<string>>
+  bookedDatesByAccommodation: Record<number, Set<string>>,
+  rateTypeLinksByAccommodation: Record<number, number[]>
 ): {
   draggingState: DraggingState | null;
   draggingCells: Set<string>;
@@ -55,6 +57,13 @@ export function useGridDrag(
   const [draggingState, setDraggingState] = React.useState<DraggingState | null>(null);
   const justFinishedDragRef = React.useRef(false);
 
+  // Fonction helper pour vérifier si un hébergement a des types de tarifs
+  // Utilise les liaisons entre hébergements et types de tarif (pas les tarifs définis)
+  const hasRateTypes = React.useCallback((accId: number): boolean => {
+    const linkedRateTypeIds = rateTypeLinksByAccommodation[accId];
+    return linkedRateTypeIds !== undefined && linkedRateTypeIds.length > 0;
+  }, [rateTypeLinksByAccommodation]);
+
   // Gestionnaire pour démarrer le drag
   const handleMouseDown = React.useCallback((e: React.MouseEvent, dateStr: string, accId?: number) => {
     if (editingCell) return;
@@ -63,6 +72,8 @@ export function useGridDrag(
     if (e.ctrlKey || e.metaKey) return;
     // Ne pas permettre le drag si la date est passée
     if (isPastDate(dateStr)) return;
+    // Ne pas permettre le drag si l'hébergement n'a pas de types de tarifs
+    if (accId !== undefined && !hasRateTypes(accId)) return;
     
     setDraggingState({
       startDate: dateStr,
@@ -70,7 +81,7 @@ export function useGridDrag(
       isDragging: false,
       startPosition: { x: e.clientX, y: e.clientY }
     });
-  }, [editingCell]);
+  }, [editingCell, hasRateTypes]);
 
   // Gestionnaire pour le mouvement de la souris pendant le drag
   const handleMouseMove = React.useCallback((e: MouseEvent) => {
@@ -100,7 +111,7 @@ export function useGridDrag(
   }, [getDateFromElement]);
 
   // Fonction helper pour générer les cellules d'une plage de dates
-  // Exclut les dates occupées par une réservation et les dates passées
+  // Exclut les dates occupées par une réservation, les dates passées, et les hébergements sans types de tarifs
   const generateCellsForDateRange = React.useCallback((startDateStr: string, endDateStr: string): string[] => {
     const dateRange = getDateRange(startDateStr, endDateStr);
     const cells: string[] = [];
@@ -112,16 +123,18 @@ export function useGridDrag(
       for (const acc of accommodations) {
         // Vérifier si cette date est occupée par une réservation
         const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        // Vérifier si l'hébergement a des types de tarifs
+        const accHasRateTypes = hasRateTypes(acc.idHebergement);
         
-        // Ne pas inclure les dates occupées (toutes les autres dates sont sélectionnables, même avec stock à 0)
-        if (!isBooked) {
+        // Ne pas inclure les dates occupées ni les hébergements sans types de tarifs
+        if (!isBooked && accHasRateTypes) {
           cells.push(`${acc.idHebergement}|${dateStr}`);
         }
       }
     }
     
     return cells;
-  }, [getDateRange, accommodations, bookedDatesByAccommodation]);
+  }, [getDateRange, accommodations, bookedDatesByAccommodation, hasRateTypes]);
 
   // Gestionnaire pour terminer le drag
   const handleMouseUp = React.useCallback((e: MouseEvent) => {
@@ -144,37 +157,44 @@ export function useGridDrag(
           // Vérifier si cette date est occupée par une réservation ou passée
           const isBooked = bookedDatesByAccommodation[accId]?.has(prev.startDate) ?? false;
           const isPast = isPastDate(prev.startDate);
+          const accHasRateTypes = hasRateTypes(accId);
           
-          // Ne pas permettre la sélection si la date est occupée ou passée
-          if (!isBooked && !isPast) {
+          // Ne pas permettre la sélection si la date est occupée, passée, ou si l'hébergement n'a pas de types de tarifs
+          if (!isBooked && !isPast && accHasRateTypes) {
             // Clic sur une cellule spécifique : basculer cette cellule (si non occupée)
             const cellKey = `${accId}|${prev.startDate}`;
-            onSelectedCellsChange((prevSelected: Set<string>) => {
-              const newSet = new Set(prevSelected);
-              if (newSet.has(cellKey)) {
-                newSet.delete(cellKey);
-              } else {
-                newSet.add(cellKey);
-              }
-              return newSet;
-            });
+            // Utiliser setTimeout pour éviter d'appeler setState pendant le rendu
+            setTimeout(() => {
+              onSelectedCellsChange((prevSelected: Set<string>) => {
+                const newSet = new Set(prevSelected);
+                if (newSet.has(cellKey)) {
+                  newSet.delete(cellKey);
+                } else {
+                  newSet.add(cellKey);
+                }
+                return newSet;
+              });
+            }, 0);
           }
         } else {
           // Clic sur un header : basculer toutes les cellules pour cette date (même avec stock à 0)
           const cellsForDate = generateCellsForDateRange(prev.startDate, prev.startDate);
-          onSelectedCellsChange((prevSelected: Set<string>) => {
-            const newSet = new Set(prevSelected);
-            const allSelected = cellsForDate.every(cell => newSet.has(cell));
-            
-            for (const cell of cellsForDate) {
-              if (allSelected) {
-                newSet.delete(cell);
-              } else {
-                newSet.add(cell);
+          // Utiliser setTimeout pour éviter d'appeler setState pendant le rendu
+          setTimeout(() => {
+            onSelectedCellsChange((prevSelected: Set<string>) => {
+              const newSet = new Set(prevSelected);
+              const allSelected = cellsForDate.every(cell => newSet.has(cell));
+              
+              for (const cell of cellsForDate) {
+                if (allSelected) {
+                  newSet.delete(cell);
+                } else {
+                  newSet.add(cell);
+                }
               }
-            }
-            return newSet;
-          });
+              return newSet;
+            });
+          }, 0);
         }
         
         setTimeout(() => {
@@ -187,17 +207,20 @@ export function useGridDrag(
       const cellsInRange = generateCellsForDateRange(prev.startDate, prev.currentDate);
       const isReplaceMode = e.ctrlKey || e.metaKey;
       
-      onSelectedCellsChange((prevSelected: Set<string>) => {
-        if (isReplaceMode) {
-          return new Set(cellsInRange);
-        } else {
-          const newSet = new Set(prevSelected);
-          for (const cell of cellsInRange) {
-            newSet.add(cell);
+      // Utiliser setTimeout pour éviter d'appeler setState pendant le rendu
+      setTimeout(() => {
+        onSelectedCellsChange((prevSelected: Set<string>) => {
+          if (isReplaceMode) {
+            return new Set(cellsInRange);
+          } else {
+            const newSet = new Set(prevSelected);
+            for (const cell of cellsInRange) {
+              newSet.add(cell);
+            }
+            return newSet;
           }
-          return newSet;
-        }
-      });
+        });
+      }, 0);
       
       justFinishedDragRef.current = true;
       setTimeout(() => {

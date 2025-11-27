@@ -9,6 +9,7 @@ import React from 'react';
 import type { EditingCell } from '../hooks/useGridEditing';
 import { darkTheme } from '../../../utils/theme';
 import { isPastDate } from '../../../utils/dateUtils';
+import { ArrivalToggle } from './ArrivalToggle';
 
 /**
  * Props du composant GridDataCell
@@ -32,6 +33,14 @@ export interface GridDataCellProps {
   isModified: boolean;
   /** Indique si la durée minimale a été modifiée */
   isModifiedDureeMin: boolean;
+  /** Indique si l'arrivée est autorisée pour cette date */
+  arriveeAutorisee: boolean;
+  /** Indique si arriveeAutorisee a été modifiée */
+  isModifiedArriveeAutorisee: boolean;
+  /** Callback appelé quand l'utilisateur change arriveeAutorisee */
+  onArriveeAutoriseeChange: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
+  /** Nombre de cellules sélectionnées (pour déterminer si on doit propager la modification) */
+  selectedCellsCount: number;
   /** Indique si le prix est en cours d'édition */
   isEditing: boolean;
   /** Indique si la durée minimale est en cours d'édition */
@@ -46,6 +55,8 @@ export interface GridDataCellProps {
   isNonReservable: boolean;
   /** Indique si cette date est occupée par une réservation */
   isBooked: boolean;
+  /** Indique si l'hébergement a des types de tarifs associés */
+  hasRateTypes: boolean;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** État du drag (pour empêcher les clics pendant le drag) */
@@ -85,6 +96,10 @@ export function GridDataCell({
   isDragging,
   isModified,
   isModifiedDureeMin,
+  arriveeAutorisee,
+  isModifiedArriveeAutorisee,
+  onArriveeAutoriseeChange,
+  selectedCellsCount,
   isEditing,
   isEditingDureeMin,
   editingValue,
@@ -92,6 +107,7 @@ export function GridDataCell({
   isWeekend,
   isNonReservable,
   isBooked,
+  hasRateTypes,
   selectedRateTypeId,
   draggingState,
   justFinishedDragRef,
@@ -111,19 +127,22 @@ export function GridDataCell({
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
   // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
   // Si la date est passée, appliquer un fond sombre comme l'en-tête
+  // IMPORTANT : La sélection (isSelected/isDragging) doit être prioritaire sur isNonReservable
   let bgColor: string;
   if (isPast) {
     // Date passée : fond sombre identique à l'en-tête
     bgColor = darkTheme.gridHeaderBg;
-  } else if (isNonReservable) {
-    // Jour non réservable : fond gris avec opacité réduite
-    bgColor = darkTheme.bgTertiary;
   } else if (isDragging) {
+    // Drag en cours : fond de drag (prioritaire sur tout sauf isPast)
     bgColor = darkTheme.selectionDraggingBg;
   } else if (isSelected) {
+    // Sélection : fond de sélection (prioritaire sur isNonReservable)
     bgColor = isAvailable 
       ? darkTheme.selectionBg
       : darkTheme.infoBg;
+  } else if (isNonReservable) {
+    // Jour non réservable : fond gris avec opacité réduite (seulement si pas sélectionné)
+    bgColor = darkTheme.bgTertiary;
   } else {
     if (isWeekend) {
       bgColor = isAvailable ? darkTheme.successBgStrong : darkTheme.errorBgStrong;
@@ -143,8 +162,8 @@ export function GridDataCell({
       data-date={dateStr}
       data-acc-id={accId}
       onMouseDown={(e) => {
-        // Ne pas démarrer le drag si la date est occupée par une réservation ou passée
-        if (isBooked || isPast) {
+        // Ne pas démarrer le drag si la date est occupée par une réservation, passée, ou si l'hébergement n'a pas de types de tarifs
+        if (isBooked || isPast || !hasRateTypes) {
           e.preventDefault();
           e.stopPropagation();
           return;
@@ -168,6 +187,7 @@ export function GridDataCell({
         // On ne fait rien ici car le drag handler s'en occupe
       }}
       style={{
+        position: 'relative',
         padding: '8px 4px',
         background: bgColor,
         borderTop: 'none',
@@ -182,15 +202,28 @@ export function GridDataCell({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: (isBooked || isPast) ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
+        cursor: (isBooked || isPast || !hasRateTypes) ? 'not-allowed' : (isSelected ? 'pointer' : 'default'),
         // Les jours avec stock à 0 ont toujours une opacité de 0.5, même s'ils sont des weekends
         // Les jours non réservables ont une opacité normale (1.0)
         // Les dates passées ont une opacité réduite pour indiquer leur état désactivé
         opacity: isPast ? 0.6 : (!isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7))),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible'))} (stock: ${stock})`}
+      title={`${dateStr} — ${!hasRateTypes ? 'Aucun typeTarif associé' : (isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')))} (stock: ${stock})`}
     >
+      {/* Toggle switch pour l'arrivée autorisée en haut à gauche */}
+      {hasRateTypes && selectedRateTypeId !== null && (
+        <ArrivalToggle
+          isArrivalAllowed={arriveeAutorisee}
+          onChange={(isAllowed) => {
+            // Si plusieurs cellules sont sélectionnées, appliquer à toutes
+            const editAllSelection = selectedCellsCount > 1;
+            onArriveeAutoriseeChange(accId, dateStr, isAllowed, editAllSelection);
+          }}
+          disabled={isPast || isBooked}
+          isModified={isModifiedArriveeAutorisee}
+        />
+      )}
       {isEditing ? (
         <input
           type="number"
@@ -225,13 +258,14 @@ export function GridDataCell({
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}>
-          {/* Afficher le prix seulement si le stock est disponible */}
-          {stock > 0 && selectedRateTypeId !== null ? (
+          {/* Afficher le prix même si le stock est à 0 (pour permettre la modification) */}
+          {selectedRateTypeId !== null ? (
             price != null ? (
               <span 
                 onMouseDown={(e) => {
                   // Empêcher le drag de se déclencher
                   e.stopPropagation();
+                  e.preventDefault();
                 }}
                 onClick={(e) => {
                   if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
@@ -255,11 +289,39 @@ export function GridDataCell({
                 )}
               </span>
             ) : (
-              <span style={{ userSelect: 'none', color: darkTheme.textTertiary }}>-</span>
+              <span 
+                onMouseDown={(e) => {
+                  // Empêcher le drag de se déclencher
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onClick={(e) => {
+                  if (!hasRateTypes) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.stopPropagation();
+                  // CTRL+clic : éditer toute la sélection
+                  const editAllSelection = e.ctrlKey || e.metaKey;
+                  onCellClick(accId, dateStr, editAllSelection);
+                }}
+                style={{ 
+                  userSelect: 'none', 
+                  cursor: hasRateTypes && isSelected ? 'pointer' : 'default',
+                  color: darkTheme.textTertiary 
+                }}
+              >
+                -
+              </span>
             )
           ) : null}
-          {/* Afficher la durée minimale seulement si le stock est disponible */}
-          {stock > 0 && isEditingDureeMin ? (
+          {/* Afficher la durée minimale même si le stock est à 0 (pour permettre la modification) */}
+          {isEditingDureeMin ? (
             <input
               type="number"
               value={editingDureeMinValue}
@@ -292,13 +354,25 @@ export function GridDataCell({
               step="1"
               placeholder="-"
             />
-          ) : stock > 0 ? (
+          ) : (
             <span 
               onMouseDown={(e) => {
                 // Empêcher le drag de se déclencher
                 e.stopPropagation();
+                e.preventDefault();
               }}
               onClick={(e) => {
+                if (!hasRateTypes) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                // Ne pas autoriser le clic si le prix n'est pas défini
+                if (price === null || price === undefined || price === 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
                 if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
                   e.preventDefault();
                   return;
@@ -313,7 +387,8 @@ export function GridDataCell({
                 color: isNonReservable ? darkTheme.error : darkTheme.textMuted, 
                 fontWeight: 400,
                 marginTop: price != null ? 2 : 0,
-                cursor: isSelected ? 'pointer' : 'default',
+                cursor: (hasRateTypes && isSelected && price != null && price > 0) ? 'pointer' : 'not-allowed',
+                opacity: (price != null && price > 0) ? 1 : 0.5,
                 userSelect: 'none'
               }}
             >
@@ -322,7 +397,7 @@ export function GridDataCell({
                 <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
               )}
             </span>
-          ) : null}
+          )}
         </div>
       )}
     </div>
