@@ -419,6 +419,46 @@ Les fournisseurs sont définis dans `src/components/ProviderCalendars/config.ts`
 		- Le jour de la semaine (L, M, M, J, V, S, D) calculé via `(day.getDay() + 6) % 7`.
 		- La date au format `jour/mois` (ex: "15/3").
 
+2.1. **Indicateurs visuels de récapitulatif dans les en-têtes**
+	- **Principe général** : Les indicateurs visuels dans l'en-tête sont évalués pour une date donnée, sur l'ensemble des hébergements et pour l'ensemble des plans tarifaires. Ils ne tiennent pas compte du plan tarifaire sélectionné ni des hébergements filtrés.
+	- **Règle 1 : Couleur de fond (récapitulatif du stock)**
+		- Pour une date donnée, la couleur de fond de la cellule d'en-tête indique :
+			- **Rouge** : Tous les hébergements ont un stock = 0 pour cette date.
+			- **Fond par défaut (gris)** : Cas mixte (certains hébergements ont du stock, d'autres non) OU tous les hébergements ont un stock ≥ 1.
+		- **Règles de traitement** :
+			- Hébergements sans stock défini → considérés comme stock = 0.
+	- **Règle 2 : Couleur du texte (récapitulatif de l'arrivée autorisée)**
+		- Pour une date donnée, la couleur du texte de la date indique :
+			- **Orange** : Au moins une réservation démarre à cette date sur au moins un hébergement.
+			- **Vert** : Tous les hébergements avec du stock ont `arrivalAllowed = true` pour tous les plans tarifaires qui leur sont associés.
+			- **Rouge** : Tous les hébergements avec du stock ont `arrivalAllowed = false` pour tous les plans tarifaires qui leur sont associés OU tous les hébergements ont un stock à 0.
+			- **Couleur par défaut (gris/secondaire)** : Cas mixte.
+		- **Priorité** : L'orange a la priorité sur les autres couleurs (vert/rouge).
+		- **Règles de traitement** :
+			- Hébergements sans plans tarifaires associés → considérés comme non autorisés (rouge).
+			- Plans tarifaires sans données `arrivalAllowed` → considérés comme non autorisés (rouge).
+	- **Algorithme de calcul** :
+		- **Stock (couleur de fond)** :
+			- Pour chaque hébergement : récupérer le stock (défaut = 0 si non défini).
+			- Si tous les hébergements ont stock = 0 → rouge.
+			- Sinon → fond par défaut (cas mixte ou tous les hébergements ont stock ≥ 1).
+		- **Arrivée autorisée (couleur du texte)** :
+			- **Priorité 1 - Réservations** :
+				- Pour chaque hébergement : vérifier si au moins une réservation démarre à cette date (`arrivalDate === dateStr`).
+				- Si au moins un hébergement a une réservation qui démarre à cette date → orange.
+			- **Priorité 2 - Arrivée autorisée** :
+				- Vérifier d'abord si tous les hébergements ont un stock à 0 → rouge.
+				- Sinon, filtrer les hébergements : ne garder que ceux qui ont du stock (stock ≥ 1) pour cette date.
+				- Pour chaque hébergement avec du stock :
+					- Récupérer la liste des plans tarifaires associés.
+					- Si aucun plan tarifaire → considérer comme non autorisé.
+					- Sinon, pour chaque plan tarifaire :
+						- Récupérer `arrivalAllowed` (défaut = false si non défini).
+						- Si au moins un plan tarifaire a `arrivalAllowed = false` → l'hébergement est non autorisé.
+				- Si tous les hébergements avec du stock sont autorisés → vert.
+				- Si tous les hébergements avec du stock sont non autorisés → rouge.
+				- Sinon → couleur par défaut.
+
 3. **Lignes 2 à N+1 — Données par hébergement**
 	- Pour chaque hébergement dans la liste filtrée (`accommodations.filter(acc => selectedAccommodations.has(acc.idHebergement))`) :
 		- **Cellule 1** : nom de l'hébergement (`acc.nomHebergement`), texte simple, cellule sticky à gauche.

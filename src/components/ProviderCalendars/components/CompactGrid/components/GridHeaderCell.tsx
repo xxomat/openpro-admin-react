@@ -29,6 +29,14 @@ export interface GridHeaderCellProps {
   onHeaderClick: (dateStr: string) => void;
   /** Callback appelé quand l'utilisateur appuie sur la souris */
   onMouseDown: (e: React.MouseEvent, dateStr: string) => void;
+  /** Indique si tous les hébergements ont un stock = 0 pour cette date */
+  allAccommodationsHaveNoStock: boolean;
+  /** Indique si tous les hébergements ont arrivalAllowed = true pour tous leurs plans tarifaires */
+  allAccommodationsAllowArrival: boolean;
+  /** Indique si tous les hébergements ont arrivalAllowed = false pour tous leurs plans tarifaires */
+  allAccommodationsDisallowArrival: boolean;
+  /** Indique si au moins une réservation démarre à cette date sur au moins un hébergement */
+  hasBookingStartingOnDate: boolean;
 }
 
 /**
@@ -42,12 +50,50 @@ export function GridHeaderCell({
   draggingState,
   justFinishedDragRef,
   onHeaderClick,
-  onMouseDown
+  onMouseDown,
+  allAccommodationsHaveNoStock,
+  allAccommodationsAllowArrival,
+  allAccommodationsDisallowArrival,
+  hasBookingStartingOnDate
 }: GridHeaderCellProps): React.ReactElement {
   const weekDayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
   const dayOfWeek = (day.getDay() + 6) % 7; // 0 = Monday
   const isWeekend = day.getDay() === 0 || day.getDay() === 6;
   const isPast = isPastDate(dateStr);
+
+  // Déterminer la couleur de fond selon le récapitulatif du stock
+  const getBackgroundColor = (): string => {
+    // Priorité au drag et à la sélection si actifs
+    if (isDragging) {
+      return darkTheme.selectionDraggingBg;
+    }
+    if (isSelected) {
+      return darkTheme.selectionBg;
+    }
+    // Ensuite, appliquer les indicateurs de récapitulatif
+    if (allAccommodationsHaveNoStock) {
+      return darkTheme.errorBg; // Rouge comme les cellules sans stock
+    }
+    // Fond par défaut pour cas mixte ou tous les hébergements ont stock ≥ 1
+    return darkTheme.gridHeaderBg;
+  };
+
+  // Déterminer la couleur du texte selon le récapitulatif de l'arrivée autorisée
+  const getTextColor = (): string => {
+    // Priorité 1 : Orange si au moins une réservation démarre à cette date
+    if (hasBookingStartingOnDate) {
+      return darkTheme.warning; // Orange
+    }
+    // Priorité 2 : Vert/rouge selon l'arrivée autorisée
+    if (allAccommodationsAllowArrival) {
+      return darkTheme.success; // Vert
+    }
+    if (allAccommodationsDisallowArrival) {
+      return darkTheme.error; // Rouge
+    }
+    // Couleur par défaut pour cas mixte
+    return darkTheme.textSecondary;
+  };
 
   return (
     <div
@@ -74,11 +120,7 @@ export function GridHeaderCell({
       }}
       style={{
         padding: '8px 4px',
-        background: isDragging
-          ? darkTheme.selectionDraggingBg
-          : (isSelected 
-            ? darkTheme.selectionBg
-            : darkTheme.gridHeaderBg), // Toujours utiliser gridHeaderBg pour les dates passées
+        background: getBackgroundColor(),
         borderBottom: `2px solid ${darkTheme.borderColor}`,
         borderLeft: isDragging 
           ? `2px solid ${darkTheme.selectionBorder}` 
@@ -99,7 +141,12 @@ export function GridHeaderCell({
       }}
     >
       <div style={{ fontWeight: isWeekend ? 700 : 500 }}>{weekDayHeaders[dayOfWeek]}</div>
-      <div style={{ fontSize: 10, marginTop: 2, fontWeight: isWeekend ? 700 : 500 }}>
+      <div style={{ 
+        fontSize: 10, 
+        marginTop: 2, 
+        fontWeight: isWeekend ? 700 : 500,
+        color: getTextColor()
+      }}>
         {day.getDate()}/{day.getMonth() + 1}
       </div>
     </div>

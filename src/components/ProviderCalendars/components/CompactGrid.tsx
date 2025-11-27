@@ -31,6 +31,161 @@ function hasRateTypes(accId: number, rateTypeLinksByAccommodation: Record<number
 }
 
 /**
+ * Vérifie le récapitulatif du stock pour une date donnée
+ * 
+ * @param dateStr - Date au format YYYY-MM-DD
+ * @param accommodations - Liste de tous les hébergements
+ * @param stockByAccommodation - Map du stock par hébergement et date
+ * @returns Objet avec allAccommodationsHaveNoStock
+ */
+function getStockSummary(
+  dateStr: string,
+  accommodations: Accommodation[],
+  stockByAccommodation: Record<number, Record<string, number>>
+): { allAccommodationsHaveNoStock: boolean } {
+  if (accommodations.length === 0) {
+    return { allAccommodationsHaveNoStock: false };
+  }
+
+  let allHaveNoStock = true;
+
+  for (const acc of accommodations) {
+    const stock = stockByAccommodation[acc.accommodationId]?.[dateStr] ?? 0; // Défaut = 0 si non défini
+    
+    if (stock >= 1) {
+      allHaveNoStock = false;
+      break; // Dès qu'un hébergement a du stock, on peut arrêter
+    }
+  }
+
+  return {
+    allAccommodationsHaveNoStock: allHaveNoStock
+  };
+}
+
+/**
+ * Vérifie si au moins une réservation démarre à une date donnée
+ * 
+ * @param dateStr - Date au format YYYY-MM-DD
+ * @param accommodations - Liste de tous les hébergements
+ * @param bookingsByAccommodation - Map des réservations par hébergement
+ * @returns true si au moins une réservation démarre à cette date
+ */
+function hasBookingStartingOnDate(
+  dateStr: string,
+  accommodations: Accommodation[],
+  bookingsByAccommodation: Record<number, BookingDisplay[]>
+): boolean {
+  for (const acc of accommodations) {
+    const bookings = bookingsByAccommodation[acc.accommodationId] || [];
+    // Vérifier si au moins une réservation démarre à cette date
+    if (bookings.some(booking => booking.arrivalDate === dateStr)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Vérifie le récapitulatif de l'arrivée autorisée pour une date donnée
+ * 
+ * @param dateStr - Date au format YYYY-MM-DD
+ * @param accommodations - Liste de tous les hébergements
+ * @param arrivalAllowedByAccommodation - Map des arrivées autorisées par hébergement, date et type de tarif
+ * @param rateTypeLinksByAccommodation - Map des IDs de types de tarif liés par hébergement
+ * @param stockByAccommodation - Map du stock par hébergement et date
+ * @returns Objet avec allAccommodationsAllowArrival et allAccommodationsDisallowArrival
+ */
+function getArrivalAllowedSummary(
+  dateStr: string,
+  accommodations: Accommodation[],
+  arrivalAllowedByAccommodation: Record<number, Record<string, Record<number, boolean>>>,
+  rateTypeLinksByAccommodation: Record<number, number[]>,
+  stockByAccommodation: Record<number, Record<string, number>>
+): { allAccommodationsAllowArrival: boolean; allAccommodationsDisallowArrival: boolean } {
+  if (accommodations.length === 0) {
+    return { allAccommodationsAllowArrival: false, allAccommodationsDisallowArrival: false };
+  }
+
+  // Vérifier d'abord si tous les hébergements ont un stock à 0
+  let allHaveNoStock = true;
+  for (const acc of accommodations) {
+    const stock = stockByAccommodation[acc.accommodationId]?.[dateStr] ?? 0; // Défaut = 0 si non défini
+    if (stock >= 1) {
+      allHaveNoStock = false;
+      break;
+    }
+  }
+  
+  // Si tous les hébergements ont un stock à 0, retourner rouge
+  if (allHaveNoStock) {
+    return { allAccommodationsAllowArrival: false, allAccommodationsDisallowArrival: true };
+  }
+
+  let allAllowArrival = true;
+  let allDisallowArrival = true;
+  let hasAccommodationsWithStock = false;
+
+  for (const acc of accommodations) {
+    // Ne garder que les hébergements qui ont du stock (stock ≥ 1) pour cette date
+    const stock = stockByAccommodation[acc.accommodationId]?.[dateStr] ?? 0; // Défaut = 0 si non défini
+    if (stock < 1) {
+      continue; // Ignorer cet hébergement car il n'a pas de stock
+    }
+    
+    hasAccommodationsWithStock = true;
+    const linkedRateTypeIds = rateTypeLinksByAccommodation[acc.accommodationId];
+    
+    // Si aucun plan tarifaire → considéré comme non autorisé
+    if (!linkedRateTypeIds || linkedRateTypeIds.length === 0) {
+      allAllowArrival = false;
+      continue;
+    }
+
+    const arrivalAllowedMap = arrivalAllowedByAccommodation[acc.accommodationId]?.[dateStr];
+    
+    // Si pas de données d'arrivée pour cette date → considéré comme non autorisé
+    if (!arrivalAllowedMap) {
+      allAllowArrival = false;
+      continue;
+    }
+
+    // Vérifier tous les plans tarifaires associés
+    let accAllowsArrival = true;
+    let accDisallowsArrival = true;
+
+    for (const rateTypeId of linkedRateTypeIds) {
+      const arrivalAllowed = arrivalAllowedMap[rateTypeId];
+      // Défaut = false si non défini (cas rare : plan tarifaire sans tarif)
+      if (arrivalAllowed === true) {
+        accDisallowsArrival = false;
+      } else {
+        accAllowsArrival = false;
+      }
+    }
+
+    // Si l'hébergement a au moins un plan tarifaire avec arrivalAllowed = false, il est non autorisé
+    if (!accAllowsArrival) {
+      allAllowArrival = false;
+    }
+    // Si l'hébergement a tous ses plans tarifaires avec arrivalAllowed = false, il est complètement non autorisé
+    if (!accDisallowsArrival) {
+      allDisallowArrival = false;
+    }
+  }
+
+  // Si aucun hébergement avec du stock, retourner false pour les deux
+  if (!hasAccommodationsWithStock) {
+    return { allAccommodationsAllowArrival: false, allAccommodationsDisallowArrival: false };
+  }
+
+  return {
+    allAccommodationsAllowArrival: allAllowArrival,
+    allAccommodationsDisallowArrival: allDisallowArrival
+  };
+}
+
+/**
  * Props du composant CompactGrid
  */
 export interface CompactGridProps {
@@ -279,7 +434,7 @@ export function CompactGrid({
           // Si toutes les cellules sont occupées, la colonne n'est pas sélectionnée
           const selectableAccommodations = accommodations.filter(acc => {
             const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
-            const accHasRateTypes = hasRateTypes(acc.accommodationId, ratesByAccommodation);
+            const accHasRateTypes = hasRateTypes(acc.accommodationId, rateTypeLinksByAccommodation);
             return !isBooked && accHasRateTypes;
           });
           
@@ -292,11 +447,26 @@ export function CompactGrid({
           // Une colonne est en drag si au moins une cellule sélectionnable est en drag
           const isDragging = accommodations.some(acc => {
             const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
-            const accHasRateTypes = hasRateTypes(acc.accommodationId, ratesByAccommodation);
+            const accHasRateTypes = hasRateTypes(acc.accommodationId, rateTypeLinksByAccommodation);
             if (isBooked || !accHasRateTypes) return false; // Ignorer les dates occupées et les hébergements sans types de tarifs
             const cellKey = `${acc.accommodationId}|${dateStr}`;
             return draggingCells.has(cellKey);
           });
+          
+          // Calculer les indicateurs visuels de récapitulatif
+          const stockSummary = getStockSummary(dateStr, accommodations, stockByAccommodation);
+          const arrivalSummary = getArrivalAllowedSummary(
+            dateStr,
+            accommodations,
+            arrivalAllowedByAccommodation,
+            rateTypeLinksByAccommodation,
+            stockByAccommodation
+          );
+          const hasBookingStarting = hasBookingStartingOnDate(
+            dateStr,
+            accommodations,
+            filteredBookingsByAccommodation
+          );
           
           return (
             <GridHeaderCell
@@ -309,6 +479,10 @@ export function CompactGrid({
               justFinishedDragRef={justFinishedDragRef}
               onHeaderClick={handleHeaderClick}
               onMouseDown={handleMouseDown}
+              allAccommodationsHaveNoStock={stockSummary.allAccommodationsHaveNoStock}
+              allAccommodationsAllowArrival={arrivalSummary.allAccommodationsAllowArrival}
+              allAccommodationsDisallowArrival={arrivalSummary.allAccommodationsDisallowArrival}
+              hasBookingStartingOnDate={hasBookingStarting}
             />
           );
         })}
