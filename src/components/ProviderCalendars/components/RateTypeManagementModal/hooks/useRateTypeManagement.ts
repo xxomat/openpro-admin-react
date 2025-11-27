@@ -119,7 +119,7 @@ export function useRateTypeManagement(supplierId: number, accommodations: Accomm
         const response = await apiListAccommodationRateTypeLinks(supplierId, acc.accommodationId);
         const linkSet = new Set<number>();
         (response.liaisonHebergementTypeTarifs || []).forEach((link) => {
-          linkSet.add(link.rateTypeId);
+          linkSet.add(link.idTypeTarif);
         });
         links[acc.accommodationId] = linkSet;
       } catch (err) {

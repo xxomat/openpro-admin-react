@@ -169,10 +169,10 @@ export function AccommodationLinkManager({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {accommodations.map((acc) => {
-              const isLinked = localLinks.has(acc.idHebergement);
+              const isLinked = localLinks.has(acc.accommodationId);
               return (
                 <label
-                  key={acc.idHebergement}
+                  key={acc.accommodationId}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -187,7 +187,7 @@ export function AccommodationLinkManager({
                   <input
                     type="checkbox"
                     checked={isLinked}
-                    onChange={() => handleToggleLink(acc.idHebergement)}
+                    onChange={() => handleToggleLink(acc.accommodationId)}
                     disabled={isLoading || isSaving}
                     style={{
                       width: 18,
@@ -199,7 +199,7 @@ export function AccommodationLinkManager({
                     color: darkTheme.textPrimary, 
                     fontSize: 14 
                   }}>
-                    {acc.nomHebergement} (ID: {acc.idHebergement})
+                    {acc.accommodationName} (ID: {acc.accommodationId})
                   </span>
                 </label>
               );

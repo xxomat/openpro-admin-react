@@ -75,7 +75,7 @@ export function RateTypeManagementModal({
 
   // Recharger les données quand la modale s'ouvre
   React.useEffect(() => {
-    if (isOpen && idFournisseur) {
+    if (isOpen && supplierId) {
       // Le hook useRateTypeManagement charge déjà les données dans son useEffect
       // mais on peut forcer un rechargement à l'ouverture de la modale
     }
@@ -264,7 +264,7 @@ export function RateTypeManagementModal({
                 fontSize: 12,
                 margin: '4px 0 0 0'
               }}>
-                Fournisseur #{idFournisseur}
+                Fournisseur #{supplierId}
               </p>
             </div>
             {mode === 'list' && (
