@@ -48,6 +48,8 @@ export interface CompactGridProps {
   rateTypeLinksByAccommodation: Record<number, number[]>;
   /** Map des durées minimales par hébergement et date */
   dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>;
+  /** Map des arrivées autorisées par hébergement et date */
+  arriveeAutoriseeByAccommodation: Record<number, Record<string, Record<number, boolean>>>;
   /** Map des réservations par hébergement */
   bookingsByAccommodation: Record<number, BookingDisplay[]>;
   /** Set des cellules sélectionnées au format "accId|dateStr" */
@@ -60,10 +62,14 @@ export interface CompactGridProps {
   modifiedRates: Set<string>;
   /** Set des identifiants de durées minimales modifiées (format: "accId-dateStr") */
   modifiedDureeMin: Set<string>;
+  /** Set des identifiants d'arrivées autorisées modifiées (format: "accId-dateStr") */
+  modifiedArriveeAutorisee: Set<string>;
   /** Callback appelé quand un prix est mis à jour */
   onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** Callback appelé quand une durée minimale est mise à jour */
   onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
+  /** Callback appelé quand arriveeAutorisee est mis à jour */
+  onArriveeAutoriseeUpdate: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** Map des jours non réservables par hébergement (clé: idHebergement, valeur: Set des dates non réservables) */
@@ -84,13 +90,16 @@ export function CompactGrid({
   ratesByAccommodation,
   rateTypeLinksByAccommodation,
   dureeMinByAccommodation,
+  arriveeAutoriseeByAccommodation,
   bookingsByAccommodation,
   selectedCells,
   onSelectedCellsChange,
   modifiedRates,
   modifiedDureeMin,
+  modifiedArriveeAutorisee,
   onRateUpdate,
   onDureeMinUpdate,
+  onArriveeAutoriseeUpdate,
   selectedRateTypeId,
   nonReservableDaysByAccommodation,
   bookedDatesByAccommodation,
@@ -378,6 +387,10 @@ export function CompactGrid({
                 const dureeMin = selectedRateTypeId !== null
                   ? (dureeMinMap[dateStr]?.[selectedRateTypeId] ?? null)
                   : null;
+                const arriveeAutoriseeMap = arriveeAutoriseeByAccommodation[acc.idHebergement] ?? {};
+                const arriveeAutorisee = selectedRateTypeId !== null
+                  ? (arriveeAutoriseeMap[dateStr]?.[selectedRateTypeId] ?? true) // Par défaut true
+                  : true;
                 const cellKey = `${acc.idHebergement}|${dateStr}`;
                 const isSelected = selectedCells.has(cellKey);
                 const isDragging = draggingCells.has(cellKey);
@@ -385,6 +398,7 @@ export function CompactGrid({
                   ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
                   : false;
                 const isModifiedDureeMin = modifiedDureeMin.has(`${acc.idHebergement}-${dateStr}`);
+                const isModifiedArriveeAutorisee = modifiedArriveeAutorisee.has(`${acc.idHebergement}-${dateStr}`);
                 const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
                 const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
@@ -403,6 +417,10 @@ export function CompactGrid({
                     isDragging={isDragging}
                     isModified={isModified}
                     isModifiedDureeMin={isModifiedDureeMin}
+                    arriveeAutorisee={arriveeAutorisee}
+                    isModifiedArriveeAutorisee={isModifiedArriveeAutorisee}
+                    onArriveeAutoriseeChange={onArriveeAutoriseeUpdate}
+                    selectedCellsCount={selectedCells.size}
                     isEditing={isEditing}
                     isEditingDureeMin={isEditingDureeMin}
                     editingValue={editingValue}

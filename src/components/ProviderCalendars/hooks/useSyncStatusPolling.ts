@@ -50,7 +50,6 @@ export function useSyncStatusPolling(
         );
 
         if (!response.ok) {
-          console.warn('Failed to fetch sync status:', response.status);
           return;
         }
 
@@ -69,7 +68,7 @@ export function useSyncStatusPolling(
           lastKnownChangeRef.current = status.lastChange;
         }
       } catch (error) {
-        console.error('Error polling sync status:', error);
+        // Ignore polling errors
       }
     };
 

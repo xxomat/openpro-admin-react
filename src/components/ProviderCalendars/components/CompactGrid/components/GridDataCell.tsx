@@ -9,6 +9,7 @@ import React from 'react';
 import type { EditingCell } from '../hooks/useGridEditing';
 import { darkTheme } from '../../../utils/theme';
 import { isPastDate } from '../../../utils/dateUtils';
+import { ArrivalToggle } from './ArrivalToggle';
 
 /**
  * Props du composant GridDataCell
@@ -32,6 +33,14 @@ export interface GridDataCellProps {
   isModified: boolean;
   /** Indique si la durée minimale a été modifiée */
   isModifiedDureeMin: boolean;
+  /** Indique si l'arrivée est autorisée pour cette date */
+  arriveeAutorisee: boolean;
+  /** Indique si arriveeAutorisee a été modifiée */
+  isModifiedArriveeAutorisee: boolean;
+  /** Callback appelé quand l'utilisateur change arriveeAutorisee */
+  onArriveeAutoriseeChange: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
+  /** Nombre de cellules sélectionnées (pour déterminer si on doit propager la modification) */
+  selectedCellsCount: number;
   /** Indique si le prix est en cours d'édition */
   isEditing: boolean;
   /** Indique si la durée minimale est en cours d'édition */
@@ -87,6 +96,10 @@ export function GridDataCell({
   isDragging,
   isModified,
   isModifiedDureeMin,
+  arriveeAutorisee,
+  isModifiedArriveeAutorisee,
+  onArriveeAutoriseeChange,
+  selectedCellsCount,
   isEditing,
   isEditingDureeMin,
   editingValue,
@@ -174,6 +187,7 @@ export function GridDataCell({
         // On ne fait rien ici car le drag handler s'en occupe
       }}
       style={{
+        position: 'relative',
         padding: '8px 4px',
         background: bgColor,
         borderTop: 'none',
@@ -197,6 +211,19 @@ export function GridDataCell({
       }}
       title={`${dateStr} — ${!hasRateTypes ? 'Aucun typeTarif associé' : (isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')))} (stock: ${stock})`}
     >
+      {/* Toggle switch pour l'arrivée autorisée en haut à gauche */}
+      {hasRateTypes && selectedRateTypeId !== null && (
+        <ArrivalToggle
+          isArrivalAllowed={arriveeAutorisee}
+          onChange={(isAllowed) => {
+            // Si plusieurs cellules sont sélectionnées, appliquer à toutes
+            const editAllSelection = selectedCellsCount > 1;
+            onArriveeAutoriseeChange(accId, dateStr, isAllowed, editAllSelection);
+          }}
+          disabled={isPast || isBooked}
+          isModified={isModifiedArriveeAutorisee}
+        />
+      )}
       {isEditing ? (
         <input
           type="number"
@@ -238,6 +265,7 @@ export function GridDataCell({
                 onMouseDown={(e) => {
                   // Empêcher le drag de se déclencher
                   e.stopPropagation();
+                  e.preventDefault();
                 }}
                 onClick={(e) => {
                   if (justFinishedDragRef.current || (draggingState && draggingState.isDragging)) {
@@ -265,6 +293,7 @@ export function GridDataCell({
                 onMouseDown={(e) => {
                   // Empêcher le drag de se déclencher
                   e.stopPropagation();
+                  e.preventDefault();
                 }}
                 onClick={(e) => {
                   if (!hasRateTypes) {
@@ -330,6 +359,7 @@ export function GridDataCell({
               onMouseDown={(e) => {
                 // Empêcher le drag de se déclencher
                 e.stopPropagation();
+                e.preventDefault();
               }}
               onClick={(e) => {
                 if (!hasRateTypes) {

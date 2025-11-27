@@ -154,7 +154,6 @@ export function BookingModal({
       }
       onClose();
     } catch (error) {
-      console.error('Error creating bookings:', error);
       setCreationError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la création des réservations');
     } finally {
       setIsCreating(false);

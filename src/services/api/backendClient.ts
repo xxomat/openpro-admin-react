@@ -95,6 +95,7 @@ export async function fetchRates(
   promo: Record<string, boolean>;
   rateTypes: Record<string, string[]>;
   dureeMin: Record<string, Record<number, number | null>>;
+  arriveeAutorisee: Record<string, Record<number, boolean>>;
 }> {
   const res = await fetch(
     `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rates?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
@@ -146,6 +147,7 @@ export interface BulkUpdateDate {
   rateTypeId?: number;       // présent si tarif modifié
   price?: number;            // présent si tarif modifié
   dureeMin?: number | null;  // présent si dureeMin modifiée
+  arriveeAutorisee?: boolean; // présent si arriveeAutorisee modifié
 }
 
 /**

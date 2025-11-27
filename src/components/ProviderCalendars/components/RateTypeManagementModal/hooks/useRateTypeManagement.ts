@@ -104,7 +104,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des types de tarif';
       setError(errorMessage);
-      console.error('Error loading rate types:', err);
     } finally {
       setLoading(false);
     }
@@ -124,7 +123,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
         });
         links[acc.idHebergement] = linkSet;
       } catch (err) {
-        console.error(`Error loading links for accommodation ${acc.idHebergement}:`, err);
         links[acc.idHebergement] = new Set();
       }
     }
@@ -156,7 +154,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création du type de tarif';
       setError(errorMessage);
-      console.error('Error creating rate type:', err);
       return false;
     } finally {
       setLoading(false);
@@ -176,7 +173,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la modification du type de tarif';
       setError(errorMessage);
-      console.error('Error updating rate type:', err);
       return false;
     } finally {
       setLoading(false);
@@ -200,7 +196,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la suppression du type de tarif';
       setError(errorMessage);
-      console.error('Error deleting rate type:', err);
       return false;
     } finally {
       setLoading(false);
@@ -227,7 +222,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la liaison';
       setError(errorMessage);
-      console.error('Error linking rate type:', err);
       return false;
     }
   }, [idFournisseur]);
@@ -253,7 +247,6 @@ export function useRateTypeManagement(idFournisseur: number, accommodations: Acc
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la suppression de la liaison';
       setError(errorMessage);
-      console.error('Error unlinking rate type:', err);
       return false;
     }
   }, [idFournisseur]);

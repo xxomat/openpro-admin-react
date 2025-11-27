@@ -102,7 +102,6 @@ export function AccommodationLinkManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde des liaisons';
       setError(errorMessage);
-      console.error('Error saving links:', err);
     } finally {
       setIsSaving(false);
     }
