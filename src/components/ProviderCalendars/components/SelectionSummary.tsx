@@ -49,13 +49,13 @@ export function SelectionSummary({
       const accId = parseInt(accIdStr, 10);
       if (isNaN(accId) || !dateStr) continue;
       
-      const acc = selectedAccommodations.find(a => a.idHebergement === accId);
+      const acc = selectedAccommodations.find(a => a.accommodationId === accId);
       if (!acc) continue;
       
       if (!cellsByDate.has(dateStr)) {
         cellsByDate.set(dateStr, []);
       }
-      cellsByDate.get(dateStr)!.push({ accId, accName: acc.nomHebergement });
+      cellsByDate.get(dateStr)!.push({ accId, accName: acc.accommodationName });
     }
     
     const sortedDates = Array.from(cellsByDate.keys()).sort();
@@ -67,11 +67,11 @@ export function SelectionSummary({
       const accId = parseInt(accIdStr, 10);
       if (isNaN(accId) || !dateStr) continue;
       
-      const acc = selectedAccommodations.find(a => a.idHebergement === accId);
+      const acc = selectedAccommodations.find(a => a.accommodationId === accId);
       if (!acc) continue;
       
       if (!accommodationsMap.has(accId)) {
-        accommodationsMap.set(accId, { accName: acc.nomHebergement, dates: [] });
+        accommodationsMap.set(accId, { accName: acc.accommodationName, dates: [] });
       }
       accommodationsMap.get(accId)!.dates.push(dateStr);
     }

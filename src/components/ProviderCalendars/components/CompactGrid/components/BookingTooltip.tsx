@@ -33,45 +33,45 @@ export function BookingTooltip({
   const reference = booking.reference || 'Non renseigné';
   
   // Plateforme de réservation
-  const plateformeReservation = booking.plateformeReservation;
+  const reservationPlatform = booking.reservationPlatform;
 
   // Section 2 - Client
   const clientParts: string[] = [];
-  if (booking.clientCivilite) clientParts.push(booking.clientCivilite);
-  if (booking.clientNom) clientParts.push(booking.clientNom);
+  if (booking.clientTitle) clientParts.push(booking.clientTitle);
+  if (booking.clientName) clientParts.push(booking.clientName);
   const clientFullName = clientParts.length > 0 ? clientParts.join(' ') : 'Client inconnu';
   const clientEmail = booking.clientEmail || 'Non renseigné';
-  const clientTelephone = booking.clientTelephone || 'Non renseigné';
+  const clientPhone = booking.clientPhone || 'Non renseigné';
 
   // Section Adresse (affichée seulement si au moins un champ est présent)
-  const hasAdresse = booking.clientAdresse || booking.clientCodePostal || booking.clientVille || booking.clientPays;
-  const adresseParts: string[] = [];
-  if (booking.clientAdresse) adresseParts.push(booking.clientAdresse);
-  if (booking.clientCodePostal || booking.clientVille) {
-    const villeParts: string[] = [];
-    if (booking.clientCodePostal) villeParts.push(booking.clientCodePostal);
-    if (booking.clientVille) villeParts.push(booking.clientVille);
-    if (villeParts.length > 0) adresseParts.push(villeParts.join(' '));
+  const hasAddress = booking.clientAddress || booking.clientPostalCode || booking.clientCity || booking.clientCountry;
+  const addressParts: string[] = [];
+  if (booking.clientAddress) addressParts.push(booking.clientAddress);
+  if (booking.clientPostalCode || booking.clientCity) {
+    const cityParts: string[] = [];
+    if (booking.clientPostalCode) cityParts.push(booking.clientPostalCode);
+    if (booking.clientCity) cityParts.push(booking.clientCity);
+    if (cityParts.length > 0) addressParts.push(cityParts.join(' '));
   }
-  if (booking.clientPays) adresseParts.push(booking.clientPays);
-  const adresseComplete = adresseParts.length > 0 ? adresseParts.join(', ') : null;
+  if (booking.clientCountry) addressParts.push(booking.clientCountry);
+  const addressComplete = addressParts.length > 0 ? addressParts.join(', ') : null;
 
   // Section Entreprise (affichée seulement si au moins un champ est présent)
-  const hasEntreprise = booking.clientSociete || booking.clientSiret || booking.clientTva;
+  const hasCompany = booking.clientCompany || booking.clientSiret || booking.clientVat;
 
   // Section Remarques
-  const hasRemarques = booking.clientRemarques && booking.clientRemarques.trim().length > 0;
+  const hasNotes = booking.clientNotes && booking.clientNotes.trim().length > 0;
 
   // Section 3 - Dates et séjour
-  const dateArrivee = booking.dateArrivee ? formatDateDisplay(booking.dateArrivee) : 'Non renseigné';
-  const dateDepart = booking.dateDepart ? formatDateDisplay(booking.dateDepart) : 'Non renseigné';
-  const nbNuits = booking.nbNuits != null ? `${booking.nbNuits}` : '?';
-  const nbPersonnes = booking.nbPersonnes != null ? `${booking.nbPersonnes}` : '?';
+  const arrivalDate = booking.arrivalDate ? formatDateDisplay(booking.arrivalDate) : 'Non renseigné';
+  const departureDate = booking.departureDate ? formatDateDisplay(booking.departureDate) : 'Non renseigné';
+  const numberOfNights = booking.numberOfNights != null ? `${booking.numberOfNights}` : '?';
+  const numberOfPersons = booking.numberOfPersons != null ? `${booking.numberOfPersons}` : '?';
 
   // Section 4 - Paiement et tarif
-  const montantTotal = booking.montantTotal != null ? `${Math.round(booking.montantTotal)}` : '?';
-  const devise = booking.devise || 'EUR';
-  const typeTarifLibelle = booking.typeTarifLibelle || 'Non renseigné';
+  const totalAmount = booking.totalAmount != null ? `${Math.round(booking.totalAmount)}` : '?';
+  const currency = booking.currency || 'EUR';
+  const rateTypeLabel = booking.rateTypeLabel || 'Non renseigné';
 
   return (
     <div
@@ -103,13 +103,13 @@ export function BookingTooltip({
           paddingBottom: 8 
         }}>
           <span>Réf: {reference}</span>
-          {plateformeReservation && (
+          {reservationPlatform && (
             <span style={{ 
               fontSize: 12, 
-              color: getBookingColor(plateformeReservation), 
+              color: getBookingColor(reservationPlatform), 
               fontWeight: 500 
             }}>
-              {plateformeReservation}
+              {reservationPlatform}
             </span>
           )}
         </div>
@@ -126,30 +126,30 @@ export function BookingTooltip({
             </div>
             <div style={{ color: darkTheme.textSecondary }}>
               <span style={{ marginRight: 6 }}>📞</span>
-              {clientTelephone}
+              {clientPhone}
             </div>
           </div>
         </div>
 
         {/* Section Adresse */}
-        {hasAdresse && adresseComplete && (
+        {hasAddress && addressComplete && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
             <div style={{ color: darkTheme.textSecondary }}>
               <span style={{ marginRight: 6 }}>📍</span>
-              {adresseComplete}
+              {addressComplete}
             </div>
           </div>
         )}
 
         {/* Section Entreprise */}
-        {hasEntreprise && (
+        {hasCompany && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
             <div style={{ fontWeight: 500, color: darkTheme.textPrimary, marginBottom: 2 }}>
               🏢 Entreprise
             </div>
-            {booking.clientSociete && (
+            {booking.clientCompany && (
               <div style={{ color: darkTheme.textSecondary }}>
-                <span style={{ fontWeight: 500 }}>Société:</span> {booking.clientSociete}
+                <span style={{ fontWeight: 500 }}>Société:</span> {booking.clientCompany}
               </div>
             )}
             {booking.clientSiret && (
@@ -157,20 +157,20 @@ export function BookingTooltip({
                 <span style={{ fontWeight: 500 }}>SIRET:</span> {booking.clientSiret}
               </div>
             )}
-            {booking.clientTva && (
+            {booking.clientVat && (
               <div style={{ color: darkTheme.textSecondary }}>
-                <span style={{ fontWeight: 500 }}>TVA:</span> {booking.clientTva}
+                <span style={{ fontWeight: 500 }}>TVA:</span> {booking.clientVat}
               </div>
             )}
           </div>
         )}
 
         {/* Section Remarques */}
-        {hasRemarques && (
+        {hasNotes && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, borderTop: `1px solid ${darkTheme.borderColor}`, paddingTop: 8 }}>
             <div style={{ color: darkTheme.textSecondary, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               <span style={{ marginRight: 6 }}>📝</span>
-              {booking.clientRemarques}
+              {booking.clientNotes}
             </div>
           </div>
         )}
@@ -179,15 +179,15 @@ export function BookingTooltip({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
           <div style={{ color: darkTheme.textSecondary }}>
             <span style={{ marginRight: 6 }}>📅</span>
-            <span style={{ fontWeight: 500 }}>Arrivée:</span> {dateArrivee}
+            <span style={{ fontWeight: 500 }}>Arrivée:</span> {arrivalDate}
           </div>
           <div style={{ color: darkTheme.textSecondary }}>
             <span style={{ marginRight: 6 }}>📅</span>
-            <span style={{ fontWeight: 500 }}>Départ:</span> {dateDepart}
+            <span style={{ fontWeight: 500 }}>Départ:</span> {departureDate}
           </div>
           <div style={{ color: darkTheme.textSecondary }}>
             <span style={{ marginRight: 6 }}>🌙</span>
-            {nbNuits} nuits • <span style={{ marginLeft: 4 }}>👥</span> {nbPersonnes} personnes
+            {numberOfNights} nuits • <span style={{ marginLeft: 4 }}>👥</span> {numberOfPersons} personnes
           </div>
         </div>
 
@@ -195,12 +195,12 @@ export function BookingTooltip({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, borderTop: `1px solid ${darkTheme.borderColor}`, paddingTop: 8 }}>
           <div style={{ color: darkTheme.textSecondary }}>
             <span style={{ marginRight: 6 }}>💰</span>
-            {montantTotal}€ {devise}
-            {typeTarifLibelle && typeTarifLibelle !== 'Non renseigné' && (
+            {totalAmount}€ {currency}
+            {rateTypeLabel && rateTypeLabel !== 'Non renseigné' && (
               <>
                 <span style={{ margin: '0 6px' }}>•</span>
                 <span style={{ marginRight: 6 }}>🏷️</span>
-                {typeTarifLibelle}
+                {rateTypeLabel}
               </>
             )}
           </div>

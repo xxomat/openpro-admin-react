@@ -8,6 +8,8 @@
       "@/services/*": ["src/services/*"],
       "@/components/*": ["src/components/*"],
       "@/types": ["src/components/ProviderCalendars/types"]
-    }
+    },
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }

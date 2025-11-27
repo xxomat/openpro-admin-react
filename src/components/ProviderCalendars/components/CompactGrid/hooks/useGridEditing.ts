@@ -27,37 +27,37 @@ export interface EditingCell {
  * 
  * @param selectedCells - Cellules actuellement sélectionnées (format: "accId|dateStr")
  * @param ratesByAccommodation - Map des tarifs par hébergement et date
- * @param dureeMinByAccommodation - Map des durées minimales par hébergement et date
+ * @param minDurationByAccommodation - Map des durées minimales par hébergement et date
  * @param selectedRateTypeId - ID du type de tarif sélectionné
  * @param onRateUpdate - Callback pour mettre à jour un prix
- * @param onDureeMinUpdate - Callback pour mettre à jour une durée minimale
+ * @param onMinDurationUpdate - Callback pour mettre à jour une durée minimale
  * @returns État d'édition et gestionnaires
  */
 export function useGridEditing(
   selectedCells: Set<string>,
   ratesByAccommodation: Record<number, Record<string, Record<number, number>>>,
-  dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>,
+  minDurationByAccommodation: Record<number, Record<string, Record<number, number | null>>>,
   selectedRateTypeId: number | null,
   onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: EditingCell | null) => void,
-  onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: EditingCell | null) => void
+  onMinDurationUpdate: (newMinDuration: number | null, editAllSelection?: boolean, editingCell?: EditingCell | null) => void
 ): {
   editingCell: EditingCell | null;
   editingValue: string;
-  editingDureeMinCell: EditingCell | null;
-  editingDureeMinValue: string;
+  editingMinDurationCell: EditingCell | null;
+  editingMinDurationValue: string;
   setEditingValue: React.Dispatch<React.SetStateAction<string>>;
-  setEditingDureeMinValue: React.Dispatch<React.SetStateAction<string>>;
+  setEditingMinDurationValue: React.Dispatch<React.SetStateAction<string>>;
   handleCellClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
-  handleDureeMinClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
+  handleMinDurationClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
   handleEditSubmit: () => void;
-  handleDureeMinSubmit: () => void;
+  handleMinDurationSubmit: () => void;
   handleEditCancel: () => void;
-  handleDureeMinCancel: () => void;
+  handleMinDurationCancel: () => void;
 } {
   const [editingCell, setEditingCell] = React.useState<EditingCell | null>(null);
   const [editingValue, setEditingValue] = React.useState<string>('');
-  const [editingDureeMinCell, setEditingDureeMinCell] = React.useState<EditingCell | null>(null);
-  const [editingDureeMinValue, setEditingDureeMinValue] = React.useState<string>('');
+  const [editingMinDurationCell, setEditingMinDurationCell] = React.useState<EditingCell | null>(null);
+  const [editingMinDurationValue, setEditingMinDurationValue] = React.useState<string>('');
 
   // Gestionnaire pour démarrer l'édition d'une cellule (prix)
   const handleCellClick = React.useCallback((accId: number, dateStr: string, editAllSelection: boolean = false) => {
@@ -75,9 +75,9 @@ export function useGridEditing(
       }
     }
     
-    if (editingDureeMinCell) {
-      setEditingDureeMinCell(null);
-      setEditingDureeMinValue('');
+    if (editingMinDurationCell) {
+      setEditingMinDurationCell(null);
+      setEditingMinDurationValue('');
     }
     
     // Si édition de toute la sélection, trouver une valeur représentative
@@ -105,10 +105,10 @@ export function useGridEditing(
     
     setEditingCell({ accId, dateStr, editAllSelection });
     setEditingValue(currentPrice != null ? String(Math.round(currentPrice)) : '');
-  }, [selectedCells, ratesByAccommodation, editingDureeMinCell, selectedRateTypeId]);
+  }, [selectedCells, ratesByAccommodation, editingMinDurationCell, selectedRateTypeId]);
 
   // Gestionnaire pour démarrer l'édition d'une cellule (durée minimale)
-  const handleDureeMinClick = React.useCallback((accId: number, dateStr: string, editAllSelection: boolean = false) => {
+  const handleMinDurationClick = React.useCallback((accId: number, dateStr: string, editAllSelection: boolean = false) => {
     const cellKey = `${accId}|${dateStr}`;
     
     // Si CTRL+clic, la cellule doit faire partie de la sélection
@@ -156,7 +156,7 @@ export function useGridEditing(
     }
     
     // Si édition de toute la sélection, trouver une valeur représentative
-    let currentDureeMin: number | null = null;
+    let currentMinDuration: number | null = null;
     if (selectedRateTypeId !== null) {
       if (editAllSelection) {
         // Prendre la durée min de la première cellule sélectionnée qui en a une
@@ -165,20 +165,20 @@ export function useGridEditing(
           const cellAccId = parseInt(cellAccIdStr, 10);
           if (isNaN(cellAccId) || !cellDateStr) continue;
           
-          const dureeMin = dureeMinByAccommodation[cellAccId]?.[cellDateStr]?.[selectedRateTypeId];
-          if (dureeMin !== undefined && dureeMin !== null && dureeMin > 0) {
-            currentDureeMin = dureeMin;
+          const minDuration = minDurationByAccommodation[cellAccId]?.[cellDateStr]?.[selectedRateTypeId];
+          if (minDuration !== undefined && minDuration !== null && minDuration > 0) {
+            currentMinDuration = minDuration;
             break;
           }
         }
       } else {
-        currentDureeMin = dureeMinByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId] ?? null;
+        currentMinDuration = minDurationByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId] ?? null;
       }
     }
     
-    setEditingDureeMinCell({ accId, dateStr, editAllSelection });
-    setEditingDureeMinValue(currentDureeMin != null && currentDureeMin > 0 ? String(currentDureeMin) : '');
-  }, [selectedCells, dureeMinByAccommodation, ratesByAccommodation, editingCell, selectedRateTypeId]);
+    setEditingMinDurationCell({ accId, dateStr, editAllSelection });
+    setEditingMinDurationValue(currentMinDuration != null && currentMinDuration > 0 ? String(currentMinDuration) : '');
+  }, [selectedCells, minDurationByAccommodation, ratesByAccommodation, editingCell, selectedRateTypeId]);
 
   // Gestionnaire pour valider l'édition (prix)
   const handleEditSubmit = React.useCallback(() => {
@@ -192,20 +192,20 @@ export function useGridEditing(
   }, [editingCell, editingValue, onRateUpdate]);
 
   // Gestionnaire pour valider l'édition (durée minimale)
-  const handleDureeMinSubmit = React.useCallback(() => {
-    if (!editingDureeMinCell) return;
-    const trimmedValue = editingDureeMinValue.trim();
+  const handleMinDurationSubmit = React.useCallback(() => {
+    if (!editingMinDurationCell) return;
+    const trimmedValue = editingMinDurationValue.trim();
     if (trimmedValue === '') {
-      onDureeMinUpdate(null, editingDureeMinCell.editAllSelection, editingDureeMinCell);
+      onMinDurationUpdate(null, editingMinDurationCell.editAllSelection, editingMinDurationCell);
     } else {
       const numValue = parseInt(trimmedValue, 10);
       if (!isNaN(numValue) && numValue > 0) {
-        onDureeMinUpdate(numValue, editingDureeMinCell.editAllSelection, editingDureeMinCell);
+        onMinDurationUpdate(numValue, editingMinDurationCell.editAllSelection, editingMinDurationCell);
       }
     }
-    setEditingDureeMinCell(null);
-    setEditingDureeMinValue('');
-  }, [editingDureeMinCell, editingDureeMinValue, onDureeMinUpdate]);
+    setEditingMinDurationCell(null);
+    setEditingMinDurationValue('');
+  }, [editingMinDurationCell, editingMinDurationValue, onMinDurationUpdate]);
 
   // Gestionnaire pour annuler l'édition (prix)
   const handleEditCancel = React.useCallback(() => {
@@ -214,24 +214,24 @@ export function useGridEditing(
   }, []);
 
   // Gestionnaire pour annuler l'édition (durée minimale)
-  const handleDureeMinCancel = React.useCallback(() => {
-    setEditingDureeMinCell(null);
-    setEditingDureeMinValue('');
+  const handleMinDurationCancel = React.useCallback(() => {
+    setEditingMinDurationCell(null);
+    setEditingMinDurationValue('');
   }, []);
 
   return {
     editingCell,
     editingValue,
-    editingDureeMinCell,
-    editingDureeMinValue,
+    editingMinDurationCell,
+    editingMinDurationValue,
     setEditingValue,
-    setEditingDureeMinValue,
+    setEditingMinDurationValue,
     handleCellClick,
-    handleDureeMinClick,
+    handleMinDurationClick,
     handleEditSubmit,
-    handleDureeMinSubmit,
+    handleMinDurationSubmit,
     handleEditCancel,
-    handleDureeMinCancel
+    handleMinDurationCancel
   };
 }
 

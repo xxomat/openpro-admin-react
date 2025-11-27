@@ -24,7 +24,7 @@ export interface GridDataCellProps {
   /** Prix pour cette date et ce type de tarif */
   price: number | undefined;
   /** Durée minimale de séjour pour cette date */
-  dureeMin: number | null;
+  minDuration: number | null;
   /** Indique si la cellule est sélectionnée */
   isSelected: boolean;
   /** Indique si la cellule est en cours de drag */
@@ -32,23 +32,23 @@ export interface GridDataCellProps {
   /** Indique si le prix a été modifié */
   isModified: boolean;
   /** Indique si la durée minimale a été modifiée */
-  isModifiedDureeMin: boolean;
+  isModifiedMinDuration: boolean;
   /** Indique si l'arrivée est autorisée pour cette date */
-  arriveeAutorisee: boolean;
-  /** Indique si arriveeAutorisee a été modifiée */
-  isModifiedArriveeAutorisee: boolean;
-  /** Callback appelé quand l'utilisateur change arriveeAutorisee */
-  onArriveeAutoriseeChange: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
+  arrivalAllowed: boolean;
+  /** Indique si arrivalAllowed a été modifiée */
+  isModifiedArrivalAllowed: boolean;
+  /** Callback appelé quand l'utilisateur change arrivalAllowed */
+  onArrivalAllowedChange: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
   /** Nombre de cellules sélectionnées (pour déterminer si on doit propager la modification) */
   selectedCellsCount: number;
   /** Indique si le prix est en cours d'édition */
   isEditing: boolean;
   /** Indique si la durée minimale est en cours d'édition */
-  isEditingDureeMin: boolean;
+  isEditingMinDuration: boolean;
   /** Valeur en cours d'édition pour le prix */
   editingValue: string;
   /** Valeur en cours d'édition pour la durée minimale */
-  editingDureeMinValue: string;
+  editingMinDurationValue: string;
   /** Indique si la date est un week-end */
   isWeekend: boolean;
   /** Indique si le jour n'est pas réservable (durée minimale > longueur de la plage de disponibilité) */
@@ -66,21 +66,21 @@ export interface GridDataCellProps {
   /** Callback appelé quand l'utilisateur clique sur la cellule pour éditer le prix */
   onCellClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur clique sur la durée minimale pour l'éditer */
-  onDureeMinClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
+  onMinDurationClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur appuie sur la souris pour démarrer un drag */
   onMouseDown: (e: React.MouseEvent, dateStr: string, accId: number) => void;
   /** Setter pour la valeur en cours d'édition du prix */
   setEditingValue: React.Dispatch<React.SetStateAction<string>>;
   /** Setter pour la valeur en cours d'édition de la durée minimale */
-  setEditingDureeMinValue: React.Dispatch<React.SetStateAction<string>>;
+  setEditingMinDurationValue: React.Dispatch<React.SetStateAction<string>>;
   /** Callback appelé pour valider l'édition du prix */
   onEditSubmit: () => void;
   /** Callback appelé pour valider l'édition de la durée minimale */
-  onEditDureeMinSubmit: () => void;
+  onEditMinDurationSubmit: () => void;
   /** Callback appelé pour annuler l'édition du prix */
   onEditCancel: () => void;
   /** Callback appelé pour annuler l'édition de la durée minimale */
-  onEditDureeMinCancel: () => void;
+  onEditMinDurationCancel: () => void;
 }
 
 /**
@@ -91,19 +91,19 @@ export function GridDataCell({
   dateStr,
   stock,
   price,
-  dureeMin,
+  minDuration,
   isSelected,
   isDragging,
   isModified,
-  isModifiedDureeMin,
-  arriveeAutorisee,
-  isModifiedArriveeAutorisee,
-  onArriveeAutoriseeChange,
+  isModifiedMinDuration,
+  arrivalAllowed,
+  isModifiedArrivalAllowed,
+  onArrivalAllowedChange,
   selectedCellsCount,
   isEditing,
-  isEditingDureeMin,
+  isEditingMinDuration,
   editingValue,
-  editingDureeMinValue,
+  editingMinDurationValue,
   isWeekend,
   isNonReservable,
   isBooked,
@@ -112,13 +112,13 @@ export function GridDataCell({
   draggingState,
   justFinishedDragRef,
   onCellClick,
-  onDureeMinClick,
+  onMinDurationClick,
   setEditingValue,
-  setEditingDureeMinValue,
+  setEditingMinDurationValue,
   onEditSubmit,
-  onEditDureeMinSubmit,
+  onEditMinDurationSubmit,
   onEditCancel,
-  onEditDureeMinCancel,
+  onEditMinDurationCancel,
   onMouseDown
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
@@ -214,14 +214,14 @@ export function GridDataCell({
       {/* Toggle switch pour l'arrivée autorisée en haut à gauche */}
       {hasRateTypes && selectedRateTypeId !== null && (
         <ArrivalToggle
-          isArrivalAllowed={arriveeAutorisee}
+          isArrivalAllowed={arrivalAllowed}
           onChange={(isAllowed) => {
             // Si plusieurs cellules sont sélectionnées, appliquer à toutes
             const editAllSelection = selectedCellsCount > 1;
-            onArriveeAutoriseeChange(accId, dateStr, isAllowed, editAllSelection);
+            onArrivalAllowedChange(accId, dateStr, isAllowed, editAllSelection);
           }}
           disabled={isPast || isBooked}
-          isModified={isModifiedArriveeAutorisee}
+          isModified={isModifiedArrivalAllowed}
         />
       )}
       {isEditing ? (
@@ -321,23 +321,23 @@ export function GridDataCell({
             )
           ) : null}
           {/* Afficher la durée minimale même si le stock est à 0 (pour permettre la modification) */}
-          {isEditingDureeMin ? (
+          {isEditingMinDuration ? (
             <input
               type="number"
-              value={editingDureeMinValue}
-              onChange={(e) => setEditingDureeMinValue(e.target.value)}
+              value={editingMinDurationValue}
+              onChange={(e) => setEditingMinDurationValue(e.target.value)}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
-                  onEditDureeMinSubmit();
+                  onEditMinDurationSubmit();
                 } else if (e.key === 'Escape') {
                   e.preventDefault();
                   e.stopPropagation();
-                  onEditDureeMinCancel();
+                  onEditMinDurationCancel();
                 }
               }}
-              onBlur={onEditDureeMinSubmit}
+              onBlur={onEditMinDurationSubmit}
               autoFocus
               style={{
                 width: '60px',
@@ -380,7 +380,7 @@ export function GridDataCell({
                 e.stopPropagation();
                 // CTRL+clic : éditer toute la sélection
                 const editAllSelection = e.ctrlKey || e.metaKey;
-                onDureeMinClick(accId, dateStr, editAllSelection);
+                onMinDurationClick(accId, dateStr, editAllSelection);
               }}
               style={{ 
                 fontSize: 10, 
@@ -392,8 +392,8 @@ export function GridDataCell({
                 userSelect: 'none'
               }}
             >
-              {dureeMin != null && dureeMin > 0 ? `${dureeMin}+` : '-'}
-              {isModifiedDureeMin && (
+              {minDuration != null && minDuration > 0 ? `${minDuration}+` : '-'}
+              {isModifiedMinDuration && (
                 <span style={{ color: darkTheme.warning, marginLeft: 2, userSelect: 'none' }}>*</span>
               )}
             </span>

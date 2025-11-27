@@ -47,9 +47,9 @@ export interface CompactGridProps {
   /** Map des IDs de types de tarif liés par hébergement (clé: idHebergement, valeur: array d'idTypeTarif) */
   rateTypeLinksByAccommodation: Record<number, number[]>;
   /** Map des durées minimales par hébergement et date */
-  dureeMinByAccommodation: Record<number, Record<string, Record<number, number | null>>>;
+  minDurationByAccommodation: Record<number, Record<string, Record<number, number | null>>>;
   /** Map des arrivées autorisées par hébergement et date */
-  arriveeAutoriseeByAccommodation: Record<number, Record<string, Record<number, boolean>>>;
+  arrivalAllowedByAccommodation: Record<number, Record<string, Record<number, boolean>>>;
   /** Map des réservations par hébergement */
   bookingsByAccommodation: Record<number, BookingDisplay[]>;
   /** Set des cellules sélectionnées au format "accId|dateStr" */
@@ -61,15 +61,15 @@ export interface CompactGridProps {
   /** Set des identifiants de tarifs modifiés (format: "accId-dateStr-rateTypeId") */
   modifiedRates: Set<string>;
   /** Set des identifiants de durées minimales modifiées (format: "accId-dateStr") */
-  modifiedDureeMin: Set<string>;
+  modifiedMinDuration: Set<string>;
   /** Set des identifiants d'arrivées autorisées modifiées (format: "accId-dateStr") */
-  modifiedArriveeAutorisee: Set<string>;
+  modifiedArrivalAllowed: Set<string>;
   /** Callback appelé quand un prix est mis à jour */
   onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
   /** Callback appelé quand une durée minimale est mise à jour */
-  onDureeMinUpdate: (newDureeMin: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
-  /** Callback appelé quand arriveeAutorisee est mis à jour */
-  onArriveeAutoriseeUpdate: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
+  onMinDurationUpdate: (newMinDuration: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
+  /** Callback appelé quand arrivalAllowed est mis à jour */
+  onArrivalAllowedUpdate: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
   /** ID du type de tarif sélectionné */
   selectedRateTypeId: number | null;
   /** Map des jours non réservables par hébergement (clé: idHebergement, valeur: Set des dates non réservables) */
@@ -89,17 +89,17 @@ export function CompactGrid({
   stockByAccommodation,
   ratesByAccommodation,
   rateTypeLinksByAccommodation,
-  dureeMinByAccommodation,
-  arriveeAutoriseeByAccommodation,
+  minDurationByAccommodation,
+  arrivalAllowedByAccommodation,
   bookingsByAccommodation,
   selectedCells,
   onSelectedCellsChange,
   modifiedRates,
-  modifiedDureeMin,
-  modifiedArriveeAutorisee,
+  modifiedMinDuration,
+  modifiedArrivalAllowed,
   onRateUpdate,
-  onDureeMinUpdate,
-  onArriveeAutoriseeUpdate,
+  onMinDurationUpdate,
+  onArrivalAllowedUpdate,
   selectedRateTypeId,
   nonReservableDaysByAccommodation,
   bookedDatesByAccommodation,
@@ -113,8 +113,8 @@ export function CompactGrid({
   const filteredBookingsByAccommodation = React.useMemo(() => {
     const filtered: Record<number, BookingDisplay[]> = {};
     for (const acc of accommodations) {
-      const bookings = bookingsByAccommodation[acc.idHebergement] || [];
-      filtered[acc.idHebergement] = filterBookingsByDateRange(bookings, startDate, endDate);
+      const bookings = bookingsByAccommodation[acc.accommodationId] || [];
+      filtered[acc.accommodationId] = filterBookingsByDateRange(bookings, startDate, endDate);
     }
     return filtered;
   }, [accommodations, bookingsByAccommodation, startDate, endDate]);
@@ -126,23 +126,23 @@ export function CompactGrid({
   const {
     editingCell,
     editingValue,
-    editingDureeMinCell,
-    editingDureeMinValue,
+    editingMinDurationCell,
+    editingMinDurationValue,
     setEditingValue,
-    setEditingDureeMinValue,
+    setEditingMinDurationValue,
     handleCellClick,
-    handleDureeMinClick,
+    handleMinDurationClick,
     handleEditSubmit,
-    handleDureeMinSubmit,
+    handleMinDurationSubmit,
     handleEditCancel,
-    handleDureeMinCancel
+    handleMinDurationCancel
   } = useGridEditing(
     selectedCells,
     ratesByAccommodation,
-    dureeMinByAccommodation,
+    minDurationByAccommodation,
     selectedRateTypeId,
     onRateUpdate,
-    onDureeMinUpdate
+    onMinDurationUpdate
   );
 
   // Hook pour gérer le drag
@@ -176,11 +176,11 @@ export function CompactGrid({
       // Vérifier si toutes les cellules non occupées de cette colonne sont sélectionnées
       let allSelected = true;
       for (const acc of accommodations) {
-        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-        const accHasRateTypes = hasRateTypes(acc.idHebergement, rateTypeLinksByAccommodation);
+        const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
+        const accHasRateTypes = hasRateTypes(acc.accommodationId, rateTypeLinksByAccommodation);
         if (isBooked || !accHasRateTypes) continue; // Ignorer les dates occupées et les hébergements sans types de tarifs
         
-        const cellKey = `${acc.idHebergement}|${dateStr}`;
+        const cellKey = `${acc.accommodationId}|${dateStr}`;
         if (!newSet.has(cellKey)) {
           allSelected = false;
           break;
@@ -190,11 +190,11 @@ export function CompactGrid({
       // Si toutes les cellules non occupées sont sélectionnées, désélectionner toutes
       // Sinon, sélectionner toutes les cellules non occupées
       for (const acc of accommodations) {
-        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-        const accHasRateTypes = hasRateTypes(acc.idHebergement, rateTypeLinksByAccommodation);
+        const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
+        const accHasRateTypes = hasRateTypes(acc.accommodationId, rateTypeLinksByAccommodation);
         if (isBooked || !accHasRateTypes) continue; // Ne pas sélectionner les dates occupées ni les hébergements sans types de tarifs
         
-        const cellKey = `${acc.idHebergement}|${dateStr}`;
+        const cellKey = `${acc.accommodationId}|${dateStr}`;
         if (allSelected) {
           newSet.delete(cellKey);
         } else {
@@ -215,8 +215,8 @@ export function CompactGrid({
       if (event.key === 'Escape') {
         if (editingCell) {
           handleEditCancel();
-        } else if (editingDureeMinCell) {
-          handleDureeMinCancel();
+        } else if (editingMinDurationCell) {
+          handleMinDurationCancel();
         } else {
           onSelectedCellsChange(new Set());
         }
@@ -227,7 +227,7 @@ export function CompactGrid({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingCell, editingDureeMinCell, onSelectedCellsChange, handleEditCancel, handleDureeMinCancel]);
+  }, [editingCell, editingMinDurationCell, onSelectedCellsChange, handleEditCancel, handleMinDurationCancel]);
 
   return (
     <>
@@ -278,23 +278,23 @@ export function CompactGrid({
           // - ET toutes les cellules non occupées sont sélectionnées
           // Si toutes les cellules sont occupées, la colonne n'est pas sélectionnée
           const selectableAccommodations = accommodations.filter(acc => {
-            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-            const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+            const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
+            const accHasRateTypes = hasRateTypes(acc.accommodationId, ratesByAccommodation);
             return !isBooked && accHasRateTypes;
           });
           
           const isSelected = accommodations.length > 0 
             && selectableAccommodations.length > 0 // Au moins une cellule sélectionnable
             && selectableAccommodations.every(acc => {
-              const cellKey = `${acc.idHebergement}|${dateStr}`;
+              const cellKey = `${acc.accommodationId}|${dateStr}`;
               return selectedCells.has(cellKey);
             });
           // Une colonne est en drag si au moins une cellule sélectionnable est en drag
           const isDragging = accommodations.some(acc => {
-            const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
-            const accHasRateTypes = hasRateTypes(acc.idHebergement, ratesByAccommodation);
+            const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
+            const accHasRateTypes = hasRateTypes(acc.accommodationId, ratesByAccommodation);
             if (isBooked || !accHasRateTypes) return false; // Ignorer les dates occupées et les hébergements sans types de tarifs
-            const cellKey = `${acc.idHebergement}|${dateStr}`;
+            const cellKey = `${acc.accommodationId}|${dateStr}`;
             return draggingCells.has(cellKey);
           });
           
@@ -315,18 +315,18 @@ export function CompactGrid({
 
         {/* Lignes suivantes - une ligne par hébergement */}
         {accommodations.map((acc, accIdx) => {
-          const stockMap = stockByAccommodation[acc.idHebergement] || {};
-          const priceMap = ratesByAccommodation[acc.idHebergement] || {};
-          const dureeMinMap = dureeMinByAccommodation[acc.idHebergement] || {};
-          const accHasRateTypes = hasRateTypes(acc.idHebergement, rateTypeLinksByAccommodation);
+          const stockMap = stockByAccommodation[acc.accommodationId] || {};
+          const priceMap = ratesByAccommodation[acc.accommodationId] || {};
+          const minDurationMap = minDurationByAccommodation[acc.accommodationId] || {};
+          const accHasRateTypes = hasRateTypes(acc.accommodationId, rateTypeLinksByAccommodation);
           // rowIndex dans la grille CSS : header est row 1, première ligne d'hébergement est row 2, etc.
           const gridRow = accIdx + 2; // +2 car row 1 est le header
 
           return (
-            <React.Fragment key={acc.idHebergement}>
+            <React.Fragment key={acc.accommodationId}>
               {/* Cellule nom de l'hébergement */}
               <div
-                data-acc-id={acc.idHebergement}
+                data-acc-id={acc.accommodationId}
                 data-cell-type="name"
                 style={{
                   padding: '12px',
@@ -357,7 +357,7 @@ export function CompactGrid({
                       : 'line-through'
                   }}
                 >
-                  {acc.nomHebergement}
+                  {acc.accommodationName}
                 </span>
                 {!accHasRateTypes && (
                   <span
@@ -384,47 +384,49 @@ export function CompactGrid({
                 const price = selectedRateTypeId !== null 
                   ? priceMap[dateStr]?.[selectedRateTypeId] 
                   : undefined;
-                const dureeMin = selectedRateTypeId !== null
-                  ? (dureeMinMap[dateStr]?.[selectedRateTypeId] ?? null)
+                const minDuration = selectedRateTypeId !== null
+                  ? (minDurationMap[dateStr] && typeof minDurationMap[dateStr] === 'object' && minDurationMap[dateStr] !== null
+                      ? (minDurationMap[dateStr] as Record<number, number | null>)[selectedRateTypeId] ?? null
+                      : null)
                   : null;
-                const arriveeAutoriseeMap = arriveeAutoriseeByAccommodation[acc.idHebergement] ?? {};
-                const arriveeAutorisee = selectedRateTypeId !== null
-                  ? (arriveeAutoriseeMap[dateStr]?.[selectedRateTypeId] ?? true) // Par défaut true
+                const arrivalAllowedMap = arrivalAllowedByAccommodation[acc.accommodationId] ?? {};
+                const arrivalAllowed = selectedRateTypeId !== null
+                  ? (arrivalAllowedMap[dateStr]?.[selectedRateTypeId] ?? true) // Par défaut true
                   : true;
-                const cellKey = `${acc.idHebergement}|${dateStr}`;
+                const cellKey = `${acc.accommodationId}|${dateStr}`;
                 const isSelected = selectedCells.has(cellKey);
                 const isDragging = draggingCells.has(cellKey);
                 const isModified = selectedRateTypeId !== null 
-                  ? modifiedRates.has(`${acc.idHebergement}-${dateStr}-${selectedRateTypeId}`)
+                  ? modifiedRates.has(`${acc.accommodationId}-${dateStr}-${selectedRateTypeId}`)
                   : false;
-                const isModifiedDureeMin = modifiedDureeMin.has(`${acc.idHebergement}-${dateStr}`);
-                const isModifiedArriveeAutorisee = modifiedArriveeAutorisee.has(`${acc.idHebergement}-${dateStr}`);
-                const isEditing = editingCell?.accId === acc.idHebergement && editingCell?.dateStr === dateStr;
-                const isEditingDureeMin = editingDureeMinCell?.accId === acc.idHebergement && editingDureeMinCell?.dateStr === dateStr;
+                const isModifiedMinDuration = modifiedMinDuration.has(`${acc.accommodationId}-${dateStr}`);
+                const isModifiedArrivalAllowed = modifiedArrivalAllowed.has(`${acc.accommodationId}-${dateStr}`);
+                const isEditing = editingCell?.accId === acc.accommodationId && editingCell?.dateStr === dateStr;
+                const isEditingMinDuration = editingMinDurationCell?.accId === acc.accommodationId && editingMinDurationCell?.dateStr === dateStr;
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                const isNonReservable = (nonReservableDaysByAccommodation[acc.idHebergement] ?? new Set<string>()).has(dateStr);
-                const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+                const isNonReservable = (nonReservableDaysByAccommodation[acc.accommodationId] ?? new Set<string>()).has(dateStr);
+                const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
 
                 return (
                   <GridDataCell
-                    key={`${acc.idHebergement}-${dayIdx}`}
-                    accId={acc.idHebergement}
+                    key={`${acc.accommodationId}-${dayIdx}`}
+                    accId={acc.accommodationId}
                     dateStr={dateStr}
                     stock={stock}
                     price={price}
-                    dureeMin={dureeMin}
+                    minDuration={minDuration}
                     isSelected={isSelected}
                     isDragging={isDragging}
                     isModified={isModified}
-                    isModifiedDureeMin={isModifiedDureeMin}
-                    arriveeAutorisee={arriveeAutorisee}
-                    isModifiedArriveeAutorisee={isModifiedArriveeAutorisee}
-                    onArriveeAutoriseeChange={onArriveeAutoriseeUpdate}
+                    isModifiedMinDuration={isModifiedMinDuration}
+                    arrivalAllowed={arrivalAllowed}
+                    isModifiedArrivalAllowed={isModifiedArrivalAllowed}
+                    onArrivalAllowedChange={onArrivalAllowedUpdate}
                     selectedCellsCount={selectedCells.size}
                     isEditing={isEditing}
-                    isEditingDureeMin={isEditingDureeMin}
+                    isEditingMinDuration={isEditingMinDuration}
                     editingValue={editingValue}
-                    editingDureeMinValue={editingDureeMinValue}
+                    editingMinDurationValue={editingMinDurationValue}
                     isWeekend={isWeekend}
                     isNonReservable={isNonReservable}
                     isBooked={isBooked}
@@ -433,14 +435,14 @@ export function CompactGrid({
                     draggingState={draggingState}
                     justFinishedDragRef={justFinishedDragRef}
                     onCellClick={handleCellClick}
-                    onDureeMinClick={handleDureeMinClick}
+                    onMinDurationClick={handleMinDurationClick}
                     onMouseDown={handleMouseDown}
                     setEditingValue={setEditingValue}
-                    setEditingDureeMinValue={setEditingDureeMinValue}
+                    setEditingMinDurationValue={setEditingMinDurationValue}
                     onEditSubmit={handleEditSubmit}
-                    onEditDureeMinSubmit={handleDureeMinSubmit}
+                    onEditMinDurationSubmit={handleMinDurationSubmit}
                     onEditCancel={handleEditCancel}
-                    onEditDureeMinCancel={handleDureeMinCancel}
+                    onEditMinDurationCancel={handleMinDurationCancel}
                   />
                 );
               })}

@@ -30,7 +30,7 @@ export function AccommodationList({
   onSelectedAccommodationsChange
 }: AccommodationListProps): React.ReactElement {
   const sortedAccommodations = React.useMemo(() => {
-    return [...accommodations].sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement));
+    return [...accommodations].sort((a, b) => a.accommodationName.localeCompare(b.accommodationName));
   }, [accommodations]);
 
   return (
@@ -47,31 +47,31 @@ export function AccommodationList({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sortedAccommodations.map(acc => {
-          const checkboxId = `accommodation-${acc.idHebergement}`;
+          const checkboxId = `accommodation-${acc.accommodationId}`;
           return (
             <label
-              key={acc.idHebergement}
+              key={acc.accommodationId}
               htmlFor={checkboxId}
               style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
             >
               <input
                 id={checkboxId}
                 type="checkbox"
-                checked={selectedAccommodations.has(acc.idHebergement)}
+                checked={selectedAccommodations.has(acc.accommodationId)}
                 onChange={e => {
                   onSelectedAccommodationsChange((prev: Set<number>) => {
                     const newSet = new Set(prev);
                     if (e.target.checked) {
-                      newSet.add(acc.idHebergement);
+                      newSet.add(acc.accommodationId);
                     } else {
-                      newSet.delete(acc.idHebergement);
+                      newSet.delete(acc.accommodationId);
                     }
                     return newSet;
                   });
                 }}
-                aria-label={`Sélectionner l'hébergement ${acc.nomHebergement}`}
+                aria-label={`Sélectionner l'hébergement ${acc.accommodationName}`}
               />
-              <span>{acc.nomHebergement}</span>
+              <span>{acc.accommodationName}</span>
             </label>
           );
         })}

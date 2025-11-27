@@ -44,7 +44,7 @@ export function useGridDrag(
   getDateFromElement: (element: HTMLElement) => string | null,
   getDateRange: (startDateStr: string, endDateStr: string) => string[],
   editingCell: { accId: number; dateStr: string } | null,
-  accommodations: Array<{ idHebergement: number }>,
+  accommodations: Array<{ accommodationId: number }>,
   stockByAccommodation: Record<number, Record<string, number>>,
   bookedDatesByAccommodation: Record<number, Set<string>>,
   rateTypeLinksByAccommodation: Record<number, number[]>
@@ -122,13 +122,13 @@ export function useGridDrag(
       
       for (const acc of accommodations) {
         // Vérifier si cette date est occupée par une réservation
-        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
         // Vérifier si l'hébergement a des types de tarifs
-        const accHasRateTypes = hasRateTypes(acc.idHebergement);
+        const accHasRateTypes = hasRateTypes(acc.accommodationId);
         
         // Ne pas inclure les dates occupées ni les hébergements sans types de tarifs
         if (!isBooked && accHasRateTypes) {
-          cells.push(`${acc.idHebergement}|${dateStr}`);
+          cells.push(`${acc.accommodationId}|${dateStr}`);
         }
       }
     }

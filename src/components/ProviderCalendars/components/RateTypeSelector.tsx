@@ -59,10 +59,19 @@ export function RateTypeSelector({
             <option value="">Aucun type tarif disponible</option>
           ) : (
             rateTypes.map(type => {
-              const descriptionFr = type.descriptionFr ?? rateTypeLabels[type.idTypeTarif] ?? `Type ${type.idTypeTarif}`;
-              const displayText = `${type.idTypeTarif} - ${descriptionFr}`;
+              // Extraire le texte français depuis le label multilingue si descriptionFr n'est pas défini
+              let descriptionFr = type.descriptionFr;
+              if (!descriptionFr && type.label && Array.isArray(type.label)) {
+                const frenchLabel = type.label.find((item: { langue?: string; texte?: string }) => 
+                  item.langue === 'fr' || item.langue === 'FR'
+                );
+                descriptionFr = frenchLabel?.texte;
+              }
+              // Fallback sur rateTypeLabels ou "Type X"
+              descriptionFr = descriptionFr ?? rateTypeLabels[type.rateTypeId] ?? `Type ${type.rateTypeId}`;
+              const displayText = `${type.rateTypeId} - ${descriptionFr}`;
               return (
-                <option key={type.idTypeTarif} value={type.idTypeTarif}>
+                <option key={type.rateTypeId} value={type.rateTypeId}>
                   {displayText}
                 </option>
               );

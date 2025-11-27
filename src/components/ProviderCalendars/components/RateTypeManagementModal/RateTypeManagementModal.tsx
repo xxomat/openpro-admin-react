@@ -28,7 +28,7 @@ export interface RateTypeManagementModalProps {
   /** Callback appelé pour fermer la modale */
   onClose: () => void;
   /** Identifiant du fournisseur */
-  idFournisseur: number;
+  supplierId: number;
   /** Liste des hébergements du fournisseur */
   accommodations: Accommodation[];
   /** Callback appelé après une modification pour rafraîchir les données */
@@ -41,7 +41,7 @@ export interface RateTypeManagementModalProps {
 export function RateTypeManagementModal({
   isOpen,
   onClose,
-  idFournisseur,
+  supplierId,
   accommodations,
   onDataChanged
 }: RateTypeManagementModalProps): React.ReactElement | null {
@@ -62,7 +62,7 @@ export function RateTypeManagementModal({
     extractFrenchText,
     extractEnglishText,
     extractMultilingue
-  } = useRateTypeManagement(idFournisseur, accommodations);
+  } = useRateTypeManagement(supplierId, accommodations);
 
   // Réinitialiser l'état lorsque la modale se ferme
   React.useEffect(() => {
@@ -79,7 +79,7 @@ export function RateTypeManagementModal({
       // Le hook useRateTypeManagement charge déjà les données dans son useEffect
       // mais on peut forcer un rechargement à l'ouverture de la modale
     }
-  }, [isOpen, idFournisseur]);
+  }, [isOpen, supplierId]);
 
   // Gérer la touche Échap pour fermer la modale (sans propagation)
   React.useEffect(() => {
