@@ -17,6 +17,24 @@ import { useBookingForm } from './BookingModal/hooks/useBookingForm';
 import { ClientForm } from './BookingModal/components/ClientForm';
 import { createBooking } from '@/services/api/backendClient';
 
+/**
+ * Génère une référence automatique pour une réservation locale
+ * Format: DIRECT-{identifiant hébergement}-YYYYMMDD-HHMMSS
+ * 
+ * @param accommodationId - Identifiant de l'hébergement
+ * @returns Référence générée au format DIRECT-{id}-YYYYMMDD-HHMMSS
+ */
+function generateBookingReference(accommodationId: number): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  // Format: DIRECT-{identifiant hébergement}-YYYYMMDD-HHMMSS
+  return `DIRECT-${accommodationId}-${year}${month}${day}-${hours}${minutes}${seconds}`;
+}
 
 /**
  * Données du dossier client (basé sur BookingCustomer de l'API)
@@ -137,7 +155,7 @@ export function BookingModal({
           clientPhone: clientData.telephone?.trim() || undefined,
           numberOfPersons: 2, // Par défaut, peut être ajusté plus tard
           totalAmount: summary.totalPrice || undefined,
-          reference: undefined // Peut être généré automatiquement côté backend
+          reference: generateBookingReference(summary.accId) // Généré automatiquement par l'admin
         });
       });
       
