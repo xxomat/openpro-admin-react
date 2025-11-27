@@ -51,14 +51,14 @@ export function SupplierTabs({
         const isActive = idx === activeIdx;
         return (
           <button
-            key={s.idFournisseur}
+            key={s.supplierId}
             role="tab"
             aria-selected={isActive}
-            aria-controls={`supplier-panel-${s.idFournisseur}`}
-            id={`supplier-tab-${s.idFournisseur}`}
+            aria-controls={`supplier-panel-${s.supplierId}`}
+            id={`supplier-tab-${s.supplierId}`}
             onClick={() => onActiveIdxChange(idx)}
             onKeyDown={e => handleKeyDown(e, idx)}
-            aria-label={`Sélectionner le fournisseur ${s.nom}`}
+            aria-label={`Sélectionner le fournisseur ${s.name}`}
             style={{
               padding: '8px 12px',
               border: 'none',
@@ -68,7 +68,7 @@ export function SupplierTabs({
               cursor: 'pointer'
             }}
           >
-            {s.nom}
+            {s.name}
           </button>
         );
       })}

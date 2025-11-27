@@ -16,9 +16,9 @@ export interface ActionButtonsProps {
   /** Nombre de tarifs modifiés */
   modifiedRatesCount: number;
   /** Nombre de durées minimales modifiées */
-  modifiedDureeMinCount: number;
+  modifiedMinDurationCount: number;
   /** Nombre d'arrivées autorisées modifiées */
-  modifiedArriveeAutoriseeCount: number;
+  modifiedArrivalAllowedCount: number;
   /** Nombre de dates non disponibles dans la sélection */
   unavailableDatesCount?: number;
   /** Nombre de dates disponibles dans la sélection */
@@ -39,8 +39,8 @@ export interface ActionButtonsProps {
 export function ActionButtons({
   loading,
   modifiedRatesCount,
-  modifiedDureeMinCount,
-  modifiedArriveeAutoriseeCount,
+  modifiedMinDurationCount,
+  modifiedArrivalAllowedCount,
   unavailableDatesCount = 0,
   availableDatesCount = 0,
   onRefresh,
@@ -48,7 +48,7 @@ export function ActionButtons({
   onOpenUnavailable,
   onCloseAvailable
 }: ActionButtonsProps): React.ReactElement {
-  const totalModifications = modifiedRatesCount + modifiedDureeMinCount + modifiedArriveeAutoriseeCount;
+    const totalModifications = modifiedRatesCount + modifiedMinDurationCount + modifiedArrivalAllowedCount;
   
   // États pour l'affichage au survol
   const [refreshHover, setRefreshHover] = React.useState(false);

@@ -55,7 +55,7 @@ export interface BookingModalProps {
   /** Récapitulatifs de réservation par hébergement */
   bookingSummaries: BookingSummary[];
   /** Identifiant du fournisseur */
-  idFournisseur: number;
+  supplierId: number;
   /** Callback appelé après création réussie d'une réservation */
   onBookingCreated?: () => void;
   /** Callback appelé pour vider la sélection de dates après création réussie */
@@ -69,7 +69,7 @@ export function BookingModal({
   isOpen,
   onClose,
   bookingSummaries,
-  idFournisseur,
+  supplierId,
   onBookingCreated,
   onSelectionClear
 }: BookingModalProps): React.ReactElement | null {
@@ -127,16 +127,16 @@ export function BookingModal({
         }
         
         // Créer la réservation
-        await createBooking(idFournisseur, {
-          idHebergement: summary.accId,
-          dateArrivee: firstRange.startDate,
-          dateDepart: firstRange.endDate,
-          clientNom,
-          clientPrenom,
+        await createBooking(supplierId, {
+          accommodationId: summary.accId,
+          arrivalDate: firstRange.startDate,
+          departureDate: firstRange.endDate,
+          clientName: clientNom,
+          clientFirstName: clientPrenom,
           clientEmail: clientData.email?.trim() || undefined,
-          clientTelephone: clientData.telephone?.trim() || undefined,
-          nbPersonnes: 2, // Par défaut, peut être ajusté plus tard
-          montantTotal: summary.totalPrice || undefined,
+          clientPhone: clientData.telephone?.trim() || undefined,
+          numberOfPersons: 2, // Par défaut, peut être ajusté plus tard
+          totalAmount: summary.totalPrice || undefined,
           reference: undefined // Peut être généré automatiquement côté backend
         });
       });
@@ -158,7 +158,7 @@ export function BookingModal({
     } finally {
       setIsCreating(false);
     }
-  }, [isAllFormsValid, isCreating, sortedSummaries, clientDataByAccommodation, idFournisseur, onBookingCreated, onSelectionClear, onClose]);
+  }, [isAllFormsValid, isCreating, sortedSummaries, clientDataByAccommodation, supplierId, onBookingCreated, onSelectionClear, onClose]);
 
   // Empêcher la propagation de la touche Escape quand la modale est ouverte
   React.useEffect(() => {

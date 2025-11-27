@@ -146,15 +146,15 @@ export interface BulkUpdateDate {
   date: string;              // YYYY-MM-DD
   rateTypeId?: number;       // présent si tarif modifié
   price?: number;            // présent si tarif modifié
-  dureeMin?: number | null;  // présent si dureeMin modifiée
-  arriveeAutorisee?: boolean; // présent si arriveeAutorisee modifié
+  minDuration?: number | null;  // présent si minDuration modifiée
+  arrivalAllowed?: boolean; // présent si arrivalAllowed modifié
 }
 
 /**
  * Type pour un hébergement avec ses dates modifiées
  */
 export interface BulkUpdateAccommodation {
-  idHebergement: number;
+  accommodationId: number;
   dates: BulkUpdateDate[];
 }
 
@@ -201,15 +201,15 @@ export async function saveBulkUpdates(
  * Type pour les données de création d'une réservation
  */
 export interface CreateBookingData {
-  idHebergement: number;
-  dateArrivee: string; // Format: YYYY-MM-DD
-  dateDepart: string;  // Format: YYYY-MM-DD
-  clientNom?: string;
-  clientPrenom?: string;
+  accommodationId: number;
+  arrivalDate: string; // Format: YYYY-MM-DD
+  departureDate: string;  // Format: YYYY-MM-DD
+  clientName?: string;
+  clientFirstName?: string;
   clientEmail?: string;
-  clientTelephone?: string;
-  nbPersonnes?: number;
-  montantTotal?: number;
+  clientPhone?: string;
+  numberOfPersons?: number;
+  totalAmount?: number;
   reference?: string;
 }
 

@@ -26,8 +26,8 @@ export interface UseSupplierDataReturn {
   ratesBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number>>>>;
   promoBySupplierAndAccommodation: Record<number, Record<number, Record<string, boolean>>>;
   rateTypesBySupplierAndAccommodation: Record<number, Record<number, Record<string, string[]>>>;
-  dureeMinBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number | null>>>>;
-  arriveeAutoriseeBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, boolean>>>>;
+  minDurationBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number | null>>>>;
+  arrivalAllowedBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, boolean>>>>;
   bookingsBySupplierAndAccommodation: Record<number, Record<number, BookingDisplay[]>>;
   rateTypeLabelsBySupplier: Record<number, Record<number, string>>;
   rateTypesBySupplier: Record<number, RateType[]>;
@@ -40,8 +40,8 @@ export interface UseSupplierDataReturn {
   
   // États de modification
   modifiedRatesBySupplier: Record<number, Set<string>>;
-  modifiedDureeMinBySupplier: Record<number, Set<string>>;
-  modifiedArriveeAutoriseeBySupplier: Record<number, Set<string>>;
+  modifiedMinDurationBySupplier: Record<number, Set<string>>;
+  modifiedArrivalAllowedBySupplier: Record<number, Set<string>>;
   
   // États UI
   loading: boolean;
@@ -53,8 +53,8 @@ export interface UseSupplierDataReturn {
   setRatesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, Record<number, number>>>>>>;
   setPromoBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
   setRateTypesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, string[]>>>>>;
-  setDureeMinByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
-  setArriveeAutoriseeByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
+  setMinDurationByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
+  setArrivalAllowedByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
   setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
@@ -63,13 +63,13 @@ export interface UseSupplierDataReturn {
   setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
   setSelectedCellsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setModifiedRatesBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
-  setModifiedDureeMinBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
-  setModifiedArriveeAutoriseeBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
+  setModifiedMinDurationBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
+  setModifiedArrivalAllowedBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   
   // Fonctions utilitaires
-  refreshSupplierData: (idFournisseur: number, startDate: Date, endDate: Date) => Promise<void>;
+  refreshSupplierData: (supplierId: number, startDate: Date, endDate: Date) => Promise<void>;
   loadInitialData: (suppliers: Supplier[], startDate: Date, endDate: Date) => Promise<void>;
 }
 
@@ -87,10 +87,10 @@ export function useSupplierData(): UseSupplierDataReturn {
   const [rateTypesBySupplierAndAccommodation, setRateTypesBySupplierAndAccommodation] = React.useState<
     Record<number, Record<number, Record<string, string[]>>>
   >({});
-  const [dureeMinBySupplierAndAccommodation, setDureeMinByAccommodation] = React.useState<
+  const [minDurationBySupplierAndAccommodation, setMinDurationByAccommodation] = React.useState<
     Record<number, Record<number, Record<string, number | null>>>
   >({});
-  const [arriveeAutoriseeBySupplierAndAccommodation, setArriveeAutoriseeByAccommodation] = React.useState<
+  const [arrivalAllowedBySupplierAndAccommodation, setArrivalAllowedByAccommodation] = React.useState<
     Record<number, Record<number, Record<string, boolean>>>
   >({});
   const [bookingsBySupplierAndAccommodation, setBookingsBySupplierAndAccommodation] = React.useState<
@@ -109,22 +109,22 @@ export function useSupplierData(): UseSupplierDataReturn {
   const [selectedAccommodationsBySupplier, setSelectedAccommodationsBySupplier] = React.useState<Record<number, Set<number>>>({});
   const [selectedCellsBySupplier, setSelectedCellsBySupplier] = React.useState<Record<number, Set<string>>>({}); // Format: "accId-dateStr"
   const [modifiedRatesBySupplier, setModifiedRatesBySupplier] = React.useState<Record<number, Set<string>>>({});
-  const [modifiedDureeMinBySupplier, setModifiedDureeMinBySupplier] = React.useState<Record<number, Set<string>>>({});
-  const [modifiedArriveeAutoriseeBySupplier, setModifiedArriveeAutoriseeBySupplier] = React.useState<Record<number, Set<string>>>({});
+  const [modifiedMinDurationBySupplier, setModifiedMinDurationBySupplier] = React.useState<Record<number, Set<string>>>({});
+  const [modifiedArrivalAllowedBySupplier, setModifiedArrivalAllowedBySupplier] = React.useState<Record<number, Set<string>>>({});
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   /**
    * Actualise les données d'un fournisseur
    * 
-   * @param idFournisseur - Identifiant du fournisseur
+   * @param supplierId - Identifiant du fournisseur
    * @param startDate - Date de début de la plage de dates (incluse)
    * @param endDate - Date de fin de la plage de dates (incluse)
    * @throws {Error} Peut lever une erreur si le chargement échoue
    * @throws {DOMException} Peut lever une AbortError si la requête est annulée
    */
   const refreshSupplierData = React.useCallback(async (
-    idFournisseur: number,
+    supplierId: number,
     startDate: Date,
     endDate: Date
   ): Promise<void> => {
@@ -134,11 +134,11 @@ export function useSupplierData(): UseSupplierDataReturn {
       setLoading(true);
       setError(null);
       
-      const accommodationsList = await loadAccommodations(idFournisseur, controller.signal);
-      const data = await loadSupplierData(idFournisseur, accommodationsList, startDate, endDate, controller.signal);
+      const accommodationsList = await loadAccommodations(supplierId, controller.signal);
+      const data = await loadSupplierData(supplierId, accommodationsList, startDate, endDate, controller.signal);
       
       updateSupplierDataStates({
-        idFournisseur,
+        supplierId,
         data,
         accommodationsList,
         setAccommodations,
@@ -146,8 +146,8 @@ export function useSupplierData(): UseSupplierDataReturn {
         setRatesBySupplierAndAccommodation,
         setPromoBySupplierAndAccommodation,
         setRateTypesBySupplierAndAccommodation,
-        setDureeMinByAccommodation,
-        setArriveeAutoriseeByAccommodation,
+        setMinDurationByAccommodation,
+        setArrivalAllowedByAccommodation,
         setRateTypeLabelsBySupplier,
         setRateTypesBySupplier,
         setRateTypeLinksBySupplierAndAccommodation,
@@ -155,8 +155,8 @@ export function useSupplierData(): UseSupplierDataReturn {
         setSelectedAccommodationsBySupplier,
         setSelectedRateTypeIdBySupplier,
         setModifiedRatesBySupplier,
-        setModifiedDureeMinBySupplier,
-        setModifiedArriveeAutoriseeBySupplier
+        setModifiedMinDurationBySupplier,
+        setModifiedArrivalAllowedBySupplier
       });
       
     } catch (error: unknown) {
@@ -220,14 +220,14 @@ export function useSupplierData(): UseSupplierDataReturn {
         if (cancelled || controller.signal.aborted) return;
         
         try {
-          const accommodationsList = await loadAccommodations(supplier.idFournisseur, controller.signal);
+          const accommodationsList = await loadAccommodations(supplier.supplierId, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
-          const data = await loadSupplierData(supplier.idFournisseur, accommodationsList, startDate, endDate, controller.signal);
+          const data = await loadSupplierData(supplier.supplierId, accommodationsList, startDate, endDate, controller.signal);
           if (cancelled || controller.signal.aborted) return;
           
           updateSupplierDataStates({
-            idFournisseur: supplier.idFournisseur,
+            supplierId: supplier.supplierId,
             data,
             accommodationsList,
             setAccommodations,
@@ -235,8 +235,8 @@ export function useSupplierData(): UseSupplierDataReturn {
             setRatesBySupplierAndAccommodation,
             setPromoBySupplierAndAccommodation,
             setRateTypesBySupplierAndAccommodation,
-            setDureeMinByAccommodation,
-            setArriveeAutoriseeByAccommodation,
+            setMinDurationByAccommodation,
+            setArrivalAllowedByAccommodation,
             setRateTypeLabelsBySupplier,
             setRateTypesBySupplier,
             setRateTypeLinksBySupplierAndAccommodation,
@@ -244,20 +244,20 @@ export function useSupplierData(): UseSupplierDataReturn {
             setSelectedAccommodationsBySupplier,
             setSelectedRateTypeIdBySupplier,
             setModifiedRatesBySupplier,
-            setModifiedDureeMinBySupplier,
-            setModifiedArriveeAutoriseeBySupplier
+            setModifiedMinDurationBySupplier,
+            setModifiedArrivalAllowedBySupplier
           });
           
           // Pour le chargement initial, on initialise toujours le premier type de tarif
           if (data.rateTypesList.length > 0) {
             setSelectedRateTypeIdBySupplier(prev => ({
               ...prev,
-              [supplier.idFournisseur]: data.rateTypesList[0].idTypeTarif
+              [supplier.supplierId]: data.rateTypesList[0].rateTypeId
             }));
           }
         } catch (error: unknown) {
           if (!isCancellationError(error) && !controller.signal.aborted) {
-            const errorMessage = getErrorMessage(error, `Erreur lors du chargement des données pour ${supplier.nom}`);
+            const errorMessage = getErrorMessage(error, `Erreur lors du chargement des données pour ${supplier.name}`);
             errors.push(errorMessage);
             // On continue le chargement pour les autres fournisseurs même si un échoue
           }
@@ -305,8 +305,8 @@ export function useSupplierData(): UseSupplierDataReturn {
     ratesBySupplierAndAccommodation,
     promoBySupplierAndAccommodation,
     rateTypesBySupplierAndAccommodation,
-    dureeMinBySupplierAndAccommodation,
-    arriveeAutoriseeBySupplierAndAccommodation,
+    minDurationBySupplierAndAccommodation,
+    arrivalAllowedBySupplierAndAccommodation,
     bookingsBySupplierAndAccommodation,
     rateTypeLabelsBySupplier,
     rateTypesBySupplier,
@@ -315,8 +315,8 @@ export function useSupplierData(): UseSupplierDataReturn {
     selectedAccommodationsBySupplier,
     selectedCellsBySupplier,
     modifiedRatesBySupplier,
-    modifiedDureeMinBySupplier,
-    modifiedArriveeAutoriseeBySupplier,
+    modifiedMinDurationBySupplier,
+    modifiedArrivalAllowedBySupplier,
     loading,
     error,
     setAccommodations,
@@ -324,8 +324,8 @@ export function useSupplierData(): UseSupplierDataReturn {
     setRatesBySupplierAndAccommodation,
     setPromoBySupplierAndAccommodation,
     setRateTypesBySupplierAndAccommodation,
-    setDureeMinByAccommodation,
-    setArriveeAutoriseeByAccommodation,
+    setMinDurationByAccommodation,
+    setArrivalAllowedByAccommodation,
     setBookingsBySupplierAndAccommodation,
     setRateTypeLabelsBySupplier,
     setRateTypesBySupplier,
@@ -334,8 +334,8 @@ export function useSupplierData(): UseSupplierDataReturn {
     setSelectedAccommodationsBySupplier,
     setSelectedCellsBySupplier,
     setModifiedRatesBySupplier,
-    setModifiedDureeMinBySupplier,
-    setModifiedArriveeAutoriseeBySupplier,
+    setModifiedMinDurationBySupplier,
+    setModifiedArrivalAllowedBySupplier,
     setLoading,
     setError,
     refreshSupplierData,

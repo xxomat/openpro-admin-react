@@ -83,10 +83,10 @@ export function DeleteBookingModal({
   if (!isOpen || !booking) return null;
 
   // Calculer le nombre de nuits
-  const nbNuits = booking.nbNuits ?? (() => {
-    const arrivee = new Date(booking.dateArrivee);
-    const depart = new Date(booking.dateDepart);
-    const diffTime = depart.getTime() - arrivee.getTime();
+  const numberOfNights = booking.numberOfNights ?? (() => {
+    const arrival = new Date(booking.arrivalDate);
+    const departure = new Date(booking.departureDate);
+    const diffTime = departure.getTime() - arrival.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   })();
 
@@ -162,21 +162,21 @@ export function DeleteBookingModal({
           <div style={{ marginBottom: '12px' }}>
             <span style={{ color: darkTheme.textSecondary, fontSize: 13 }}>📅 </span>
             <span style={{ color: darkTheme.textPrimary, fontSize: 13, fontWeight: 500 }}>
-              Arrivée: {formatDateDisplay(booking.dateArrivee)} • Départ: {formatDateDisplay(booking.dateDepart)}
+              Arrivée: {formatDateDisplay(booking.arrivalDate)} • Départ: {formatDateDisplay(booking.departureDate)}
             </span>
-            {nbNuits > 0 && (
+            {numberOfNights > 0 && (
               <span style={{ color: darkTheme.textSecondary, fontSize: 13, marginLeft: '8px' }}>
-                ({nbNuits} nuit{nbNuits > 1 ? 's' : ''})
+                ({numberOfNights} nuit{numberOfNights > 1 ? 's' : ''})
               </span>
             )}
           </div>
 
           {/* Client */}
-          {booking.clientNom && (
+          {booking.clientName && (
             <div style={{ marginBottom: '12px' }}>
               <span style={{ color: darkTheme.textSecondary, fontSize: 13 }}>👤 </span>
               <span style={{ color: darkTheme.textPrimary, fontSize: 13, fontWeight: 500 }}>
-                {booking.clientNom}
+                {booking.clientName}
               </span>
             </div>
           )}
@@ -192,21 +192,21 @@ export function DeleteBookingModal({
           )}
 
           {/* Nombre de personnes */}
-          {booking.nbPersonnes != null && (
+          {booking.numberOfPersons != null && (
             <div style={{ marginBottom: '12px' }}>
               <span style={{ color: darkTheme.textSecondary, fontSize: 13 }}>👥 </span>
               <span style={{ color: darkTheme.textPrimary, fontSize: 13 }}>
-                {booking.nbPersonnes} personne{booking.nbPersonnes > 1 ? 's' : ''}
+                {booking.numberOfPersons} personne{booking.numberOfPersons > 1 ? 's' : ''}
               </span>
             </div>
           )}
 
           {/* Montant total */}
-          {booking.montantTotal != null && (
+          {booking.totalAmount != null && (
             <div style={{ marginBottom: '12px' }}>
               <span style={{ color: darkTheme.textSecondary, fontSize: 13 }}>💰 </span>
               <span style={{ color: darkTheme.textPrimary, fontSize: 13, fontWeight: 500 }}>
-                {Math.round(booking.montantTotal)}€ {booking.devise ? booking.devise : ''}
+                {Math.round(booking.totalAmount)}€ {booking.currency ? booking.currency : ''}
               </span>
             </div>
           )}

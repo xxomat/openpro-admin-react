@@ -85,16 +85,16 @@ export function BookingOverlay({
     }> = [];
 
     for (const acc of accommodations) {
-      const bookings = bookingsByAccommodation[acc.idHebergement] || [];
+      const bookings = bookingsByAccommodation[acc.accommodationId] || [];
       const filteredBookings = filterBookingsByDateRange(bookings, startDate, endDate);
 
       for (const booking of filteredBookings) {
         // Trouver la cellule de date d'arrivée
-        const arrivalCell = gridElement.querySelector(`[data-date="${booking.dateArrivee}"][data-acc-id="${acc.idHebergement}"]`) as HTMLElement;
+        const arrivalCell = gridElement.querySelector(`[data-date="${booking.arrivalDate}"][data-acc-id="${acc.accommodationId}"]`) as HTMLElement;
         // Trouver la cellule de date de départ
-        const departureCell = gridElement.querySelector(`[data-date="${booking.dateDepart}"][data-acc-id="${acc.idHebergement}"]`) as HTMLElement;
+        const departureCell = gridElement.querySelector(`[data-date="${booking.departureDate}"][data-acc-id="${acc.accommodationId}"]`) as HTMLElement;
         // Trouver la cellule nom de l'hébergement pour obtenir la hauteur de ligne
-        const nameCell = gridElement.querySelector(`[data-acc-id="${acc.idHebergement}"][data-cell-type="name"]`) as HTMLElement;
+        const nameCell = gridElement.querySelector(`[data-acc-id="${acc.accommodationId}"][data-cell-type="name"]`) as HTMLElement;
 
         if (!nameCell) continue;
 
@@ -222,31 +222,31 @@ export function BookingOverlay({
     >
       {rects.map((rect, idx) => {
         // Trouver le nom de l'hébergement
-        const accommodation = accommodations.find(acc => acc.idHebergement === rect.booking.idHebergement);
-        const nomHebergement = accommodation?.nomHebergement || '';
+        const accommodation = accommodations.find(acc => acc.accommodationId === rect.booking.accommodationId);
+        const accommodationName = accommodation?.accommodationName || '';
         
         // Extraire seulement le nom de famille (dernier mot du nom complet)
-        const clientNomFamille = rect.booking.clientNom 
-          ? rect.booking.clientNom.split(' ').pop() || rect.booking.clientNom
+        const clientLastName = rect.booking.clientName 
+          ? rect.booking.clientName.split(' ').pop() || rect.booking.clientName
           : '';
         
         // Format du nombre de personnes : "2p." ou "4p."
-        const nbPersonnesText = rect.booking.nbPersonnes != null ? `${rect.booking.nbPersonnes}p.` : '';
+        const numberOfPersonsText = rect.booking.numberOfPersons != null ? `${rect.booking.numberOfPersons}p.` : '';
         
         // Construire le texte complet sur une ligne
         const parts: string[] = [];
-        if (clientNomFamille) parts.push(clientNomFamille);
-        if (nbPersonnesText) parts.push(nbPersonnesText);
-        if (nomHebergement) parts.push(nomHebergement);
-        if (rect.booking.montantTotal != null) parts.push(`${Math.round(rect.booking.montantTotal)}€`);
+        if (clientLastName) parts.push(clientLastName);
+        if (numberOfPersonsText) parts.push(numberOfPersonsText);
+        if (accommodationName) parts.push(accommodationName);
+        if (rect.booking.totalAmount != null) parts.push(`${Math.round(rect.booking.totalAmount)}€`);
         
         const displayText = parts.join(' • ');
         
         // Déterminer les styles conditionnels
         const isPendingSync = rect.booking.isPendingSync === true;
-        const isDirecte = rect.booking.plateformeReservation === PlateformeReservation.Directe;
+        const isDirecte = rect.booking.reservationPlatform === PlateformeReservation.Directe;
         const isObsolete = rect.booking.isObsolete === true;
-        const isSelected = selectedBookingId !== null && selectedBookingId !== undefined && rect.booking.idDossier === selectedBookingId;
+        const isSelected = selectedBookingId !== null && selectedBookingId !== undefined && rect.booking.bookingId === selectedBookingId;
         const isClickable = isDirecte; // Seules les réservations Directe sont cliquables
         
         // Style de bordure pour les réservations Direct en latence (si non sélectionnée)
@@ -288,14 +288,14 @@ export function BookingOverlay({
         
         return (
           <div
-            key={`${rect.booking.idDossier}-${idx}`}
+            key={`${rect.booking.bookingId}-${idx}`}
             style={{
               position: 'absolute',
               left: `${rect.left}px`,
               width: `${rect.width}px`,
               top: `${rect.top}px`,
               height: `${rect.height}px`,
-              background: getBookingColor(rect.booking.plateformeReservation),
+              background: getBookingColor(rect.booking.reservationPlatform),
               backgroundImage,
               border: borderStyle,
               borderRadius: 8,

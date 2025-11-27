@@ -29,13 +29,13 @@ const suppliersFromEnv = (() => {
 
 // Fournisseurs pour le mode stub (anciens IDs de test)
 const stubSuppliers: Supplier[] = [
-  { idFournisseur: 47186, nom: 'La Becterie' },
-  { idFournisseur: 55123, nom: 'Gîte en Cotentin' }
+  { supplierId: 47186, name: 'La Becterie' },
+  { supplierId: 55123, name: 'Gîte en Cotentin' }
 ];
 
 // Fournisseurs pour le mode production (nouveaux IDs)
 const productionSuppliers: Supplier[] = [
-  { idFournisseur: 134737, nom: 'La Becterie' }
+  { supplierId: 134737, name: 'La Becterie' }
 ];
 
 export const defaultSuppliers: Supplier[] =

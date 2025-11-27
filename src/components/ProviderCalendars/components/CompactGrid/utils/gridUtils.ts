@@ -90,8 +90,8 @@ export function filterBookingsByDateRange(
   const endDateStr = formatDate(endDate);
   
   return bookings.filter(booking => {
-    // Une réservation chevauche si dateArrivee <= endDate && dateDepart > startDate
-    return booking.dateArrivee <= endDateStr && booking.dateDepart > startDateStr;
+    // Une réservation chevauche si arrivalDate <= endDate && departureDate > startDate
+    return booking.arrivalDate <= endDateStr && booking.departureDate > startDateStr;
   });
 }
 
@@ -106,8 +106,8 @@ export function filterBookingsByDateRange(
  */
 export function getBookingsForDate(bookings: BookingDisplay[], dateStr: string): BookingDisplay[] {
   return bookings.filter(booking => {
-    // La date est couverte si dateArrivee <= dateStr < dateDepart
-    return booking.dateArrivee <= dateStr && booking.dateDepart > dateStr;
+    // La date est couverte si arrivalDate <= dateStr < departureDate
+    return booking.arrivalDate <= dateStr && booking.departureDate > dateStr;
   });
 }
 
@@ -148,19 +148,19 @@ export function calculateBookingPosition(
   const endDateStr = formatDate(endDate);
   
   // Vérifier si la réservation chevauche la plage affichée
-  if (booking.dateArrivee > endDateStr || booking.dateDepart <= startDateStr) {
+  if (booking.arrivalDate > endDateStr || booking.departureDate <= startDateStr) {
     return null; // Réservation complètement hors plage
   }
   
   // Trouver l'index de la ligne (hébergement)
-  const rowIndex = accommodations.findIndex(acc => acc.idHebergement === booking.idHebergement);
+  const rowIndex = accommodations.findIndex(acc => acc.accommodationId === booking.accommodationId);
   if (rowIndex === -1) {
     return null; // Hébergement non trouvé
   }
   
   // Trouver les colonnes de début et de fin
-  const colStart = allDays.findIndex(day => formatDate(day) === booking.dateArrivee);
-  const colEnd = allDays.findIndex(day => formatDate(day) === booking.dateDepart);
+  const colStart = allDays.findIndex(day => formatDate(day) === booking.arrivalDate);
+  const colEnd = allDays.findIndex(day => formatDate(day) === booking.departureDate);
   
   // Si les dates ne sont pas dans allDays, ajuster
   let actualColStart = colStart;

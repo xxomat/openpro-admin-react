@@ -78,22 +78,22 @@ export function ProviderCalendars(): React.ReactElement {
   // Obtenir la sélection de cellules pour le fournisseur actif (format: "accId-dateStr")
   const selectedCells = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.selectedCellsBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
+    return supplierData.selectedCellsBySupplier[activeSupplier.supplierId] ?? new Set<string>();
   }, [activeSupplier, supplierData.selectedCellsBySupplier]);
 
   // Obtenir la sélection d'hébergements pour le fournisseur actif
   const selectedAccommodations = React.useMemo(() => {
     if (!activeSupplier) return new Set<number>();
-    return supplierData.selectedAccommodationsBySupplier[activeSupplier.idFournisseur] ?? new Set<number>();
+    return supplierData.selectedAccommodationsBySupplier[activeSupplier.supplierId] ?? new Set<number>();
   }, [activeSupplier, supplierData.selectedAccommodationsBySupplier]);
 
   // Fonction pour mettre à jour la sélection d'hébergements du fournisseur actif
   const setSelectedAccommodations = React.useCallback((updater: Set<number> | ((prev: Set<number>) => Set<number>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedAccommodationsBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] ?? new Set<number>();
+      const current = prev[activeSupplier.supplierId] ?? new Set<number>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
-      return { ...prev, [activeSupplier.idFournisseur]: newSet };
+      return { ...prev, [activeSupplier.supplierId]: newSet };
     });
   }, [activeSupplier, supplierData]);
 
@@ -104,9 +104,9 @@ export function ProviderCalendars(): React.ReactElement {
   const setSelectedCells = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedCellsBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
+      const current = prev[activeSupplier.supplierId] ?? new Set<string>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
-      return { ...prev, [activeSupplier.idFournisseur]: newSet };
+      return { ...prev, [activeSupplier.supplierId]: newSet };
     });
   }, [activeSupplier, supplierData]);
 
@@ -216,21 +216,21 @@ export function ProviderCalendars(): React.ReactElement {
   // Fonction pour gérer le clic sur une réservation
   const handleBookingClick = React.useCallback((booking: BookingDisplay) => {
     // Vérifier que la réservation est Directe (sécurité supplémentaire)
-    if (booking.plateformeReservation !== PlateformeReservation.Directe) {
+    if (booking.reservationPlatform !== PlateformeReservation.Directe) {
       return; // Ne pas sélectionner les réservations non Directe
     }
 
     // Si la réservation cliquée est déjà sélectionnée, désélectionner
-    if (booking.idDossier === selectedBookingId) {
+    if (booking.bookingId === selectedBookingId) {
       setSelectedBookingId(null);
     } else {
       // Sinon, sélectionner cette réservation ET vider la sélection de dates
-      setSelectedBookingId(booking.idDossier);
+      setSelectedBookingId(booking.bookingId);
       // Vider la sélection de dates directement (sans passer par setSelectedCells pour éviter la récursion)
       if (activeSupplier) {
         supplierData.setSelectedCellsBySupplier(prev => ({
           ...prev,
-          [activeSupplier.idFournisseur]: new Set<string>()
+          [activeSupplier.supplierId]: new Set<string>()
         }));
       }
     }
@@ -265,11 +265,11 @@ export function ProviderCalendars(): React.ReactElement {
       return null;
     }
 
-    const bookingsByAcc = supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    const bookingsByAcc = supplierData.bookingsBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
     
     // Parcourir toutes les réservations pour trouver celle avec le bon idDossier
     for (const bookingsArray of Object.values(bookingsByAcc)) {
-      const booking = bookingsArray.find(b => b.idDossier === selectedBookingId);
+      const booking = bookingsArray.find(b => b.bookingId === selectedBookingId);
       if (booking) {
         return booking;
       }
@@ -284,9 +284,9 @@ export function ProviderCalendars(): React.ReactElement {
       return undefined;
     }
 
-    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
-    const accommodation = accommodations.find(acc => acc.idHebergement === selectedBooking.idHebergement);
-    return accommodation?.nomHebergement;
+    const accommodations = supplierData.accommodations[activeSupplier.supplierId] ?? [];
+    const accommodation = accommodations.find(acc => acc.accommodationId === selectedBooking.accommodationId);
+    return accommodation?.accommodationName;
   }, [selectedBooking, activeSupplier, supplierData.accommodations]);
 
   // Gérer la touche Suppr pour ouvrir la modale de suppression
@@ -315,54 +315,54 @@ export function ProviderCalendars(): React.ReactElement {
   // Obtenir les modifications pour le fournisseur actif
   const modifiedRates = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.modifiedRatesBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
+    return supplierData.modifiedRatesBySupplier[activeSupplier.supplierId] ?? new Set<string>();
   }, [activeSupplier, supplierData.modifiedRatesBySupplier]);
 
-  const modifiedDureeMin = React.useMemo(() => {
+  const modifiedMinDuration = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.modifiedDureeMinBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
-  }, [activeSupplier, supplierData.modifiedDureeMinBySupplier]);
+    return supplierData.modifiedMinDurationBySupplier[activeSupplier.supplierId] ?? new Set<string>();
+  }, [activeSupplier, supplierData.modifiedMinDurationBySupplier]);
 
   // Obtenir le selectedRateTypeId pour le fournisseur actif
   const selectedRateTypeId = React.useMemo(() => {
     if (!activeSupplier) return null;
-    return supplierData.selectedRateTypeIdBySupplier[activeSupplier.idFournisseur] ?? null;
+    return supplierData.selectedRateTypeIdBySupplier[activeSupplier.supplierId] ?? null;
   }, [activeSupplier, supplierData.selectedRateTypeIdBySupplier]);
 
   // Helper pour extraire les données du fournisseur actif
   const stockByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.stockBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    return supplierData.stockBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
   }, [activeSupplier, supplierData.stockBySupplierAndAccommodation]);
 
   const ratesByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.ratesBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    return supplierData.ratesBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
   }, [activeSupplier, supplierData.ratesBySupplierAndAccommodation]);
 
   const rateTypeLinksByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    return supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
   }, [activeSupplier, supplierData.rateTypeLinksBySupplierAndAccommodation]);
 
-  const dureeMinByAccommodation = React.useMemo(() => {
+  const minDurationByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
-  }, [activeSupplier, supplierData.dureeMinBySupplierAndAccommodation]);
+    return supplierData.minDurationBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
+  }, [activeSupplier, supplierData.minDurationBySupplierAndAccommodation]);
 
-  const arriveeAutoriseeByAccommodation = React.useMemo(() => {
+  const arrivalAllowedByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.arriveeAutoriseeBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
-  }, [activeSupplier, supplierData.arriveeAutoriseeBySupplierAndAccommodation]);
+    return supplierData.arrivalAllowedBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
+  }, [activeSupplier, supplierData.arrivalAllowedBySupplierAndAccommodation]);
 
-  const modifiedArriveeAutorisee = React.useMemo(() => {
+  const modifiedArrivalAllowed = React.useMemo(() => {
     if (!activeSupplier) return new Set<string>();
-    return supplierData.modifiedArriveeAutoriseeBySupplier[activeSupplier.idFournisseur] ?? new Set<string>();
-  }, [activeSupplier, supplierData.modifiedArriveeAutoriseeBySupplier]);
+    return supplierData.modifiedArrivalAllowedBySupplier[activeSupplier.supplierId] ?? new Set<string>();
+  }, [activeSupplier, supplierData.modifiedArrivalAllowedBySupplier]);
 
   const bookingsByAccommodation = React.useMemo(() => {
     if (!activeSupplier) return {};
-    return supplierData.bookingsBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    return supplierData.bookingsBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
   }, [activeSupplier, supplierData.bookingsBySupplierAndAccommodation]);
 
   // Calculer les jours non réservables pour chaque hébergement
@@ -370,27 +370,27 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return {};
     
     const result: Record<number, Set<string>> = {};
-    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    const accommodations = supplierData.accommodations[activeSupplier.supplierId] ?? [];
     
     for (const acc of accommodations) {
-      const stockByDate = stockByAccommodation[acc.idHebergement] ?? {};
-      const dureeMinByDate = dureeMinByAccommodation[acc.idHebergement] ?? {};
-      const ratesByDate = ratesByAccommodation[acc.idHebergement];
+      const stockByDate = stockByAccommodation[acc.accommodationId] ?? {};
+      const minDurationByDate = minDurationByAccommodation[acc.accommodationId] ?? {};
+      const ratesByDate = ratesByAccommodation[acc.accommodationId];
       
       const nonReservableDays = getNonReservableDays(
         stockByDate,
-        dureeMinByDate,
+        minDurationByDate,
         ratesByDate,
         selectedRateTypeId,
         startDate,
         endDate
       );
       
-      result[acc.idHebergement] = nonReservableDays;
+      result[acc.accommodationId] = nonReservableDays;
     }
     
     return result;
-  }, [activeSupplier, stockByAccommodation, dureeMinByAccommodation, ratesByAccommodation, selectedRateTypeId, startDate, endDate, supplierData]);
+  }, [activeSupplier, stockByAccommodation, minDurationByAccommodation, ratesByAccommodation, selectedRateTypeId, startDate, endDate, supplierData]);
 
   // Fonction pour mettre à jour les prix localement
   const handleRateUpdate = React.useCallback((
@@ -404,7 +404,7 @@ export function ProviderCalendars(): React.ReactElement {
     
     supplierData.setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
-      const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
+      const supplierDataState = updated[activeSupplier.supplierId] ?? {};
       
       if (editAllSelection && editingCell) {
         // CTRL+clic : appliquer à toute la sélection, mais uniquement aux hébergements visibles (sélectionnés dans le filtre)
@@ -442,22 +442,22 @@ export function ProviderCalendars(): React.ReactElement {
         datesToCheckForDureeMin.push({ accId, dateStr });
       }
       
-      return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
+      return { ...updated, [activeSupplier.supplierId]: supplierDataState };
     });
     
     // Marquer comme modifié après la mise à jour des prix (pour le fournisseur actif)
     supplierData.setModifiedRatesBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
+      const current = prev[activeSupplier.supplierId] ?? new Set<string>();
       const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
       }
-      return { ...prev, [activeSupplier.idFournisseur]: newMod };
+      return { ...prev, [activeSupplier.supplierId]: newMod };
     });
     
     // Vérifier et forcer la durée minimale à 1 si elle n'est pas définie pour chaque date modifiée
-    const currentDureeMinByAccommodation = supplierData.dureeMinBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
-    const dureeMinModifications = new Set<string>();
+    const currentDureeMinByAccommodation = supplierData.minDurationBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
+    const minDurationModifications = new Set<string>();
     
     for (const { accId, dateStr } of datesToCheckForDureeMin) {
       const currentDureeMin = currentDureeMinByAccommodation[accId]?.[dateStr]?.[selectedRateTypeId];
@@ -465,9 +465,9 @@ export function ProviderCalendars(): React.ReactElement {
       // Si la durée minimale n'est pas définie (null, undefined, ou 0), forcer à 1
       if (currentDureeMin === null || currentDureeMin === undefined || currentDureeMin === 0) {
         // Mettre à jour la durée minimale
-        supplierData.setDureeMinByAccommodation(prev => {
+        supplierData.setMinDurationByAccommodation(prev => {
           const updated = { ...prev };
-          const supplierDataState = updated[activeSupplier.idFournisseur] ?? {};
+          const supplierDataState = updated[activeSupplier.supplierId] ?? {};
           
           if (!supplierDataState[accId]) {
             supplierDataState[accId] = {};
@@ -477,41 +477,41 @@ export function ProviderCalendars(): React.ReactElement {
           }
           supplierDataState[accId][dateStr][selectedRateTypeId] = 1;
           
-          return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
+          return { ...updated, [activeSupplier.supplierId]: supplierDataState };
         });
         
         // Marquer comme modifié
-        dureeMinModifications.add(`${accId}-${dateStr}`);
+        minDurationModifications.add(`${accId}-${dateStr}`);
       }
     }
     
     // Marquer les durées minimales comme modifiées
-    if (dureeMinModifications.size > 0) {
-      supplierData.setModifiedDureeMinBySupplier(prev => {
-        const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
+    if (minDurationModifications.size > 0) {
+      supplierData.setModifiedMinDurationBySupplier(prev => {
+        const current = prev[activeSupplier.supplierId] ?? new Set<string>();
         const newMod = new Set(current);
-        for (const mod of dureeMinModifications) {
+        for (const mod of minDurationModifications) {
           newMod.add(mod);
         }
-        return { ...prev, [activeSupplier.idFournisseur]: newMod };
+        return { ...prev, [activeSupplier.supplierId]: newMod };
       });
     }
   }, [selectedCells, selectedAccommodations, activeSupplier, selectedRateTypeId, supplierData]);
 
   // Fonction pour mettre à jour la durée minimale localement
-  const handleDureeMinUpdate = React.useCallback((
+  const handleMinDurationUpdate = React.useCallback((
     newDureeMin: number | null,
     editAllSelection: boolean = false,
     editingCell: { accId: number; dateStr: string } | null = null
   ) => {
     if (!activeSupplier) return;
     const modifications = new Set<string>();
-    if (!selectedRateTypeId) return; // Ne peut pas modifier dureeMin sans type de tarif sélectionné
+    if (!selectedRateTypeId) return; // Ne peut pas modifier minDuration sans type de tarif sélectionné
     
-    supplierData.setDureeMinByAccommodation(prev => {
+    supplierData.setMinDurationByAccommodation(prev => {
       const updated = { ...prev };
       // Créer une copie profonde de l'état du fournisseur pour que React détecte le changement
-      const existingState = updated[activeSupplier.idFournisseur] ?? {};
+      const existingState = updated[activeSupplier.supplierId] ?? {};
       const supplierDataState: Record<number, Record<string, Record<number, number | null>>> = {};
       
       // Copier toutes les données existantes
@@ -575,21 +575,21 @@ export function ProviderCalendars(): React.ReactElement {
         modifications.add(`${accId}-${dateStr}`);
       }
       
-      return { ...updated, [activeSupplier.idFournisseur]: supplierDataState };
+      return { ...updated, [activeSupplier.supplierId]: supplierDataState };
     });
     // Marquer comme modifié après la mise à jour de la durée minimale (pour le fournisseur actif)
-    supplierData.setModifiedDureeMinBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
+    supplierData.setModifiedMinDurationBySupplier(prev => {
+      const current = prev[activeSupplier.supplierId] ?? new Set<string>();
       const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
       }
-      return { ...prev, [activeSupplier.idFournisseur]: newMod };
+      return { ...prev, [activeSupplier.supplierId]: newMod };
     });
   }, [selectedCells, selectedAccommodations, activeSupplier, supplierData]);
 
-  // Fonction pour mettre à jour arriveeAutorisee localement
-  const handleArriveeAutoriseeUpdate = React.useCallback((
+  // Fonction pour mettre à jour arrivalAllowed localement
+  const handleArrivalAllowedUpdate = React.useCallback((
     accId: number,
     dateStr: string,
     isAllowed: boolean,
@@ -599,17 +599,17 @@ export function ProviderCalendars(): React.ReactElement {
       return;
     }
     
-    if (!supplierData.setArriveeAutoriseeByAccommodation || typeof supplierData.setArriveeAutoriseeByAccommodation !== 'function') {
+      if (!supplierData.setArrivalAllowedByAccommodation || typeof supplierData.setArrivalAllowedByAccommodation !== 'function') {
       return;
     }
     
     try {
       const modifications = new Set<string>();
       
-      // Mettre à jour arriveeAutorisee
-      supplierData.setArriveeAutoriseeByAccommodation(prev => {
+      // Mettre à jour arrivalAllowed
+      supplierData.setArrivalAllowedByAccommodation(prev => {
       const updated = { ...prev };
-      const existingState = updated[activeSupplier.idFournisseur] ?? {};
+      const existingState = updated[activeSupplier.supplierId] ?? {};
       const supplierDataState: Record<number, Record<string, Record<number, boolean>>> = {};
       
       // Copier toutes les données existantes
@@ -668,17 +668,17 @@ export function ProviderCalendars(): React.ReactElement {
         modifications.add(`${accId}-${dateStr}`);
       }
       
-      return { ...updated, [activeSupplier.idFournisseur]: supplierDataState } as Record<number, Record<number, Record<string, boolean>>>;
+      return { ...updated, [activeSupplier.supplierId]: supplierDataState } as Record<number, Record<number, Record<string, boolean>>>;
     });
     
     // Marquer comme modifié
-    supplierData.setModifiedArriveeAutoriseeBySupplier(prev => {
-      const current = prev[activeSupplier.idFournisseur] ?? new Set<string>();
+    supplierData.setModifiedArrivalAllowedBySupplier(prev => {
+      const current = prev[activeSupplier.supplierId] ?? new Set<string>();
       const newMod = new Set(current);
       for (const mod of modifications) {
         newMod.add(mod);
       }
-      return { ...prev, [activeSupplier.idFournisseur]: newMod };
+      return { ...prev, [activeSupplier.supplierId]: newMod };
     });
     } catch (error) {
       throw error;
@@ -688,20 +688,20 @@ export function ProviderCalendars(): React.ReactElement {
   // Fonction pour sauvegarder les modifications
   const handleSave = React.useCallback(async () => {
     if (!activeSupplier) return;
-    if (modifiedRates.size === 0 && modifiedDureeMin.size === 0 && modifiedArriveeAutorisee.size === 0) return;
+    if (modifiedRates.size === 0 && modifiedMinDuration.size === 0 && modifiedArrivalAllowed.size === 0) return;
     
     setSaving(true);
     supplierData.setError(null);
     
     try {
       // Collecter les modifications et les transformer en structure bulk
-      const accommodationsMap = new Map<number, Map<string, { rateTypeId?: number; price?: number; dureeMin?: number | null; arriveeAutorisee?: boolean }>>();
+      const accommodationsMap = new Map<number, Map<string, { rateTypeId?: number; price?: number; minDuration?: number | null; arrivalAllowed?: boolean }>>();
       
       // Traiter les modifications de tarifs
-      // Format de modKey: "${idHebergement}-${dateStr}-${idTypeTarif}"
+      // Format de modKey: "${accommodationId}-${dateStr}-${rateTypeId}"
       // Exemple: "1-2025-11-20-1001"
       for (const modKey of modifiedRates) {
-        // Trouver le dernier tiret pour séparer idTypeTarif
+        // Trouver le dernier tiret pour séparer rateTypeId
         const lastDashIndex = modKey.lastIndexOf('-');
         if (lastDashIndex === -1) continue;
         
@@ -709,21 +709,21 @@ export function ProviderCalendars(): React.ReactElement {
         const rateTypeId = parseInt(rateTypeIdStr, 10);
         if (isNaN(rateTypeId)) continue;
         
-        // Le reste avant le dernier tiret est "${idHebergement}-${dateStr}"
+        // Le reste avant le dernier tiret est "${accommodationId}-${dateStr}"
         const rest = modKey.substring(0, lastDashIndex);
         const firstDashIndex = rest.indexOf('-');
         if (firstDashIndex === -1) continue;
         
-        const idHebergementStr = rest.substring(0, firstDashIndex);
-        const idHebergement = parseInt(idHebergementStr, 10);
-        if (isNaN(idHebergement)) continue;
+        const accommodationIdStr = rest.substring(0, firstDashIndex);
+        const accommodationId = parseInt(accommodationIdStr, 10);
+        if (isNaN(accommodationId)) continue;
         
         const dateStr = rest.substring(firstDashIndex + 1);
         
-        if (!accommodationsMap.has(idHebergement)) {
-          accommodationsMap.set(idHebergement, new Map());
+        if (!accommodationsMap.has(accommodationId)) {
+          accommodationsMap.set(accommodationId, new Map());
         }
-        const datesMap = accommodationsMap.get(idHebergement)!;
+        const datesMap = accommodationsMap.get(accommodationId)!;
         
         if (!datesMap.has(dateStr)) {
           datesMap.set(dateStr, {});
@@ -731,7 +731,7 @@ export function ProviderCalendars(): React.ReactElement {
         const dateData = datesMap.get(dateStr)!;
         
         // Récupérer le prix depuis les données modifiées
-        const price = ratesByAccommodation[idHebergement]?.[dateStr]?.[rateTypeId];
+        const price = ratesByAccommodation[accommodationId]?.[dateStr]?.[rateTypeId];
         if (price !== undefined) {
           dateData.rateTypeId = rateTypeId;
           dateData.price = price;
@@ -739,25 +739,25 @@ export function ProviderCalendars(): React.ReactElement {
       }
       
       // Traiter les modifications de durée minimale
-      // Format de modKey: "${idHebergement}-${dateStr}"
+      // Format de modKey: "${accommodationId}-${dateStr}"
       // Exemple: "1-2025-11-20"
-      for (const modKey of modifiedDureeMin) {
+      for (const modKey of modifiedMinDuration) {
         const firstDashIndex = modKey.indexOf('-');
         if (firstDashIndex === -1) continue;
         
-        const idHebergementStr = modKey.substring(0, firstDashIndex);
-        const idHebergement = parseInt(idHebergementStr, 10);
-        if (isNaN(idHebergement)) continue;
+        const accommodationIdStr = modKey.substring(0, firstDashIndex);
+        const accommodationId = parseInt(accommodationIdStr, 10);
+        if (isNaN(accommodationId)) continue;
         
         const dateStr = modKey.substring(firstDashIndex + 1);
         
         // Ne traiter que si on a un selectedRateTypeId
         if (selectedRateTypeId === null) continue;
         
-        if (!accommodationsMap.has(idHebergement)) {
-          accommodationsMap.set(idHebergement, new Map());
+        if (!accommodationsMap.has(accommodationId)) {
+          accommodationsMap.set(accommodationId, new Map());
         }
-        const datesMap = accommodationsMap.get(idHebergement)!;
+        const datesMap = accommodationsMap.get(accommodationId)!;
         
         if (!datesMap.has(dateStr)) {
           datesMap.set(dateStr, {});
@@ -765,9 +765,9 @@ export function ProviderCalendars(): React.ReactElement {
         const dateData = datesMap.get(dateStr)!;
         
         // Récupérer la durée minimale depuis les données modifiées
-        const dureeMin = dureeMinByAccommodation[idHebergement]?.[dateStr]?.[selectedRateTypeId];
-        if (dureeMin !== undefined) {
-          dateData.dureeMin = dureeMin;
+        const minDuration = minDurationByAccommodation[accommodationId]?.[dateStr]?.[selectedRateTypeId];
+        if (minDuration !== undefined) {
+          dateData.minDuration = minDuration;
         }
         
         // Si on n'a pas encore de rateTypeId pour cette date, utiliser le selectedRateTypeId
@@ -776,13 +776,13 @@ export function ProviderCalendars(): React.ReactElement {
           if (selectedRateTypeId !== null) {
             dateData.rateTypeId = selectedRateTypeId;
             // Si on a un prix pour ce rateTypeId et cette date, l'inclure aussi
-            const price = ratesByAccommodation[idHebergement]?.[dateStr]?.[selectedRateTypeId];
+            const price = ratesByAccommodation[accommodationId]?.[dateStr]?.[selectedRateTypeId];
             if (price !== undefined) {
               dateData.price = price;
             }
           } else {
             // Sinon, utiliser le premier tarif existant pour cette date
-            const ratesForDate = ratesByAccommodation[idHebergement]?.[dateStr];
+            const ratesForDate = ratesByAccommodation[accommodationId]?.[dateStr];
             if (ratesForDate) {
               const firstRateTypeId = Object.keys(ratesForDate)[0];
               if (firstRateTypeId) {
@@ -795,35 +795,35 @@ export function ProviderCalendars(): React.ReactElement {
       }
       
       // Traiter les modifications d'arrivée autorisée
-      // Format de modKey: "${idHebergement}-${dateStr}"
+      // Format de modKey: "${accommodationId}-${dateStr}"
       // Exemple: "1-2025-11-20"
-      for (const modKey of modifiedArriveeAutorisee) {
+      for (const modKey of modifiedArrivalAllowed) {
         const firstDashIndex = modKey.indexOf('-');
         if (firstDashIndex === -1) continue;
         
-        const idHebergementStr = modKey.substring(0, firstDashIndex);
-        const idHebergement = parseInt(idHebergementStr, 10);
-        if (isNaN(idHebergement)) continue;
+        const accommodationIdStr = modKey.substring(0, firstDashIndex);
+        const accommodationId = parseInt(accommodationIdStr, 10);
+        if (isNaN(accommodationId)) continue;
         
         const dateStr = modKey.substring(firstDashIndex + 1);
         
         // Ne traiter que si on a un selectedRateTypeId
         if (selectedRateTypeId === null) continue;
         
-        if (!accommodationsMap.has(idHebergement)) {
-          accommodationsMap.set(idHebergement, new Map());
+        if (!accommodationsMap.has(accommodationId)) {
+          accommodationsMap.set(accommodationId, new Map());
         }
-        const datesMap = accommodationsMap.get(idHebergement)!;
+        const datesMap = accommodationsMap.get(accommodationId)!;
         
         if (!datesMap.has(dateStr)) {
           datesMap.set(dateStr, {});
         }
         const dateData = datesMap.get(dateStr)!;
         
-        // Récupérer arriveeAutorisee depuis les données modifiées
-        const arriveeAutorisee = arriveeAutoriseeByAccommodation[idHebergement]?.[dateStr]?.[selectedRateTypeId];
-        if (arriveeAutorisee !== undefined) {
-          dateData.arriveeAutorisee = arriveeAutorisee;
+        // Récupérer arrivalAllowed depuis les données modifiées
+        const arrivalAllowed = arrivalAllowedByAccommodation[accommodationId]?.[dateStr]?.[selectedRateTypeId];
+        if (arrivalAllowed !== undefined) {
+          dateData.arrivalAllowed = arrivalAllowed;
         }
         
         // Si on n'a pas encore de rateTypeId pour cette date, utiliser le selectedRateTypeId
@@ -832,13 +832,13 @@ export function ProviderCalendars(): React.ReactElement {
           if (selectedRateTypeId !== null) {
             dateData.rateTypeId = selectedRateTypeId;
             // Si on a un prix pour ce rateTypeId et cette date, l'inclure aussi
-            const price = ratesByAccommodation[idHebergement]?.[dateStr]?.[selectedRateTypeId];
+            const price = ratesByAccommodation[accommodationId]?.[dateStr]?.[selectedRateTypeId];
             if (price !== undefined) {
               dateData.price = price;
             }
           } else {
             // Sinon, utiliser le premier tarif existant pour cette date
-            const ratesForDate = ratesByAccommodation[idHebergement]?.[dateStr];
+            const ratesForDate = ratesByAccommodation[accommodationId]?.[dateStr];
             if (ratesForDate) {
               const firstRateTypeId = Object.keys(ratesForDate)[0];
               if (firstRateTypeId) {
@@ -854,40 +854,59 @@ export function ProviderCalendars(): React.ReactElement {
       }
       
       // Transformer en structure bulk
+      // IMPORTANT: Toujours inclure minDuration et arrivalAllowed depuis les données actuelles
+      // même si elles n'ont pas été modifiées, pour préserver leurs valeurs lors de la mise à jour
       const bulkData: BulkUpdateRequest = {
-        accommodations: Array.from(accommodationsMap.entries()).map(([idHebergement, datesMap]) => ({
-          idHebergement,
+        accommodations: Array.from(accommodationsMap.entries()).map(([accommodationId, datesMap]) => ({
+          accommodationId,
           dates: Array.from(datesMap.entries())
             .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-            .map(([date, data]) => ({
-              date,
-              ...(data.rateTypeId !== undefined && data.price !== undefined ? {
-                rateTypeId: data.rateTypeId,
-                price: data.price
-              } : {}),
-              ...(data.dureeMin !== undefined ? { dureeMin: data.dureeMin } : {}),
-              ...(data.arriveeAutorisee !== undefined ? { arriveeAutorisee: data.arriveeAutorisee } : {})
-            }))
+            .map(([date, data]) => {
+              const rateTypeId = data.rateTypeId ?? selectedRateTypeId;
+              
+              // Récupérer les valeurs actuelles de minDuration et arrivalAllowed
+              // depuis les données existantes si elles ne sont pas dans data
+              const currentMinDuration = data.minDuration !== undefined
+                ? data.minDuration
+                : (rateTypeId !== null ? minDurationByAccommodation[accommodationId]?.[date]?.[rateTypeId] ?? null : null);
+              
+              const currentArrivalAllowed = data.arrivalAllowed !== undefined
+                ? data.arrivalAllowed
+                : (rateTypeId !== null ? arrivalAllowedByAccommodation[accommodationId]?.[date]?.[rateTypeId] ?? true : true);
+              
+              return {
+                date,
+                ...(rateTypeId !== undefined && rateTypeId !== null && data.price !== undefined ? {
+                  rateTypeId,
+                  price: data.price
+                } : {}),
+                // Toujours inclure minDuration et arrivalAllowed pour préserver leurs valeurs
+                ...(rateTypeId !== null ? {
+                  minDuration: currentMinDuration,
+                  arrivalAllowed: currentArrivalAllowed
+                } : {})
+              };
+            })
         }))
       };
       
       // Envoyer les modifications au backend
-      await saveBulkUpdates(activeSupplier.idFournisseur, bulkData);
+      await saveBulkUpdates(activeSupplier.supplierId, bulkData);
       
       // Réinitialiser les modifications après succès
       supplierData.setModifiedRatesBySupplier(prev => {
         const updated = { ...prev };
-        updated[activeSupplier.idFournisseur] = new Set();
+        updated[activeSupplier.supplierId] = new Set();
         return updated;
       });
-      supplierData.setModifiedDureeMinBySupplier(prev => {
+      supplierData.setModifiedMinDurationBySupplier(prev => {
         const updated = { ...prev };
-        updated[activeSupplier.idFournisseur] = new Set();
+        updated[activeSupplier.supplierId] = new Set();
         return updated;
       });
-      supplierData.setModifiedArriveeAutoriseeBySupplier(prev => {
+      supplierData.setModifiedArrivalAllowedBySupplier(prev => {
         const updated = { ...prev };
-        updated[activeSupplier.idFournisseur] = new Set();
+        updated[activeSupplier.supplierId] = new Set();
         return updated;
       });
     } catch (error) {
@@ -896,12 +915,12 @@ export function ProviderCalendars(): React.ReactElement {
     } finally {
       setSaving(false);
     }
-  }, [modifiedRates, modifiedDureeMin, modifiedArriveeAutorisee, activeSupplier, ratesByAccommodation, dureeMinByAccommodation, arriveeAutoriseeByAccommodation, supplierData]);
+  }, [modifiedRates, modifiedMinDuration, modifiedArrivalAllowed, activeSupplier, ratesByAccommodation, minDurationByAccommodation, arrivalAllowedByAccommodation, selectedRateTypeId, supplierData]);
 
   // Fonction pour actualiser les données du fournisseur actif
   const handleRefreshData = React.useCallback(async () => {
     if (!activeSupplier) return;
-    await supplierData.refreshSupplierData(activeSupplier.idFournisseur, startDate, endDate);
+    await supplierData.refreshSupplierData(activeSupplier.supplierId, startDate, endDate);
   }, [activeSupplier, startDate, endDate, supplierData]);
 
   // Fonction pour gérer la suppression d'une réservation
@@ -911,18 +930,18 @@ export function ProviderCalendars(): React.ReactElement {
 
     // Étape 1: Supprimer la réservation en DB (et dans le stub en test)
     // Passer les critères supplémentaires pour une recherche plus précise
-    await deleteBooking(
-      activeSupplier.idFournisseur,
-      booking.idDossier,
-      booking.idHebergement,
-      booking.dateArrivee,
-      booking.dateDepart
+      await deleteBooking(
+      activeSupplier.supplierId,
+      booking.bookingId,
+      booking.accommodationId,
+      booking.arrivalDate,
+      booking.departureDate
     );
 
-    // Étape 2: Calculer toutes les dates de la réservation (du dateArrivee inclus au dateDepart exclus)
+    // Étape 2: Calculer toutes les dates de la réservation (du arrivalDate inclus au departureDate exclus)
     const dates: string[] = [];
-    const [startYear, startMonth, startDay] = booking.dateArrivee.split('-').map(Number);
-    const [endYear, endMonth, endDay] = booking.dateDepart.split('-').map(Number);
+    const [startYear, startMonth, startDay] = booking.arrivalDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = booking.departureDate.split('-').map(Number);
 
     // Créer des dates en locale pour éviter les problèmes de fuseau horaire
     let currentDate = new Date(startYear, startMonth - 1, startDay);
@@ -947,7 +966,7 @@ export function ProviderCalendars(): React.ReactElement {
         }))
       };
 
-      await updateStock(activeSupplier.idFournisseur, booking.idHebergement, stockPayload);
+      await updateStock(activeSupplier.supplierId, booking.accommodationId, stockPayload);
     }
 
     // Étape 3: Rafraîchir les données
@@ -963,7 +982,7 @@ export function ProviderCalendars(): React.ReactElement {
   // Poller l'état de synchronisation des réservations Direct toutes les 30 secondes
   // et déclencher un refresh automatique si l'état change
   useSyncStatusPolling(
-    activeSupplier?.idFournisseur ?? null,
+    activeSupplier?.supplierId ?? null,
     handleRefreshData,
     30000 // 30 secondes
   );
@@ -993,7 +1012,7 @@ export function ProviderCalendars(): React.ReactElement {
     if (!activeSupplier) return;
     supplierData.setSelectedRateTypeIdBySupplier(prev => ({
       ...prev,
-      [activeSupplier.idFournisseur]: newRateTypeId
+      [activeSupplier.supplierId]: newRateTypeId
     }));
   }, [activeSupplier, supplierData]);
 
@@ -1006,20 +1025,20 @@ export function ProviderCalendars(): React.ReactElement {
   const hasValidBookingSelection = React.useMemo(() => {
     return isValidBookingSelection(
       selectedCells, 
-      dureeMinByAccommodation, 
+      minDurationByAccommodation, 
       selectedAccommodations,
       ratesByAccommodation,
       selectedRateTypeId,
       stockByAccommodation
     );
-  }, [selectedCells, dureeMinByAccommodation, selectedAccommodations, ratesByAccommodation, selectedRateTypeId, stockByAccommodation]);
+  }, [selectedCells, minDurationByAccommodation, selectedAccommodations, ratesByAccommodation, selectedRateTypeId, stockByAccommodation]);
 
   // Générer les récapitulatifs de réservation
   const bookingSummaries = React.useMemo(() => {
     if (!activeSupplier || !selectedRateTypeId || selectedCells.size === 0) return [];
     
-    const accommodations = (supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
-      .filter(acc => selectedAccommodations.has(acc.idHebergement));
+    const accommodations = (supplierData.accommodations[activeSupplier.supplierId] ?? [])
+      .filter(acc => selectedAccommodations.has(acc.accommodationId));
     
     return generateBookingSummaries(
       selectedCells,
@@ -1123,9 +1142,9 @@ export function ProviderCalendars(): React.ReactElement {
       }
 
       for (const booking of bookings) {
-        // Calculer toutes les dates occupées (du dateArrivee inclus au dateDepart exclus)
-        const startDate = new Date(booking.dateArrivee);
-        const endDate = new Date(booking.dateDepart);
+        // Calculer toutes les dates occupées (du arrivalDate inclus au departureDate exclus)
+        const startDate = new Date(booking.arrivalDate);
+        const endDate = new Date(booking.departureDate);
         let currentDate = new Date(startDate);
 
         // Le jour de départ est exclu car c'est le jour où on quitte (dernière nuit = dateDepart - 1 jour)
@@ -1170,7 +1189,7 @@ export function ProviderCalendars(): React.ReactElement {
           };
           
           // Mettre à jour le stock dans OpenPro
-          await updateStock(activeSupplier.idFournisseur, accId, stockPayload);
+          await updateStock(activeSupplier.supplierId, accId, stockPayload);
           successCount += dates.size;
         } catch (error) {
           const errorMsg = `Erreur pour l'hébergement ${accId}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
@@ -1221,7 +1240,7 @@ export function ProviderCalendars(): React.ReactElement {
           };
           
           // Mettre à jour le stock dans OpenPro
-          await updateStock(activeSupplier.idFournisseur, accId, stockPayload);
+          await updateStock(activeSupplier.supplierId, accId, stockPayload);
           successCount += dates.size;
         } catch (error) {
           const errorMsg = `Erreur pour l'hébergement ${accId}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
@@ -1293,9 +1312,9 @@ export function ProviderCalendars(): React.ReactElement {
     
     // Obtenir les hébergements à sélectionner
     // Si aucun hébergement n'est sélectionné, sélectionner tous les hébergements disponibles
-    const accommodations = supplierData.accommodations[activeSupplier.idFournisseur] ?? [];
+    const accommodations = supplierData.accommodations[activeSupplier.supplierId] ?? [];
     const accommodationsToSelect = selectedAccommodations.size > 0
-      ? accommodations.filter(acc => selectedAccommodations.has(acc.idHebergement))
+      ? accommodations.filter(acc => selectedAccommodations.has(acc.accommodationId))
       : accommodations;
     
     if (accommodationsToSelect.length === 0) return;
@@ -1303,18 +1322,18 @@ export function ProviderCalendars(): React.ReactElement {
     // Créer toutes les clés de cellules pour la sélection
     // Exclure les dates occupées par une réservation, les dates passées, et les hébergements sans types de tarifs (règles de sélection)
     // Filtrer également selon les jours de la semaine sélectionnés
-    const rateTypeLinksByAccommodation = supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.idFournisseur] ?? {};
+    const rateTypeLinksByAccommodation = supplierData.rateTypeLinksBySupplierAndAccommodation[activeSupplier.supplierId] ?? {};
     const newSelectedCells = new Set<string>();
     for (const acc of accommodationsToSelect) {
       // Vérifier si l'hébergement a des types de tarifs liés
-      const accHasRateTypes = (rateTypeLinksByAccommodation[acc.idHebergement]?.length ?? 0) > 0;
+      const accHasRateTypes = (rateTypeLinksByAccommodation[acc.accommodationId]?.length ?? 0) > 0;
       if (!accHasRateTypes) continue; // Ignorer les hébergements sans types de tarifs
       
       for (const date of allDays) {
         const dateStr = formatDate(date);
         
         // Vérifier si cette date est occupée par une réservation ou passée
-        const isBooked = bookedDatesByAccommodation[acc.idHebergement]?.has(dateStr) ?? false;
+        const isBooked = bookedDatesByAccommodation[acc.accommodationId]?.has(dateStr) ?? false;
         const isPast = isPastDate(dateStr);
         
         // Calculer le jour de la semaine (0 = Lundi, 6 = Dimanche)
@@ -1325,7 +1344,7 @@ export function ProviderCalendars(): React.ReactElement {
         // Ne sélectionner que si le jour de la semaine est dans selectedDays
         // Et ne pas sélectionner les dates occupées ou passées (règles de sélection)
         if (selectedDays.has(dayOfWeek) && !isBooked && !isPast) {
-          newSelectedCells.add(`${acc.idHebergement}|${dateStr}`);
+          newSelectedCells.add(`${acc.accommodationId}|${dateStr}`);
         }
       }
     }
@@ -1549,14 +1568,14 @@ export function ProviderCalendars(): React.ReactElement {
       {activeSupplier && (
         <div>
           <AccommodationList
-            accommodations={supplierData.accommodations[activeSupplier.idFournisseur] ?? []}
+            accommodations={supplierData.accommodations[activeSupplier.supplierId] ?? []}
             selectedAccommodations={selectedAccommodations}
             onSelectedAccommodationsChange={setSelectedAccommodations}
           />
           
           <RateTypeSelector
-            rateTypes={supplierData.rateTypesBySupplier[activeSupplier.idFournisseur] ?? []}
-            rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.idFournisseur] ?? {}}
+            rateTypes={supplierData.rateTypesBySupplier[activeSupplier.supplierId] ?? []}
+            rateTypeLabels={supplierData.rateTypeLabelsBySupplier[activeSupplier.supplierId] ?? {}}
             selectedRateTypeId={selectedRateTypeId}
             onSelectedRateTypeIdChange={handleSelectedRateTypeIdChange}
             onManageRateTypes={() => setIsRateTypeManagementModalOpen(true)}
@@ -1566,23 +1585,23 @@ export function ProviderCalendars(): React.ReactElement {
               <CompactGrid
                 startDate={startDate}
                 endDate={endDate}
-                accommodations={(supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
-                  .filter(acc => selectedAccommodations.has(acc.idHebergement))
-                  .sort((a, b) => a.nomHebergement.localeCompare(b.nomHebergement))}
+                accommodations={(supplierData.accommodations[activeSupplier.supplierId] ?? [])
+                  .filter(acc => selectedAccommodations.has(acc.accommodationId))
+                  .sort((a, b) => a.accommodationName.localeCompare(b.accommodationName))}
                 stockByAccommodation={stockByAccommodation}
                 ratesByAccommodation={ratesByAccommodation}
                 rateTypeLinksByAccommodation={rateTypeLinksByAccommodation}
-                dureeMinByAccommodation={dureeMinByAccommodation}
-                arriveeAutoriseeByAccommodation={arriveeAutoriseeByAccommodation}
+                minDurationByAccommodation={minDurationByAccommodation}
+                arrivalAllowedByAccommodation={arrivalAllowedByAccommodation}
                 bookingsByAccommodation={bookingsByAccommodation}
                 selectedCells={selectedCells}
                 onSelectedCellsChange={setSelectedCells}
                 modifiedRates={modifiedRates}
-                modifiedDureeMin={modifiedDureeMin}
-                modifiedArriveeAutorisee={modifiedArriveeAutorisee}
+                modifiedMinDuration={modifiedMinDuration}
+                modifiedArrivalAllowed={modifiedArrivalAllowed}
                 onRateUpdate={handleRateUpdate}
-                onDureeMinUpdate={handleDureeMinUpdate}
-                onArriveeAutoriseeUpdate={handleArriveeAutoriseeUpdate}
+                onMinDurationUpdate={handleMinDurationUpdate}
+                onArrivalAllowedUpdate={handleArrivalAllowedUpdate}
                 selectedRateTypeId={selectedRateTypeId}
                 nonReservableDaysByAccommodation={nonReservableDaysByAccommodation}
                 bookedDatesByAccommodation={bookedDatesByAccommodation}
@@ -1623,8 +1642,8 @@ export function ProviderCalendars(): React.ReactElement {
             <ActionButtons
               loading={supplierData.loading || saving}
               modifiedRatesCount={modifiedRates.size}
-              modifiedDureeMinCount={modifiedDureeMin.size}
-              modifiedArriveeAutoriseeCount={modifiedArriveeAutorisee.size}
+              modifiedMinDurationCount={modifiedMinDuration.size}
+              modifiedArrivalAllowedCount={modifiedArrivalAllowed.size}
               unavailableDatesCount={unavailableDatesCount}
               availableDatesCount={availableDatesCount}
               onRefresh={handleRefreshData}
@@ -1636,12 +1655,12 @@ export function ProviderCalendars(): React.ReactElement {
           
           <SelectionSummary
             selectedCells={selectedCells}
-            selectedAccommodations={(supplierData.accommodations[activeSupplier.idFournisseur] ?? [])
-              .filter(acc => selectedAccommodations.has(acc.idHebergement))}
+            selectedAccommodations={(supplierData.accommodations[activeSupplier.supplierId] ?? [])
+              .filter(acc => selectedAccommodations.has(acc.accommodationId))}
             selectedRateTypeId={selectedRateTypeId}
             ratesByAccommodation={ratesByAccommodation}
             modifiedRates={modifiedRates}
-            dureeMinByAccommodation={dureeMinByAccommodation}
+            minDurationByAccommodation={minDurationByAccommodation}
           />
         </div>
       )}
@@ -1653,7 +1672,7 @@ export function ProviderCalendars(): React.ReactElement {
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
         bookingSummaries={bookingSummaries}
-        idFournisseur={activeSupplier?.idFournisseur ?? 0}
+        supplierId={activeSupplier?.supplierId ?? 0}
         onBookingCreated={handleRefreshData}
         onSelectionClear={handleClearSelection}
       />
@@ -1672,8 +1691,8 @@ export function ProviderCalendars(): React.ReactElement {
             <RateTypeManagementModal
               isOpen={isRateTypeManagementModalOpen}
               onClose={() => setIsRateTypeManagementModalOpen(false)}
-              idFournisseur={activeSupplier.idFournisseur}
-              accommodations={supplierData.accommodations[activeSupplier.idFournisseur] ?? []}
+              supplierId={activeSupplier.supplierId}
+              accommodations={supplierData.accommodations[activeSupplier.supplierId] ?? []}
               onDataChanged={handleRefreshData}
             />
           )}
