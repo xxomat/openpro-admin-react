@@ -690,3 +690,357 @@ export async function unlinkRateTypeFromAccommodation(
   }
 }
 
+// ============================================================================
+// Gestion des hébergements
+// ============================================================================
+
+/**
+ * Type pour un hébergement (réponse de l'API)
+ */
+export interface AccommodationApi {
+  id: string;
+  nom: string;
+  idOpenPro: number | null;
+  ids?: Record<string, string | number>;
+  dateCreation?: string;
+  dateModification?: string;
+}
+
+/**
+ * Type pour la création/modification d'un hébergement
+ */
+export interface AccommodationPayload {
+  nom: string;
+  ids: {
+    Directe: string;
+    OpenPro: number;
+    'Booking.com'?: string;
+    Xotelia?: string;
+    [key: string]: string | number | undefined;
+  };
+}
+
+/**
+ * Récupère la liste de tous les hébergements
+ * 
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec la liste des hébergements
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function listAccommodations(
+  signal?: AbortSignal
+): Promise<AccommodationApi[]> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/accommodations`,
+    { signal }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to list accommodations: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Crée un nouvel hébergement
+ * 
+ * @param payload - Données de l'hébergement à créer
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec l'hébergement créé
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function createAccommodation(
+  payload: AccommodationPayload,
+  signal?: AbortSignal
+): Promise<AccommodationApi> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/accommodations`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to create accommodation: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Modifie un hébergement existant
+ * 
+ * @param id - Identifiant de l'hébergement
+ * @param payload - Données de l'hébergement à modifier
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec l'hébergement modifié
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function updateAccommodation(
+  id: string,
+  payload: AccommodationPayload,
+  signal?: AbortSignal
+): Promise<AccommodationApi> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/accommodations/${id}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to update accommodation: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Supprime un hébergement
+ * 
+ * @param id - Identifiant de l'hébergement
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue en cas de succès
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function deleteAccommodation(
+  id: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/accommodations/${id}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to delete accommodation: ${errorText}`);
+  }
+}
+
+/**
+ * Récupère les identifiants externes d'un hébergement
+ * 
+ * @param id - Identifiant de l'hébergement
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec les identifiants externes
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function getAccommodationExternalIds(
+  id: string,
+  signal?: AbortSignal
+): Promise<Record<string, string | number>> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/accommodations/${id}/external-ids`,
+    { signal }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to get accommodation external IDs: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Met à jour les identifiants externes d'un hébergement
+ * 
+ * @param id - Identifiant de l'hébergement
+ * @param externalIds - Identifiants externes à mettre à jour
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue en cas de succès
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function updateAccommodationExternalIds(
+  id: string,
+  externalIds: Record<string, string | number>,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/accommodations/${id}/external-ids`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(externalIds),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to update accommodation external IDs: ${errorText}`);
+  }
+}
+
+// ============================================================================
+// Configuration iCal
+// ============================================================================
+
+/**
+ * Type pour une configuration iCal
+ */
+export interface IcalConfig {
+  id: string;
+  accommodationId: string;
+  platform: string;
+  importUrl?: string;
+  exportUrl: string;
+  lastSync?: string;
+  lastSyncCount?: number;
+  dateCreation?: string;
+  dateModification?: string;
+}
+
+/**
+ * Type pour la création/modification d'une configuration iCal
+ */
+export interface IcalConfigPayload {
+  accommodationId: string;
+  platform: string;
+  importUrl?: string;
+}
+
+/**
+ * Récupère la liste de toutes les configurations iCal
+ * 
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec la liste des configurations iCal
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function listIcalConfigs(
+  signal?: AbortSignal
+): Promise<IcalConfig[]> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/ical-config`,
+    { signal }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to list iCal configs: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Crée une nouvelle configuration iCal
+ * 
+ * @param payload - Données de la configuration à créer
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec la configuration créée
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function createIcalConfig(
+  payload: IcalConfigPayload,
+  signal?: AbortSignal
+): Promise<IcalConfig> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/ical-config`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to create iCal config: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+/**
+ * Supprime une configuration iCal
+ * 
+ * @param id - Identifiant de la configuration
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue en cas de succès
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function deleteIcalConfig(
+  id: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/ical-config/${id}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal
+    }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to delete iCal config: ${errorText}`);
+  }
+}
+
+// ============================================================================
+// Avertissements de synchronisation
+// ============================================================================
+
+/**
+ * Type pour un avertissement de synchronisation
+ */
+export interface StartupWarning {
+  type: string;
+  message: string;
+  timestamp: string;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Récupère les avertissements de synchronisation au démarrage
+ * 
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec la liste des avertissements
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function getStartupWarnings(
+  signal?: AbortSignal
+): Promise<StartupWarning[]> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/startup-warnings`,
+    { signal }
+  );
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`HTTP ${res.status}: Failed to get startup warnings: ${errorText}`);
+  }
+  
+  return res.json();
+}
+

@@ -10,6 +10,7 @@ import type { BookingDisplay } from '@/types';
 import { PlateformeReservation } from '@/types';
 import { darkTheme, getBookingColor } from '../../../utils/theme';
 import { formatDateDisplay } from '../../../utils/dateUtils';
+import { BookingStatusBadge } from '../../BookingModal/components/BookingStatusBadge';
 
 export interface BookingTooltipProps {
   booking: BookingDisplay;
@@ -103,15 +104,20 @@ export function BookingTooltip({
           paddingBottom: 8 
         }}>
           <span>Réf: {reference}</span>
-          {reservationPlatform && (
-            <span style={{ 
-              fontSize: 12, 
-              color: getBookingColor(reservationPlatform), 
-              fontWeight: 500 
-            }}>
-              {reservationPlatform}
-            </span>
-          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {booking.bookingStatus && (
+              <BookingStatusBadge status={booking.bookingStatus} />
+            )}
+            {reservationPlatform && (
+              <span style={{ 
+                fontSize: 12, 
+                color: getBookingColor(reservationPlatform), 
+                fontWeight: 500 
+              }}>
+                {reservationPlatform}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Section Client */}

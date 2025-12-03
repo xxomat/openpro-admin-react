@@ -36,12 +36,24 @@ export type RateType = {
   order?: number;
 };
 
+/**
+ * Statuts de réservation possibles
+ */
+export enum BookingStatus {
+  Quote = 'Quote',
+  Confirmed = 'Confirmed',
+  Paid = 'Paid',
+  Cancelled = 'Cancelled',
+  Past = 'Past'
+}
+
 export type BookingDisplay = {
   bookingId: number;
   accommodationId: number;
   arrivalDate: string; // YYYY-MM-DD
   departureDate: string;   // YYYY-MM-DD
   reference?: string;
+  bookingStatus?: BookingStatus; // État de la réservation
   clientName?: string;   // Nom du client (nom + prénom)
   clientTitle?: string; // Civilité du client (M, Mme, etc.)
   clientEmail?: string; // Email du client
