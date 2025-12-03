@@ -1583,6 +1583,7 @@ export function ProviderCalendars(): React.ReactElement {
           {selectedAccommodations.size > 0 && (
             <>
               <CompactGrid
+                supplierId={activeSupplier.supplierId}
                 startDate={startDate}
                 endDate={endDate}
                 accommodations={(supplierData.accommodations[activeSupplier.supplierId] ?? [])

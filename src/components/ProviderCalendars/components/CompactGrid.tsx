@@ -189,6 +189,8 @@ function getArrivalAllowedSummary(
  * Props du composant CompactGrid
  */
 export interface CompactGridProps {
+  /** ID du fournisseur */
+  supplierId: number;
   /** Date de début de la période à afficher */
   startDate: Date;
   /** Date de fin de la période à afficher (incluse) */
@@ -238,6 +240,7 @@ export interface CompactGridProps {
 }
 
 export function CompactGrid({
+  supplierId,
   startDate,
   endDate,
   accommodations,
@@ -617,6 +620,7 @@ export function CompactGrid({
                     onEditMinDurationSubmit={handleMinDurationSubmit}
                     onEditCancel={handleEditCancel}
                     onEditMinDurationCancel={handleMinDurationCancel}
+                    supplierId={supplierId}
                   />
                 );
               })}

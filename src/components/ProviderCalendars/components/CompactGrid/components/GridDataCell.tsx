@@ -10,6 +10,8 @@ import type { EditingCell } from '../hooks/useGridEditing';
 import { darkTheme } from '../../../utils/theme';
 import { isPastDate } from '../../../utils/dateUtils';
 import { ArrivalToggle } from './ArrivalToggle';
+import { RateTooltip, type RateDetails } from './RateTooltip';
+import { fetchRateDetails } from '@/services/api/backendClient';
 
 /**
  * Props du composant GridDataCell
@@ -81,6 +83,8 @@ export interface GridDataCellProps {
   onEditCancel: () => void;
   /** Callback appelé pour annuler l'édition de la durée minimale */
   onEditMinDurationCancel: () => void;
+  /** ID du fournisseur (pour charger les détails du tarif) */
+  supplierId: number;
 }
 
 /**
@@ -119,10 +123,92 @@ export function GridDataCell({
   onEditMinDurationSubmit,
   onEditCancel,
   onEditMinDurationCancel,
-  onMouseDown
+  onMouseDown,
+  supplierId
 }: GridDataCellProps): React.ReactElement {
   const isAvailable = stock > 0;
   const isPast = isPastDate(dateStr);
+
+  // États pour le tooltip de tarif
+  const [tooltipVisible, setTooltipVisible] = React.useState(false);
+  const [tooltipPosition, setTooltipPosition] = React.useState({ x: 0, y: 0 });
+  const [rateDetails, setRateDetails] = React.useState<RateDetails | null>(null);
+  const [loadingRateDetails, setLoadingRateDetails] = React.useState(false);
+  const tooltipTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Handler pour afficher le tooltip au survol
+  const handleMouseEnter = React.useCallback((e: React.MouseEvent) => {
+    if (!hasRateTypes || selectedRateTypeId === null || price == null) {
+      return;
+    }
+
+    // Annuler toute requête en cours
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    setTooltipPosition({ x: e.clientX, y: e.clientY });
+    setTooltipVisible(true);
+    setLoadingRateDetails(true);
+    setRateDetails(null);
+
+    // Délai avant de charger les détails (évite les appels inutiles)
+    tooltipTimeoutRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      try {
+        const details = await fetchRateDetails(
+          supplierId,
+          accId,
+          dateStr,
+          selectedRateTypeId,
+          controller.signal
+        );
+        if (!controller.signal.aborted) {
+          setRateDetails(details);
+          setLoadingRateDetails(false);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Error fetching rate details:', error);
+          setLoadingRateDetails(false);
+          setRateDetails(null);
+        }
+      }
+    }, 300); // Délai de 300ms
+  }, [hasRateTypes, selectedRateTypeId, price, supplierId, accId, dateStr]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    // Annuler le timeout si la souris quitte avant
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+
+    // Annuler la requête en cours
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setTooltipVisible(false);
+    setLoadingRateDetails(false);
+    setRateDetails(null);
+  }, []);
+
+  // Nettoyage au démontage
+  React.useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
   
   // Conserver l'affichage standard (vert/rouge) - l'overlay bleu passera par-dessus
   // Si le jour n'est pas réservable, appliquer un fond gris avec opacité réduite
@@ -161,6 +247,8 @@ export function GridDataCell({
       key={`${accId}-${dateStr}`}
       data-date={dateStr}
       data-acc-id={accId}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onMouseDown={(e) => {
         // Ne pas démarrer le drag si la date est occupée par une réservation, passée, ou si l'hébergement n'a pas de types de tarifs
         if (isBooked || isPast || !hasRateTypes) {
@@ -209,7 +297,6 @@ export function GridDataCell({
         opacity: isPast ? 0.6 : (!isAvailable ? 0.5 : (isNonReservable ? 1 : (isWeekend || isSelected || isDragging ? 1 : 0.7))),
         userSelect: 'none'
       }}
-      title={`${dateStr} — ${!hasRateTypes ? 'Aucun typeTarif associé' : (isPast ? 'Date passée' : (isBooked ? 'Occupé par une réservation' : (isAvailable ? 'Disponible' : 'Indisponible')))} (stock: ${stock})`}
     >
       {/* Toggle switch pour l'arrivée autorisée en haut à gauche */}
       {hasRateTypes && selectedRateTypeId !== null && (
@@ -400,6 +487,13 @@ export function GridDataCell({
           )}
         </div>
       )}
+      <RateTooltip
+        rateDetails={rateDetails}
+        x={tooltipPosition.x}
+        y={tooltipPosition.y}
+        visible={tooltipVisible}
+        loading={loadingRateDetails}
+      />
     </div>
   );
 }

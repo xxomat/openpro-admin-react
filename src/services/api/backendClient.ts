@@ -110,6 +110,64 @@ export async function fetchRates(
 }
 
 /**
+ * Récupère les détails complets d'un tarif pour une date et un type de tarif spécifiques
+ * 
+ * @param idFournisseur - Identifiant du fournisseur
+ * @param idHebergement - Identifiant de l'hébergement
+ * @param date - Date au format YYYY-MM-DD
+ * @param rateTypeId - ID du type de tarif
+ * @param signal - Signal d'annulation optionnel pour interrompre la requête
+ * @returns Promise résolue avec les détails complets du tarif (sans debut et fin)
+ * @throws {Error} Peut lever une erreur si la requête échoue
+ */
+export async function fetchRateDetails(
+  idFournisseur: number,
+  idHebergement: number,
+  date: string,
+  rateTypeId: number,
+  signal?: AbortSignal
+): Promise<{
+  rateTypeId?: number;
+  rateType?: {
+    rateTypeId?: number;
+    label?: Array<{ langue: string; texte: string }>;
+    description?: Array<{ langue: string; texte: string }>;
+    order?: number;
+  };
+  ratePax?: {
+    price?: number;
+    occupationList?: Array<{ numberOfPersons?: number; price?: number }>;
+  };
+  pricePax?: {
+    price?: number;
+    occupationList?: Array<{ numberOfPersons?: number; price?: number }>;
+  };
+  occupationList?: Array<{ numberOfPersons?: number; price?: number }>;
+  price?: number;
+  label?: Array<{ langue: string; texte: string }>;
+  promotion?: boolean | unknown;
+  promo?: boolean | unknown;
+  promotionActive?: boolean | unknown;
+  hasPromo?: boolean | unknown;
+  minDuration?: number;
+  arrivalAllowed?: boolean;
+  departureAllowed?: boolean;
+  description?: Array<{ langue: string; texte: string }>;
+  order?: number;
+}> {
+  const res = await fetch(
+    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rates/details?date=${encodeURIComponent(date)}&rateTypeId=${encodeURIComponent(rateTypeId)}`,
+    { signal }
+  );
+  
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: Failed to fetch rate details`);
+  }
+  
+  return res.json();
+}
+
+/**
  * Récupère le stock pour un hébergement
  * 
  * @param idFournisseur - Identifiant du fournisseur
