@@ -31,7 +31,36 @@ export async function fetchAccommodations(
       throw new Error(`HTTP ${res.status}: Failed to fetch accommodations`);
     }
     
-    return res.json();
+    const data = await res.json();
+    
+    // Transformer les données de l'API vers le format attendu par l'interface
+    // L'API retourne IAccommodation[] avec { id, nom, ids } 
+    // L'interface attend Accommodation[] avec { accommodationId: number, accommodationName: string }
+    // accommodationId doit être l'ID OpenPro (number) car il est utilisé comme clé dans des objets indexés
+    // Les hébergements sans ID OpenPro sont filtrés car ils ne peuvent pas être utilisés dans l'interface
+    if (Array.isArray(data)) {
+      return data
+        .map((acc: any) => {
+          // Extraire l'ID OpenPro depuis ids.OpenPro
+          const idOpenPro = acc.ids?.['OpenPro'] || acc.ids?.OpenPro;
+          if (!idOpenPro) {
+            return null; // Hébergement sans ID OpenPro, sera filtré
+          }
+          
+          const accommodationId = parseInt(String(idOpenPro), 10);
+          if (isNaN(accommodationId)) {
+            return null; // ID OpenPro invalide, sera filtré
+          }
+          
+          return {
+            accommodationId,
+            accommodationName: acc.nom || ''
+          };
+        })
+        .filter((acc: Accommodation | null): acc is Accommodation => acc !== null);
+    }
+    
+    return [];
   } catch (error) {
     // Améliorer le message d'erreur pour les erreurs réseau
     if (error instanceof TypeError && (
@@ -740,7 +769,9 @@ export async function listAccommodations(
     throw new Error(`HTTP ${res.status}: Failed to list accommodations: ${errorText}`);
   }
   
-  return res.json();
+  const data = await res.json();
+  // L'API retourne { accommodations: [...] }, extraire le tableau
+  return Array.isArray(data.accommodations) ? data.accommodations : (Array.isArray(data) ? data : []);
 }
 
 /**

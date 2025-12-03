@@ -19,7 +19,7 @@ export interface AccommodationLinkManagerProps {
   /** Set des IDs d'hébergements liés au type de tarif */
   linkedAccommodationIds: Set<number>;
   /** Callback appelé lors de la modification des liaisons */
-  onLinksChange: (accommodationId: number, isLinked: boolean) => void;
+  onLinksChange: (accommodationId: number, isLinked: boolean) => Promise<boolean>;
   /** Callback appelé pour sauvegarder les modifications */
   onSave: () => Promise<void>;
   /** Callback appelé pour annuler */
@@ -91,10 +91,10 @@ export function AccommodationLinkManager({
 
       // Appliquer les modifications
       for (const accId of toLink) {
-        onLinksChange(accId, true);
+        await onLinksChange(accId, true);
       }
       for (const accId of toUnlink) {
-        onLinksChange(accId, false);
+        await onLinksChange(accId, false);
       }
 
       // Sauvegarder

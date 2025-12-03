@@ -22,9 +22,6 @@ export function AccommodationForm({
   isSubmitting = false
 }: AccommodationFormProps): React.ReactElement {
   const [nom, setNom] = React.useState(initialData?.nom || '');
-  const [idDirecte, setIdDirecte] = React.useState(
-    initialData?.ids?.Directe?.toString() || ''
-  );
   const [idOpenPro, setIdOpenPro] = React.useState(
     initialData?.idOpenPro?.toString() || ''
   );
@@ -36,14 +33,20 @@ export function AccommodationForm({
   );
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
 
+  // Générer un GUID pour l'ID Directe lors de la création, ou utiliser l'existant lors de l'édition
+  const [idDirecte] = React.useState(() => {
+    if (initialData?.ids?.Directe) {
+      return initialData.ids.Directe;
+    }
+    // Générer un UUID v4
+    return crypto.randomUUID();
+  });
+
   const validate = React.useCallback((): boolean => {
     const errors: Record<string, string> = {};
 
     if (!nom.trim()) {
       errors.nom = 'Le nom est obligatoire';
-    }
-    if (!idDirecte.trim()) {
-      errors.idDirecte = 'L\'ID Directe est obligatoire';
     }
     if (!idOpenPro.trim()) {
       errors.idOpenPro = 'L\'ID OpenPro est obligatoire';
@@ -53,7 +56,7 @@ export function AccommodationForm({
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [nom, idDirecte, idOpenPro]);
+  }, [nom, idOpenPro]);
 
   const handleSubmit = React.useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +68,7 @@ export function AccommodationForm({
     const payload: AccommodationPayload = {
       nom: nom.trim(),
       ids: {
-        Directe: idDirecte.trim(),
+        Directe: idDirecte, // GUID généré côté frontend, utilisé comme clé primaire
         OpenPro: Number(idOpenPro),
         ...(idBookingCom.trim() && { 'Booking.com': idBookingCom.trim() }),
         ...(idXotelia.trim() && { Xotelia: idXotelia.trim() })
@@ -103,30 +106,34 @@ export function AccommodationForm({
         )}
       </div>
 
-      {/* ID Directe */}
+      {/* ID Directe - GUID généré automatiquement, affiché en lecture seule */}
       <div>
         <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500, color: darkTheme.textPrimary }}>
-          ID Directe <span style={{ color: '#ef4444' }}>*</span>
+          ID Directe (GUID généré automatiquement)
         </label>
         <input
           type="text"
           value={idDirecte}
-          onChange={(e) => setIdDirecte(e.target.value)}
+          readOnly
+          disabled
           style={{
             width: '100%',
             padding: '8px 12px',
-            backgroundColor: darkTheme.bgPrimary,
-            border: `1px solid ${validationErrors.idDirecte ? '#ef4444' : darkTheme.borderColor}`,
+            backgroundColor: darkTheme.bgSecondary,
+            border: `1px solid ${darkTheme.borderColor}`,
             borderRadius: 6,
-            color: darkTheme.textPrimary,
-            fontSize: 14
+            color: darkTheme.textSecondary,
+            fontSize: 14,
+            cursor: 'not-allowed',
+            opacity: 0.7,
+            fontFamily: 'monospace'
           }}
         />
-        {validationErrors.idDirecte && (
-          <div style={{ marginTop: 4, fontSize: 12, color: '#ef4444' }}>
-            {validationErrors.idDirecte}
-          </div>
-        )}
+        <div style={{ marginTop: 4, fontSize: 12, color: darkTheme.textSecondary }}>
+          {initialData 
+            ? 'Cet ID est la clé primaire de l\'hébergement et ne peut pas être modifié'
+            : 'Ce GUID sera utilisé comme clé primaire pour cet hébergement'}
+        </div>
       </div>
 
       {/* ID OpenPro */}

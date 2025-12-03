@@ -151,23 +151,26 @@ export function RateTypeManagementModal({
 
   /**
    * Gère la modification des liaisons
+   * Retourne true si la modification a réussi
    */
-  const handleLinksChange = React.useCallback(async (accommodationId: number, isLinked: boolean) => {
-    if (!selectedRateType) return;
-    if (isLinked) {
-      await handleLink(accommodationId, selectedRateType.idTypeTarif);
-    } else {
-      await handleUnlink(accommodationId, selectedRateType.idTypeTarif);
-    }
+  const handleLinksChange = React.useCallback(async (accommodationId: number, isLinked: boolean): Promise<boolean> => {
+    if (!selectedRateType) return false;
+    const success = isLinked
+      ? await handleLink(accommodationId, selectedRateType.idTypeTarif)
+      : await handleUnlink(accommodationId, selectedRateType.idTypeTarif);
+    return success;
   }, [selectedRateType, handleLink, handleUnlink]);
 
   /**
    * Sauvegarde les liaisons
+   * Cette fonction est appelée après que toutes les modifications ont été appliquées
    */
   const handleSaveLinks = React.useCallback(async () => {
     // Les liaisons sont déjà sauvegardées via handleLinksChange
     setMode('list');
     setSelectedRateType(null);
+    // Mettre à jour les données après toutes les modifications pour réévaluer
+    // l'indication dans la colonne de gauche
     if (onDataChanged) {
       onDataChanged();
     }

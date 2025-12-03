@@ -30,7 +30,11 @@ export function AccommodationList({
   onSelectedAccommodationsChange
 }: AccommodationListProps): React.ReactElement {
   const sortedAccommodations = React.useMemo(() => {
-    return [...accommodations].sort((a, b) => a.accommodationName.localeCompare(b.accommodationName));
+    return [...accommodations].sort((a, b) => {
+      const nameA = a.accommodationName || '';
+      const nameB = b.accommodationName || '';
+      return nameA.localeCompare(nameB);
+    });
   }, [accommodations]);
 
   return (

@@ -12,6 +12,7 @@ import type { Supplier, BookingDisplay } from '@/types';
 import { PlateformeReservation } from '@/types';
 import { ActionButtons } from './components/ActionButtons';
 import { AccommodationList } from './components/AccommodationList';
+import { AccommodationModal } from './components/AccommodationManagement/AccommodationModal';
 import { CompactGrid } from './components/CompactGrid';
 import { DateRangeControls } from './components/DateRangeControls';
 import { RateTypeSelector } from './components/RateTypeSelector';
@@ -47,6 +48,7 @@ export function ProviderCalendars(): React.ReactElement {
   const [isBookingModalOpen, setIsBookingModalOpen] = React.useState(false);
   const [reserveButtonHover, setReserveButtonHover] = React.useState(false);
   const [isRateTypeManagementModalOpen, setIsRateTypeManagementModalOpen] = React.useState(false);
+  const [isAccommodationModalOpen, setIsAccommodationModalOpen] = React.useState(false);
 
   const supplierData = useSupplierData();
   
@@ -1567,6 +1569,30 @@ export function ProviderCalendars(): React.ReactElement {
 
       {activeSupplier && (
         <div>
+          <div style={{ marginBottom: 12 }}>
+            <button
+              onClick={() => setIsAccommodationModalOpen(true)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: darkTheme.buttonPrimaryBg,
+                color: darkTheme.buttonText,
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+                boxShadow: darkTheme.shadowSm
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = darkTheme.buttonPrimaryBg;
+              }}
+            >
+              ⚙️ Gérer les hébergements
+            </button>
+          </div>
           <AccommodationList
             accommodations={supplierData.accommodations[activeSupplier.supplierId] ?? []}
             selectedAccommodations={selectedAccommodations}
@@ -1588,7 +1614,11 @@ export function ProviderCalendars(): React.ReactElement {
                 endDate={endDate}
                 accommodations={(supplierData.accommodations[activeSupplier.supplierId] ?? [])
                   .filter(acc => selectedAccommodations.has(acc.accommodationId))
-                  .sort((a, b) => a.accommodationName.localeCompare(b.accommodationName))}
+                  .sort((a, b) => {
+                    const nameA = a.accommodationName || '';
+                    const nameB = b.accommodationName || '';
+                    return nameA.localeCompare(nameB);
+                  })}
                 stockByAccommodation={stockByAccommodation}
                 ratesByAccommodation={ratesByAccommodation}
                 rateTypeLinksByAccommodation={rateTypeLinksByAccommodation}
@@ -1697,6 +1727,13 @@ export function ProviderCalendars(): React.ReactElement {
               onDataChanged={handleRefreshData}
             />
           )}
+
+          {/* Modale de gestion des hébergements */}
+          <AccommodationModal
+            isOpen={isAccommodationModalOpen}
+            onClose={() => setIsAccommodationModalOpen(false)}
+            onRefresh={handleRefreshData}
+          />
         </>
       )}
     </div>

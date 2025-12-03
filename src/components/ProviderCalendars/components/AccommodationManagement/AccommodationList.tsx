@@ -31,6 +31,15 @@ export function AccommodationList({
     );
   }
 
+  // Vérifier que accommodations est un tableau
+  if (!Array.isArray(accommodations)) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', color: darkTheme.error }}>
+        Erreur: Format de données invalide
+      </div>
+    );
+  }
+
   if (accommodations.length === 0) {
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: darkTheme.textSecondary }}>

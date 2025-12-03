@@ -63,9 +63,14 @@ function extractEnglishText(multilingue: unknown): string | undefined {
 
 /**
  * Extrait tous les textes multilingues d'un libellé ou description
+ * Gère deux formats :
+ * 1. Tableau : [{ langue: "fr", texte: "..." }, { langue: "en", texte: "..." }]
+ * 2. Objet : { fr: "...", en: "..." }
  */
 function extractMultilingue(multilingue: unknown): Array<{ langue: string; texte: string }> {
   if (!multilingue || typeof multilingue !== 'object') return [];
+  
+  // Format tableau (format standard OpenPro)
   if (Array.isArray(multilingue)) {
     return multilingue
       .filter((item: unknown) => 
@@ -79,7 +84,17 @@ function extractMultilingue(multilingue: unknown): Array<{ langue: string; texte
         return { langue: obj.langue, texte: String(obj.texte) };
       });
   }
-  return [];
+  
+  // Format objet (format simplifié retourné par le backend)
+  // Exemple: { fr: "...", en: "..." }
+  const obj = multilingue as Record<string, unknown>;
+  const result: Array<{ langue: string; texte: string }> = [];
+  for (const [langue, texte] of Object.entries(obj)) {
+    if (texte !== null && texte !== undefined && texte !== '') {
+      result.push({ langue, texte: String(texte) });
+    }
+  }
+  return result;
 }
 
 /**
