@@ -24,12 +24,10 @@ interface SyncStatus {
 /**
  * Hook pour poller l'état de synchronisation
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param onStatusChange - Callback appelé lorsque l'état change (pour déclencher un refresh)
  * @param pollingInterval - Intervalle de polling en millisecondes (défaut: 30000 = 30 secondes)
  */
 export function useSyncStatusPolling(
-  idFournisseur: number | null,
   onStatusChange: () => void,
   pollingInterval: number = 30000
 ): void {
@@ -37,16 +35,12 @@ export function useSyncStatusPolling(
   const lastKnownChangeRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (!idFournisseur) {
-      return;
-    }
-
     let intervalId: number | undefined;
 
     const pollStatus = async () => {
       try {
         const response = await fetch(
-          `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/local-bookings-sync-status`
+          `${BACKEND_BASE_URL}/api/supplier/local-bookings-sync-status`
         );
 
         if (!response.ok) {
@@ -84,6 +78,6 @@ export function useSyncStatusPolling(
         clearInterval(intervalId);
       }
     };
-  }, [idFournisseur, onStatusChange, pollingInterval]);
+  }, [onStatusChange, pollingInterval]);
 }
 

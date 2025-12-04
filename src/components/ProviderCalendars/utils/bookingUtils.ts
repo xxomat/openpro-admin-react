@@ -135,19 +135,18 @@ export function calculatePriceForRange(
  */
 export function generateBookingSummaries(
   selectedCells: Set<string>,
-  accommodations: Array<{ accommodationId: number; accommodationName: string }>,
-  ratesByAccommodation: Record<number, Record<string, Record<number, number>>>,
+  accommodations: Array<{ accommodationId: string; accommodationName: string }>,
+  ratesByAccommodation: Record<string, Record<string, Record<number, number>>>,
   selectedRateTypeId: number | null
 ): BookingSummary[] {
   if (!selectedRateTypeId) return [];
   
   // Grouper les dates par hébergement
-  const datesByAccommodation = new Map<number, string[]>();
+  const datesByAccommodation = new Map<string, string[]>();
   
   for (const cellKey of selectedCells) {
-    const [accIdStr, dateStr] = cellKey.split('|');
-    const accId = parseInt(accIdStr, 10);
-    if (isNaN(accId) || !dateStr) continue;
+    const [accId, dateStr] = cellKey.split('|');
+    if (!accId || !dateStr) continue;
     
     if (!datesByAccommodation.has(accId)) {
       datesByAccommodation.set(accId, []);
@@ -234,32 +233,30 @@ export function generateBookingSummaries(
  */
 export function isValidBookingSelection(
   selectedCells: Set<string>,
-  minDurationByAccommodation?: Record<number, Record<string, Record<number, number | null>>>,
-  selectedAccommodations?: Set<number>,
-  ratesByAccommodation?: Record<number, Record<string, Record<number, number>>>,
+  minDurationByAccommodation?: Record<string, Record<string, Record<number, number | null>>>,
+  selectedAccommodations?: Set<string>,
+  ratesByAccommodation?: Record<string, Record<string, Record<number, number>>>,
   selectedRateTypeId?: number | null,
-  stockByAccommodation?: Record<number, Record<string, number>>
+  stockByAccommodation?: Record<string, Record<string, number>>
 ): boolean {
   if (selectedCells.size === 0) return false;
   
   // Filtrer les cellules selon les hébergements sélectionnés dans le filtre
   const filteredCells = selectedAccommodations && selectedAccommodations.size > 0
     ? Array.from(selectedCells).filter(cellKey => {
-        const [accIdStr] = cellKey.split('|');
-        const accId = parseInt(accIdStr, 10);
-        return !isNaN(accId) && selectedAccommodations.has(accId);
+        const [accId] = cellKey.split('|');
+        return accId && selectedAccommodations.has(accId);
       })
     : Array.from(selectedCells);
   
   if (filteredCells.length === 0) return false;
   
   // Grouper les dates par hébergement
-  const datesByAccommodation = new Map<number, string[]>();
+  const datesByAccommodation = new Map<string, string[]>();
   
   for (const cellKey of filteredCells) {
-    const [accIdStr, dateStr] = cellKey.split('|');
-    const accId = parseInt(accIdStr, 10);
-    if (isNaN(accId) || !dateStr) continue;
+    const [accId, dateStr] = cellKey.split('|');
+    if (!accId || !dateStr) continue;
     
     if (!datesByAccommodation.has(accId)) {
       datesByAccommodation.set(accId, []);
@@ -367,20 +364,19 @@ export function isValidBookingSelection(
  * @returns true si la sélection pour cet hébergement est valide
  */
 export function isValidBookingSelectionForAccommodation(
-  accId: number,
+  accId: string,
   selectedCells: Set<string>,
-  minDurationByAccommodation?: Record<number, Record<string, Record<number, number | null>>>,
+  minDurationByAccommodation?: Record<string, Record<string, Record<number, number | null>>>,
   selectedRateTypeId?: number | null
 ): boolean {
   // Extraire les dates pour cet hébergement
   const dates: string[] = [];
   
   for (const cellKey of selectedCells) {
-    const [accIdStr, dateStr] = cellKey.split('|');
-    const parsedAccId = parseInt(accIdStr, 10);
-    if (isNaN(parsedAccId) || !dateStr) continue;
+    const [accIdFromKey, dateStr] = cellKey.split('|');
+    if (!accIdFromKey || !dateStr) continue;
     
-    if (parsedAccId === accId) {
+    if (accIdFromKey === accId) {
       dates.push(dateStr);
     }
   }

@@ -25,7 +25,7 @@ import { darkTheme } from '../utils/theme';
  * @param rateTypeLinksByAccommodation - Map des IDs de types de tarif liés par hébergement
  * @returns true si l'hébergement a au moins un type de tarif lié
  */
-function hasRateTypes(accId: number, rateTypeLinksByAccommodation: Record<number, number[]>): boolean {
+function hasRateTypes(accId: string, rateTypeLinksByAccommodation: Record<string, number[]>): boolean {
   const linkedRateTypeIds = rateTypeLinksByAccommodation[accId];
   return linkedRateTypeIds !== undefined && linkedRateTypeIds.length > 0;
 }
@@ -222,9 +222,9 @@ export interface CompactGridProps {
   /** Set des identifiants d'arrivées autorisées modifiées (format: "accId-dateStr") */
   modifiedArrivalAllowed: Set<string>;
   /** Callback appelé quand un prix est mis à jour */
-  onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
+  onRateUpdate: (newPrice: number, editAllSelection?: boolean, editingCell?: { accId: string; dateStr: string } | null) => void;
   /** Callback appelé quand une durée minimale est mise à jour */
-  onMinDurationUpdate: (newMinDuration: number | null, editAllSelection?: boolean, editingCell?: { accId: number; dateStr: string } | null) => void;
+  onMinDurationUpdate: (newMinDuration: number | null, editAllSelection?: boolean, editingCell?: { accId: string; dateStr: string } | null) => void;
   /** Callback appelé quand arrivalAllowed est mis à jour */
   onArrivalAllowedUpdate: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
   /** ID du type de tarif sélectionné */

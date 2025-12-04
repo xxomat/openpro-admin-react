@@ -145,7 +145,7 @@ export function BookingModal({
         }
         
         // Créer la réservation
-        await createBooking(supplierId, {
+        await createBooking({
           accommodationId: summary.accId,
           arrivalDate: firstRange.startDate,
           departureDate: firstRange.endDate,

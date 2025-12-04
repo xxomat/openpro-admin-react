@@ -61,11 +61,18 @@ export function RateTypeSelector({
             rateTypes.map(type => {
               // Extraire le texte français depuis le label multilingue si descriptionFr n'est pas défini
               let descriptionFr = type.descriptionFr;
-              if (!descriptionFr && type.label && Array.isArray(type.label)) {
-                const frenchLabel = type.label.find((item: { langue?: string; texte?: string }) => 
-                  item.langue === 'fr' || item.langue === 'FR'
-                );
-                descriptionFr = frenchLabel?.texte;
+              if (!descriptionFr && type.label) {
+                if (Array.isArray(type.label)) {
+                  // Format tableau: [{ langue: 'fr', texte: '...' }]
+                  const frenchLabel = type.label.find((item: { langue?: string; texte?: string }) => 
+                    item.langue === 'fr' || item.langue === 'FR'
+                  );
+                  descriptionFr = frenchLabel?.texte;
+                } else if (typeof type.label === 'object' && type.label !== null) {
+                  // Format objet: { fr: '...', en: '...' }
+                  const labelObj = type.label as Record<string, string>;
+                  descriptionFr = labelObj.fr || labelObj.FR || labelObj['fr'] || labelObj['FR'];
+                }
               }
               // Fallback sur rateTypeLabels ou "Type X"
               descriptionFr = descriptionFr ?? rateTypeLabels[type.rateTypeId] ?? `Type ${type.rateTypeId}`;

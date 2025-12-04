@@ -17,8 +17,8 @@ import { fetchRateDetails } from '@/services/api/backendClient';
  * Props du composant GridDataCell
  */
 export interface GridDataCellProps {
-  /** Identifiant de l'hébergement */
-  accId: number;
+  /** Identifiant de l'hébergement (GUID interne de la DB) */
+  accId: string;
   /** Date au format YYYY-MM-DD */
   dateStr: string;
   /** Stock disponible pour cette date */
@@ -40,7 +40,7 @@ export interface GridDataCellProps {
   /** Indique si arrivalAllowed a été modifiée */
   isModifiedArrivalAllowed: boolean;
   /** Callback appelé quand l'utilisateur change arrivalAllowed */
-  onArrivalAllowedChange: (accId: number, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
+  onArrivalAllowedChange: (accId: string, dateStr: string, isAllowed: boolean, editAllSelection?: boolean) => void;
   /** Nombre de cellules sélectionnées (pour déterminer si on doit propager la modification) */
   selectedCellsCount: number;
   /** Indique si le prix est en cours d'édition */
@@ -66,11 +66,11 @@ export interface GridDataCellProps {
   /** Référence pour détecter si un drag vient de se terminer */
   justFinishedDragRef: React.MutableRefObject<boolean>;
   /** Callback appelé quand l'utilisateur clique sur la cellule pour éditer le prix */
-  onCellClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
+  onCellClick: (accId: string, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur clique sur la durée minimale pour l'éditer */
-  onMinDurationClick: (accId: number, dateStr: string, editAllSelection?: boolean) => void;
+  onMinDurationClick: (accId: string, dateStr: string, editAllSelection?: boolean) => void;
   /** Callback appelé quand l'utilisateur appuie sur la souris pour démarrer un drag */
-  onMouseDown: (e: React.MouseEvent, dateStr: string, accId: number) => void;
+  onMouseDown: (e: React.MouseEvent, dateStr: string, accId: string) => void;
   /** Setter pour la valeur en cours d'édition du prix */
   setEditingValue: React.Dispatch<React.SetStateAction<string>>;
   /** Setter pour la valeur en cours d'édition de la durée minimale */
@@ -139,6 +139,11 @@ export function GridDataCell({
 
   // Handler pour afficher le tooltip au survol
   const handleMouseEnter = React.useCallback((e: React.MouseEvent) => {
+    // Ne pas charger les détails si la cellule est en cours d'édition
+    if (isEditing || isEditingMinDuration) {
+      return;
+    }
+    
     if (!hasRateTypes || selectedRateTypeId === null || price == null) {
       return;
     }
@@ -178,7 +183,7 @@ export function GridDataCell({
         }
       }
     }, 300); // Délai de 300ms
-  }, [hasRateTypes, selectedRateTypeId, price, supplierId, accId, dateStr]);
+  }, [isEditing, isEditingMinDuration, hasRateTypes, selectedRateTypeId, price, supplierId, accId, dateStr]);
 
   const handleMouseLeave = React.useCallback(() => {
     // Annuler le timeout si la souris quitte avant

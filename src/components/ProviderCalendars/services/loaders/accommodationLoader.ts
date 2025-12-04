@@ -24,6 +24,6 @@ export async function loadAccommodations(
   idFournisseur: number,
   signal?: AbortSignal
 ): Promise<Accommodation[]> {
-  return fetchAccommodations(idFournisseur, signal);
+  return fetchAccommodations(signal);
 }
 

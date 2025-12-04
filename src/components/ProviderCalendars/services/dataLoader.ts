@@ -40,7 +40,7 @@ export async function loadSupplierData(
   const fin = formatDate(endDate);
   
   // Le backend charge automatiquement les hébergements et toutes les données associées
-  return fetchSupplierData(idFournisseur, debut, fin, signal);
+  return fetchSupplierData(debut, fin, signal);
 }
 
 // Réexporter loadAccommodations pour compatibilité avec les imports existants

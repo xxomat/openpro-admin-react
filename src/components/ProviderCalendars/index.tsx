@@ -85,15 +85,15 @@ export function ProviderCalendars(): React.ReactElement {
 
   // Obtenir la sélection d'hébergements pour le fournisseur actif
   const selectedAccommodations = React.useMemo(() => {
-    if (!activeSupplier) return new Set<number>();
-    return supplierData.selectedAccommodationsBySupplier[activeSupplier.supplierId] ?? new Set<number>();
+    if (!activeSupplier) return new Set<string>();
+    return supplierData.selectedAccommodationsBySupplier[activeSupplier.supplierId] ?? new Set<string>();
   }, [activeSupplier, supplierData.selectedAccommodationsBySupplier]);
 
   // Fonction pour mettre à jour la sélection d'hébergements du fournisseur actif
-  const setSelectedAccommodations = React.useCallback((updater: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+  const setSelectedAccommodations = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeSupplier) return;
     supplierData.setSelectedAccommodationsBySupplier(prev => {
-      const current = prev[activeSupplier.supplierId] ?? new Set<number>();
+      const current = prev[activeSupplier.supplierId] ?? new Set<string>();
       const newSet = typeof updater === 'function' ? updater(current) : updater;
       return { ...prev, [activeSupplier.supplierId]: newSet };
     });
@@ -121,7 +121,7 @@ export function ProviderCalendars(): React.ReactElement {
   }, [selectedCells.size, selectedBookingId]);
 
   // Refs pour stocker les valeurs précédentes et éviter les boucles infinies
-  const prevSelectedAccommodationsRef = React.useRef<Set<number>>(new Set());
+  const prevSelectedAccommodationsRef = React.useRef<Set<string>>(new Set());
   const prevStartDateRef = React.useRef<string>('');
   const prevEndDateRef = React.useRef<string>('');
 
@@ -398,11 +398,11 @@ export function ProviderCalendars(): React.ReactElement {
   const handleRateUpdate = React.useCallback((
     newPrice: number,
     editAllSelection: boolean = false,
-    editingCell: { accId: number; dateStr: string } | null = null
+    editingCell: { accId: string; dateStr: string } | null = null
   ) => {
     if (!activeSupplier || selectedRateTypeId === null) return;
     const modifications = new Set<string>();
-    const datesToCheckForDureeMin: Array<{ accId: number; dateStr: string }> = [];
+    const datesToCheckForDureeMin: Array<{ accId: string; dateStr: string }> = [];
     
     supplierData.setRatesBySupplierAndAccommodation(prev => {
       const updated = { ...prev };
@@ -504,7 +504,7 @@ export function ProviderCalendars(): React.ReactElement {
   const handleMinDurationUpdate = React.useCallback((
     newDureeMin: number | null,
     editAllSelection: boolean = false,
-    editingCell: { accId: number; dateStr: string } | null = null
+    editingCell: { accId: string; dateStr: string } | null = null
   ) => {
     if (!activeSupplier) return;
     const modifications = new Set<string>();
@@ -592,7 +592,7 @@ export function ProviderCalendars(): React.ReactElement {
 
   // Fonction pour mettre à jour arrivalAllowed localement
   const handleArrivalAllowedUpdate = React.useCallback((
-    accId: number,
+    accId: string,
     dateStr: string,
     isAllowed: boolean,
     editAllSelection: boolean = false
@@ -984,7 +984,6 @@ export function ProviderCalendars(): React.ReactElement {
   // Poller l'état de synchronisation des réservations Direct toutes les 30 secondes
   // et déclencher un refresh automatique si l'état change
   useSyncStatusPolling(
-    activeSupplier?.supplierId ?? null,
     handleRefreshData,
     30000 // 30 secondes
   );

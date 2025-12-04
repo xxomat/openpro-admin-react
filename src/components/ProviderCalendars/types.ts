@@ -25,8 +25,9 @@ export type Supplier = {
 };
 
 export type Accommodation = { 
-  accommodationId: number; 
-  accommodationName: string 
+  accommodationId: string; // GUID interne de la DB (DB-first)
+  accommodationName: string;
+  openProId?: number; // ID OpenPro optionnel (pour affichage/compatibilité)
 };
 
 export type RateType = {
@@ -49,7 +50,7 @@ export enum BookingStatus {
 
 export type BookingDisplay = {
   bookingId: number;
-  accommodationId: number;
+  accommodationId: string; // GUID interne de la DB (DB-first)
   arrivalDate: string; // YYYY-MM-DD
   departureDate: string;   // YYYY-MM-DD
   reference?: string;
@@ -84,15 +85,15 @@ export type BookingDisplay = {
 };
 
 export type SupplierData = {
-  stock: Record<number, Record<string, number>>;
-  rates: Record<number, Record<string, Record<number, number>>>;
-  promo: Record<number, Record<string, boolean>>;
-  rateTypes: Record<number, Record<string, string[]>>;
-  minDuration: Record<number, Record<string, Record<number, number | null>>>;
-  arrivalAllowed: Record<number, Record<string, Record<number, boolean>>>;
+  stock: Record<string, Record<string, number>>; // Clé: accommodationId (GUID)
+  rates: Record<string, Record<string, Record<number, number>>>; // Clé: accommodationId (GUID)
+  promo: Record<string, Record<string, boolean>>; // Clé: accommodationId (GUID)
+  rateTypes: Record<string, Record<string, string[]>>; // Clé: accommodationId (GUID)
+  minDuration: Record<string, Record<string, Record<number, number | null>>>; // Clé: accommodationId (GUID)
+  arrivalAllowed: Record<string, Record<string, Record<number, boolean>>>; // Clé: accommodationId (GUID)
   rateTypeLabels: Record<number, string>;
   rateTypesList: RateType[];
-  bookings: Record<number, BookingDisplay[]>;
-  /** Map des IDs de types de tarif liés par hébergement (clé: accommodationId, valeur: array de rateTypeId) */
-  rateTypeLinksByAccommodation: Record<number, number[]>;
+  bookings: Record<string, BookingDisplay[]>; // Clé: accommodationId (GUID)
+  /** Map des IDs de types de tarif liés par hébergement (clé: accommodationId (GUID), valeur: array de rateTypeId) */
+  rateTypeLinksByAccommodation: Record<string, number[]>; // Clé: accommodationId (GUID)
 };

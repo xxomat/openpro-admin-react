@@ -12,18 +12,16 @@ const BACKEND_BASE_URL = import.meta.env.PUBLIC_BACKEND_BASE_URL || 'http://loca
 /**
  * Récupère la liste des hébergements pour un fournisseur
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec la liste des hébergements
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function fetchAccommodations(
-  idFournisseur: number,
   signal?: AbortSignal
 ): Promise<Accommodation[]> {
   try {
     const res = await fetch(
-      `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations`,
+      `${BACKEND_BASE_URL}/api/supplier/accommodations`,
       { signal }
     );
     
@@ -35,26 +33,24 @@ export async function fetchAccommodations(
     
     // Transformer les données de l'API vers le format attendu par l'interface
     // L'API retourne IAccommodation[] avec { id, nom, ids } 
-    // L'interface attend Accommodation[] avec { accommodationId: number, accommodationName: string }
-    // accommodationId doit être l'ID OpenPro (number) car il est utilisé comme clé dans des objets indexés
-    // Les hébergements sans ID OpenPro sont filtrés car ils ne peuvent pas être utilisés dans l'interface
+    // L'interface attend Accommodation[] avec { accommodationId: string (GUID), accommodationName: string }
+    // accommodationId est maintenant le GUID interne de la DB (DB-first)
     if (Array.isArray(data)) {
       return data
         .map((acc: any) => {
-          // Extraire l'ID OpenPro depuis ids.OpenPro
-          const idOpenPro = acc.ids?.['OpenPro'] || acc.ids?.OpenPro;
-          if (!idOpenPro) {
-            return null; // Hébergement sans ID OpenPro, sera filtré
+          // Utiliser le GUID interne (id) comme accommodationId
+          if (!acc.id) {
+            return null; // Hébergement sans ID interne, sera filtré
           }
           
-          const accommodationId = parseInt(String(idOpenPro), 10);
-          if (isNaN(accommodationId)) {
-            return null; // ID OpenPro invalide, sera filtré
-          }
+          // Extraire l'ID OpenPro optionnel pour affichage/compatibilité
+          const idOpenPro = acc.ids?.['OpenPro'] || acc.ids?.OpenPro;
+          const openProId = idOpenPro ? parseInt(String(idOpenPro), 10) : undefined;
           
           return {
-            accommodationId,
-            accommodationName: acc.nom || ''
+            accommodationId: acc.id, // GUID interne de la DB
+            accommodationName: acc.nom || '',
+            openProId: isNaN(openProId as number) ? undefined : openProId
           };
         })
         .filter((acc: Accommodation | null): acc is Accommodation => acc !== null);
@@ -77,7 +73,6 @@ export async function fetchAccommodations(
 /**
  * Récupère toutes les données d'un fournisseur (stock, tarifs, types de tarifs)
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param debut - Date de début au format YYYY-MM-DD
  * @param fin - Date de fin au format YYYY-MM-DD
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
@@ -85,13 +80,12 @@ export async function fetchAccommodations(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function fetchSupplierData(
-  idFournisseur: number,
   debut: string,
   fin: string,
   signal?: AbortSignal
 ): Promise<SupplierData> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/supplier-data?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
+    `${BACKEND_BASE_URL}/api/supplier/supplier-data?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
     { signal }
   );
   
@@ -105,7 +99,6 @@ export async function fetchSupplierData(
 /**
  * Récupère les tarifs pour un hébergement
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param debut - Date de début au format YYYY-MM-DD
  * @param fin - Date de fin au format YYYY-MM-DD
@@ -114,8 +107,7 @@ export async function fetchSupplierData(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function fetchRates(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   debut: string,
   fin: string,
   signal?: AbortSignal
@@ -127,7 +119,7 @@ export async function fetchRates(
   arriveeAutorisee: Record<string, Record<number, boolean>>;
 }> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rates?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/rates?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
     { signal }
   );
   
@@ -141,7 +133,6 @@ export async function fetchRates(
 /**
  * Récupère les détails complets d'un tarif pour une date et un type de tarif spécifiques
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param date - Date au format YYYY-MM-DD
  * @param rateTypeId - ID du type de tarif
@@ -150,8 +141,7 @@ export async function fetchRates(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function fetchRateDetails(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   date: string,
   rateTypeId: number,
   signal?: AbortSignal
@@ -185,7 +175,7 @@ export async function fetchRateDetails(
   order?: number;
 }> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rates/details?date=${encodeURIComponent(date)}&rateTypeId=${encodeURIComponent(rateTypeId)}`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/rates/details?date=${encodeURIComponent(date)}&rateTypeId=${encodeURIComponent(rateTypeId)}`,
     { signal }
   );
   
@@ -199,7 +189,6 @@ export async function fetchRateDetails(
 /**
  * Récupère le stock pour un hébergement
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param debut - Date de début au format YYYY-MM-DD
  * @param fin - Date de fin au format YYYY-MM-DD
@@ -208,14 +197,13 @@ export async function fetchRateDetails(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function fetchStock(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   debut: string,
   fin: string,
   signal?: AbortSignal
 ): Promise<Record<string, number>> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/stock?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/stock?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
     { signal }
   );
   
@@ -241,7 +229,7 @@ export interface BulkUpdateDate {
  * Type pour un hébergement avec ses dates modifiées
  */
 export interface BulkUpdateAccommodation {
-  accommodationId: number;
+  accommodationId: string; // GUID interne de la DB (DB-first)
   dates: BulkUpdateDate[];
 }
 
@@ -255,19 +243,17 @@ export interface BulkUpdateRequest {
 /**
  * Sauvegarde les modifications de tarifs et durées minimales en bulk
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param bulkData - Données des modifications groupées par hébergement
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue en cas de succès
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function saveBulkUpdates(
-  idFournisseur: number,
   bulkData: BulkUpdateRequest,
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/bulk-update`,
+    `${BACKEND_BASE_URL}/api/supplier/bulk-update`,
     {
       method: 'POST',
       headers: {
@@ -288,7 +274,7 @@ export async function saveBulkUpdates(
  * Type pour les données de création d'une réservation
  */
 export interface CreateBookingData {
-  accommodationId: number;
+  accommodationId: string; // GUID interne de la DB (DB-first)
   arrivalDate: string; // Format: YYYY-MM-DD
   departureDate: string;  // Format: YYYY-MM-DD
   clientName?: string;
@@ -303,19 +289,17 @@ export interface CreateBookingData {
 /**
  * Crée une nouvelle réservation locale
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param bookingData - Données de la réservation à créer
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec la réservation créée
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function createBooking(
-  idFournisseur: number,
   bookingData: CreateBookingData,
   signal?: AbortSignal
 ): Promise<BookingDisplay> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/local-bookings`,
+    `${BACKEND_BASE_URL}/api/supplier/local-bookings`,
     {
       method: 'POST',
       headers: {
@@ -356,7 +340,6 @@ export interface UpdateStockPayload {
  * dans OpenPro pour un hébergement donné. Les dates peuvent être créées
  * si elles n'existent pas déjà dans OpenPro.
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param stockPayload - Payload contenant les jours à mettre à jour
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
@@ -375,13 +358,12 @@ export interface UpdateStockPayload {
  * ```
  */
 export async function updateStock(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   stockPayload: UpdateStockPayload,
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/stock`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/stock`,
     {
       method: 'POST',
       headers: {
@@ -401,7 +383,6 @@ export async function updateStock(
 /**
  * Supprime une réservation locale (Directe)
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idDossier - Identifiant du dossier de réservation
  * @param idHebergement - Identifiant de l'hébergement (optionnel, pour une recherche plus précise)
  * @param dateArrivee - Date d'arrivée (optionnel, pour une recherche plus précise)
@@ -411,15 +392,14 @@ export async function updateStock(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function deleteBooking(
-  idFournisseur: number,
   idDossier: number,
-  idHebergement?: number,
+  idHebergement?: string, // GUID interne de la DB (DB-first)
   dateArrivee?: string,
   dateDepart?: string,
   signal?: AbortSignal
 ): Promise<void> {
   // Construire l'URL avec les paramètres optionnels en query string
-  const url = new URL(`${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/local-bookings/${idDossier}`);
+  const url = new URL(`${BACKEND_BASE_URL}/api/supplier/local-bookings/${idDossier}`);
   if (idHebergement !== undefined) {
     url.searchParams.set('idHebergement', String(idHebergement));
   }
@@ -489,8 +469,7 @@ export interface ReponseTypeTarifListe {
  * Type pour une liaison hébergement-type de tarif
  */
 export interface LiaisonHebergementTypeTarif {
-  idFournisseur: number;
-  idHebergement: number;
+  idHebergement: string; // GUID interne de la DB (DB-first)
   idTypeTarif: number;
 }
 
@@ -504,17 +483,15 @@ export interface ReponseLiaisonHebergementTypeTarifListe {
 /**
  * Récupère la liste des types de tarif pour un fournisseur
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec la liste des types de tarif
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function listRateTypes(
-  idFournisseur: number,
   signal?: AbortSignal
 ): Promise<ReponseTypeTarifListe> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/rate-types`,
+    `${BACKEND_BASE_URL}/api/supplier/rate-types`,
     { signal }
   );
   
@@ -530,19 +507,17 @@ export async function listRateTypes(
 /**
  * Crée un nouveau type de tarif
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param payload - Données du type de tarif à créer
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec l'identifiant du type de tarif créé
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function createRateType(
-  idFournisseur: number,
   payload: TypeTarifModif,
   signal?: AbortSignal
 ): Promise<ReponseTypeTarifAjout> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/rate-types`,
+    `${BACKEND_BASE_URL}/api/supplier/rate-types`,
     {
       method: 'POST',
       headers: {
@@ -564,7 +539,6 @@ export async function createRateType(
 /**
  * Modifie un type de tarif existant
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idTypeTarif - Identifiant du type de tarif à modifier
  * @param payload - Données du type de tarif modifié
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
@@ -572,13 +546,12 @@ export async function createRateType(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function updateRateType(
-  idFournisseur: number,
   idTypeTarif: number,
   payload: TypeTarifModif,
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/rate-types/${idTypeTarif}`,
+    `${BACKEND_BASE_URL}/api/supplier/rate-types/${idTypeTarif}`,
     {
       method: 'PUT',
       headers: {
@@ -598,19 +571,17 @@ export async function updateRateType(
 /**
  * Supprime un type de tarif
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idTypeTarif - Identifiant du type de tarif à supprimer
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue en cas de succès
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function deleteRateType(
-  idFournisseur: number,
   idTypeTarif: number,
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/rate-types/${idTypeTarif}`,
+    `${BACKEND_BASE_URL}/api/supplier/rate-types/${idTypeTarif}`,
     {
       method: 'DELETE',
       headers: {
@@ -629,19 +600,17 @@ export async function deleteRateType(
 /**
  * Récupère la liste des liaisons hébergement-type de tarif pour un hébergement
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
  * @returns Promise résolue avec la liste des liaisons
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function listAccommodationRateTypeLinks(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   signal?: AbortSignal
 ): Promise<ReponseLiaisonHebergementTypeTarifListe> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rate-type-links`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/rate-type-links`,
     { signal }
   );
   
@@ -656,7 +625,6 @@ export async function listAccommodationRateTypeLinks(
 /**
  * Lie un type de tarif à un hébergement
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param idTypeTarif - Identifiant du type de tarif
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
@@ -664,13 +632,12 @@ export async function listAccommodationRateTypeLinks(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function linkRateTypeToAccommodation(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   idTypeTarif: number,
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rate-type-links/${idTypeTarif}`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/rate-type-links/${idTypeTarif}`,
     {
       method: 'POST',
       headers: {
@@ -689,7 +656,6 @@ export async function linkRateTypeToAccommodation(
 /**
  * Supprime la liaison entre un type de tarif et un hébergement
  * 
- * @param idFournisseur - Identifiant du fournisseur
  * @param idHebergement - Identifiant de l'hébergement
  * @param idTypeTarif - Identifiant du type de tarif
  * @param signal - Signal d'annulation optionnel pour interrompre la requête
@@ -697,13 +663,12 @@ export async function linkRateTypeToAccommodation(
  * @throws {Error} Peut lever une erreur si la requête échoue
  */
 export async function unlinkRateTypeFromAccommodation(
-  idFournisseur: number,
-  idHebergement: number,
+  idHebergement: string, // GUID interne de la DB (DB-first)
   idTypeTarif: number,
   signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(
-    `${BACKEND_BASE_URL}/api/suppliers/${idFournisseur}/accommodations/${idHebergement}/rate-type-links/${idTypeTarif}`,
+    `${BACKEND_BASE_URL}/api/supplier/accommodations/${idHebergement}/rate-type-links/${idTypeTarif}`,
     {
       method: 'DELETE',
       headers: {

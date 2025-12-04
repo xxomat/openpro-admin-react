@@ -153,7 +153,7 @@ export function RateTypeManagementModal({
    * Gère la modification des liaisons
    * Retourne true si la modification a réussi
    */
-  const handleLinksChange = React.useCallback(async (accommodationId: number, isLinked: boolean): Promise<boolean> => {
+  const handleLinksChange = React.useCallback(async (accommodationId: string, isLinked: boolean): Promise<boolean> => {
     if (!selectedRateType) return false;
     const success = isLinked
       ? await handleLink(accommodationId, selectedRateType.idTypeTarif)
@@ -179,11 +179,11 @@ export function RateTypeManagementModal({
   // Obtenir les hébergements liés au type de tarif sélectionné
   // IMPORTANT: Tous les hooks doivent être appelés avant tout return conditionnel
   const linkedAccommodationIds = React.useMemo(() => {
-    if (!selectedRateType) return new Set<number>();
-    const linked = new Set<number>();
+    if (!selectedRateType) return new Set<string>();
+    const linked = new Set<string>();
     Object.entries(linksByAccommodation).forEach(([accIdStr, rateTypeIds]) => {
       if (rateTypeIds.has(selectedRateType.idTypeTarif)) {
-        linked.add(Number(accIdStr));
+        linked.add(accIdStr); // accIdStr est déjà un string (GUID)
       }
     });
     return linked;

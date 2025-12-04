@@ -22,20 +22,20 @@ import { getErrorMessage, isCancellationError } from '../utils/errorUtils';
 export interface UseSupplierDataReturn {
   // États de données
   accommodations: Record<number, Accommodation[]>;
-  stockBySupplierAndAccommodation: Record<number, Record<number, Record<string, number>>>;
-  ratesBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number>>>>;
-  promoBySupplierAndAccommodation: Record<number, Record<number, Record<string, boolean>>>;
-  rateTypesBySupplierAndAccommodation: Record<number, Record<number, Record<string, string[]>>>;
-  minDurationBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, number | null>>>>;
-  arrivalAllowedBySupplierAndAccommodation: Record<number, Record<number, Record<string, Record<number, boolean>>>>;
-  bookingsBySupplierAndAccommodation: Record<number, Record<number, BookingDisplay[]>>;
+  stockBySupplierAndAccommodation: Record<number, Record<string, Record<string, number>>>;
+  ratesBySupplierAndAccommodation: Record<number, Record<string, Record<string, Record<number, number>>>>;
+  promoBySupplierAndAccommodation: Record<number, Record<string, Record<string, boolean>>>;
+  rateTypesBySupplierAndAccommodation: Record<number, Record<string, Record<string, string[]>>>;
+  minDurationBySupplierAndAccommodation: Record<number, Record<string, Record<string, Record<number, number | null>>>>;
+  arrivalAllowedBySupplierAndAccommodation: Record<number, Record<string, Record<string, Record<number, boolean>>>>;
+  bookingsBySupplierAndAccommodation: Record<number, Record<string, BookingDisplay[]>>;
   rateTypeLabelsBySupplier: Record<number, Record<number, string>>;
   rateTypesBySupplier: Record<number, RateType[]>;
-  rateTypeLinksBySupplierAndAccommodation: Record<number, Record<number, number[]>>;
+  rateTypeLinksBySupplierAndAccommodation: Record<number, Record<string, number[]>>;
   selectedRateTypeIdBySupplier: Record<number, number | null>;
   
   // États de sélection
-  selectedAccommodationsBySupplier: Record<number, Set<number>>;
+  selectedAccommodationsBySupplier: Record<number, Set<string>>;
   selectedCellsBySupplier: Record<number, Set<string>>; // Format: "accId-dateStr"
   
   // États de modification
@@ -76,25 +76,25 @@ export interface UseSupplierDataReturn {
 export function useSupplierData(): UseSupplierDataReturn {
   const [accommodations, setAccommodations] = React.useState<Record<number, Accommodation[]>>({});
   const [stockBySupplierAndAccommodation, setStockBySupplierAndAccommodation] = React.useState<
-    Record<number, Record<number, Record<string, number>>>
+    Record<number, Record<string, Record<string, number>>>
   >({});
   const [ratesBySupplierAndAccommodation, setRatesBySupplierAndAccommodation] = React.useState<
-    Record<number, Record<number, Record<string, Record<number, number>>>>
+    Record<number, Record<string, Record<string, Record<number, number>>>>
   >({});
   const [promoBySupplierAndAccommodation, setPromoBySupplierAndAccommodation] = React.useState<
-    Record<number, Record<number, Record<string, boolean>>>
+    Record<number, Record<string, Record<string, boolean>>>
   >({});
   const [rateTypesBySupplierAndAccommodation, setRateTypesBySupplierAndAccommodation] = React.useState<
-    Record<number, Record<number, Record<string, string[]>>>
+    Record<number, Record<string, Record<string, string[]>>>
   >({});
   const [minDurationBySupplierAndAccommodation, setMinDurationByAccommodation] = React.useState<
-    Record<number, Record<number, Record<string, number | null>>>
+    Record<number, Record<string, Record<string, number | null>>>
   >({});
   const [arrivalAllowedBySupplierAndAccommodation, setArrivalAllowedByAccommodation] = React.useState<
-    Record<number, Record<number, Record<string, boolean>>>
+    Record<number, Record<string, Record<string, boolean>>>
   >({});
   const [bookingsBySupplierAndAccommodation, setBookingsBySupplierAndAccommodation] = React.useState<
-    Record<number, Record<number, BookingDisplay[]>>
+    Record<number, Record<string, BookingDisplay[]>>
   >({});
   const [rateTypeLabelsBySupplier, setRateTypeLabelsBySupplier] = React.useState<
     Record<number, Record<number, string>>
@@ -103,10 +103,10 @@ export function useSupplierData(): UseSupplierDataReturn {
     Record<number, RateType[]>
   >({});
   const [rateTypeLinksBySupplierAndAccommodation, setRateTypeLinksBySupplierAndAccommodation] = React.useState<
-    Record<number, Record<number, number[]>>
+    Record<number, Record<string, number[]>>
   >({});
   const [selectedRateTypeIdBySupplier, setSelectedRateTypeIdBySupplier] = React.useState<Record<number, number | null>>({});
-  const [selectedAccommodationsBySupplier, setSelectedAccommodationsBySupplier] = React.useState<Record<number, Set<number>>>({});
+  const [selectedAccommodationsBySupplier, setSelectedAccommodationsBySupplier] = React.useState<Record<number, Set<string>>>({});
   const [selectedCellsBySupplier, setSelectedCellsBySupplier] = React.useState<Record<number, Set<string>>>({}); // Format: "accId-dateStr"
   const [modifiedRatesBySupplier, setModifiedRatesBySupplier] = React.useState<Record<number, Set<string>>>({});
   const [modifiedMinDurationBySupplier, setModifiedMinDurationBySupplier] = React.useState<Record<number, Set<string>>>({});

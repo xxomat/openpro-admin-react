@@ -15,10 +15,10 @@ import { darkTheme } from '../utils/theme';
 export interface AccommodationListProps {
   /** Liste des hébergements disponibles */
   accommodations: Accommodation[];
-  /** Set des IDs des hébergements actuellement sélectionnés */
-  selectedAccommodations: Set<number>;
+  /** Set des IDs des hébergements actuellement sélectionnés (GUID) */
+  selectedAccommodations: Set<string>;
   /** Callback pour mettre à jour la sélection d'hébergements */
-  onSelectedAccommodationsChange: (updater: Set<number> | ((prev: Set<number>) => Set<number>)) => void;
+  onSelectedAccommodationsChange: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
 }
 
 /**
@@ -63,7 +63,7 @@ export function AccommodationList({
                 type="checkbox"
                 checked={selectedAccommodations.has(acc.accommodationId)}
                 onChange={e => {
-                  onSelectedAccommodationsChange((prev: Set<number>) => {
+                  onSelectedAccommodationsChange((prev: Set<string>) => {
                     const newSet = new Set(prev);
                     if (e.target.checked) {
                       newSet.add(acc.accommodationId);

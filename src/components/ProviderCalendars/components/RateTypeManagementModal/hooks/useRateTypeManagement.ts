@@ -104,7 +104,7 @@ export function useRateTypeManagement(supplierId: number, accommodations: Accomm
   const [rateTypes, setRateTypes] = React.useState<RateTypeApi[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [linksByAccommodation, setLinksByAccommodation] = React.useState<Record<number, Set<number>>>({});
+  const [linksByAccommodation, setLinksByAccommodation] = React.useState<Record<string, Set<number>>>({});
 
   /**
    * Charge la liste des types de tarif
@@ -128,7 +128,7 @@ export function useRateTypeManagement(supplierId: number, accommodations: Accomm
    * Charge les liaisons pour tous les hébergements
    */
   const loadLinks = React.useCallback(async () => {
-    const links: Record<number, Set<number>> = {};
+    const links: Record<string, Set<number>> = {};
     for (const acc of accommodations) {
       try {
         const response = await apiListAccommodationRateTypeLinks(supplierId, acc.accommodationId);
@@ -220,7 +220,7 @@ export function useRateTypeManagement(supplierId: number, accommodations: Accomm
   /**
    * Lie un type de tarif à un hébergement
    */
-  const handleLink = React.useCallback(async (accommodationId: number, rateTypeId: number) => {
+  const handleLink = React.useCallback(async (accommodationId: string, rateTypeId: number) => {
     setError(null);
     try {
       await apiLinkRateTypeToAccommodation(supplierId, accommodationId, rateTypeId);
@@ -244,7 +244,7 @@ export function useRateTypeManagement(supplierId: number, accommodations: Accomm
   /**
    * Supprime la liaison entre un type de tarif et un hébergement
    */
-  const handleUnlink = React.useCallback(async (accommodationId: number, rateTypeId: number) => {
+  const handleUnlink = React.useCallback(async (accommodationId: string, rateTypeId: number) => {
     setError(null);
     try {
       await apiUnlinkRateTypeFromAccommodation(supplierId, accommodationId, rateTypeId);

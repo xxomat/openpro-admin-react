@@ -17,19 +17,19 @@ import type { SupplierData, BookingDisplay, RateType } from '@/types';
 export interface UpdateSupplierDataParams {
   supplierId: number;
   data: SupplierData;
-  accommodationsList: Array<{ accommodationId: number }>;
-  setAccommodations: React.Dispatch<React.SetStateAction<Record<number, Array<{ accommodationId: number; accommodationName: string }>>>>;
-  setStockBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number>>>>>;
-  setRatesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, Record<number, number>>>>>>;
-  setPromoBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
-  setRateTypesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, string[]>>>>>;
-  setMinDurationByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, number | null>>>>>;
-  setArrivalAllowedByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, Record<string, boolean>>>>>;
+  accommodationsList: Array<{ accommodationId: string }>;
+  setAccommodations: React.Dispatch<React.SetStateAction<Record<number, Array<{ accommodationId: string; accommodationName: string }>>>>;
+  setStockBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, Record<string, number>>>>>;
+  setRatesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, Record<string, Record<number, number>>>>>>;
+  setPromoBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, Record<string, boolean>>>>>;
+  setRateTypesBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, Record<string, string[]>>>>>;
+  setMinDurationByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, Record<string, number | null>>>>>;
+  setArrivalAllowedByAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, Record<string, boolean>>>>>;
   setRateTypeLabelsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Record<number, string>>>>;
   setRateTypesBySupplier: React.Dispatch<React.SetStateAction<Record<number, RateType[]>>>;
-  setRateTypeLinksBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, number[]>>>>;
-  setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<number, BookingDisplay[]>>>>;
-  setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
+  setRateTypeLinksBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, number[]>>>>;
+  setBookingsBySupplierAndAccommodation: React.Dispatch<React.SetStateAction<Record<number, Record<string, BookingDisplay[]>>>>;
+  setSelectedAccommodationsBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setSelectedRateTypeIdBySupplier: React.Dispatch<React.SetStateAction<Record<number, number | null>>>;
   setModifiedRatesBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
   setModifiedMinDurationBySupplier: React.Dispatch<React.SetStateAction<Record<number, Set<string>>>>;
@@ -75,19 +75,19 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   // Cela préserve les données pour les dates en dehors de la plage actuellement chargée
   setStockBySupplierAndAccommodation(prev => {
     const existing = prev[supplierId] ?? {};
-    const updated: Record<number, Record<string, number>> = {};
+    const updated: Record<string, Record<string, number>> = {};
     
     // Fusionner les données existantes avec les nouvelles
     for (const accId in existing) {
-      updated[Number(accId)] = { ...existing[Number(accId)] };
+      updated[accId] = { ...existing[accId] };
     }
     
     // Mettre à jour avec les nouvelles données (écrase les dates existantes dans la plage)
     for (const accId in data.stock) {
-      if (!updated[Number(accId)]) {
-        updated[Number(accId)] = {};
+      if (!updated[accId]) {
+        updated[accId] = {};
       }
-      updated[Number(accId)] = { ...updated[Number(accId)], ...data.stock[Number(accId)] };
+      updated[accId] = { ...updated[accId], ...data.stock[accId] };
     }
     
     return {
@@ -98,17 +98,17 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   
   setRatesBySupplierAndAccommodation(prev => {
     const existing = prev[supplierId] ?? {};
-    const updated: Record<number, Record<string, Record<number, number>>> = {};
+    const updated: Record<string, Record<string, Record<number, number>>> = {};
     
     for (const accId in existing) {
-      updated[Number(accId)] = { ...existing[Number(accId)] };
+      updated[accId] = { ...existing[accId] };
     }
     
     for (const accId in data.rates) {
-      if (!updated[Number(accId)]) {
-        updated[Number(accId)] = {};
+      if (!updated[accId]) {
+        updated[accId] = {};
       }
-      updated[Number(accId)] = { ...updated[Number(accId)], ...data.rates[Number(accId)] };
+      updated[accId] = { ...updated[accId], ...data.rates[accId] };
     }
     
     return {
@@ -119,17 +119,17 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   
   setPromoBySupplierAndAccommodation(prev => {
     const existing = prev[supplierId] ?? {};
-    const updated: Record<number, Record<string, boolean>> = {};
+    const updated: Record<string, Record<string, boolean>> = {};
     
     for (const accId in existing) {
-      updated[Number(accId)] = { ...existing[Number(accId)] };
+      updated[accId] = { ...existing[accId] };
     }
     
     for (const accId in data.promo) {
-      if (!updated[Number(accId)]) {
-        updated[Number(accId)] = {};
+      if (!updated[accId]) {
+        updated[accId] = {};
       }
-      updated[Number(accId)] = { ...updated[Number(accId)], ...data.promo[Number(accId)] };
+      updated[accId] = { ...updated[accId], ...data.promo[accId] };
     }
     
     return {
@@ -140,17 +140,17 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   
   setRateTypesBySupplierAndAccommodation(prev => {
     const existing = prev[supplierId] ?? {};
-    const updated: Record<number, Record<string, string[]>> = {};
+    const updated: Record<string, Record<string, string[]>> = {};
     
     for (const accId in existing) {
-      updated[Number(accId)] = { ...existing[Number(accId)] };
+      updated[accId] = { ...existing[accId] };
     }
     
     for (const accId in data.rateTypes) {
-      if (!updated[Number(accId)]) {
-        updated[Number(accId)] = {};
+      if (!updated[accId]) {
+        updated[accId] = {};
       }
-      updated[Number(accId)] = { ...updated[Number(accId)], ...data.rateTypes[Number(accId)] };
+      updated[accId] = { ...updated[accId], ...data.rateTypes[accId] };
     }
     
     return {
@@ -161,23 +161,23 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
   
   setArrivalAllowedByAccommodation(prev => {
     const existing = prev[supplierId] ?? {};
-    const updated: Record<number, Record<string, Record<number, boolean>>> = {};
+    const updated: Record<string, Record<string, Record<number, boolean>>> = {};
     
     for (const accId in existing) {
-      updated[Number(accId)] = { ...existing[Number(accId)] };
+      updated[accId] = { ...existing[accId] };
     }
     
     // Initialiser arriveeAutorisee par défaut à true pour toutes les dates
     // Si les données du backend contiennent arriveeAutorisee, on les utilisera
     // Sinon, on initialise à true par défaut
     for (const accId in data.arrivalAllowed) {
-      if (!updated[Number(accId)]) {
-        updated[Number(accId)] = {};
+      if (!updated[accId]) {
+        updated[accId] = {};
       }
       // Fusionner les données existantes avec les nouvelles
-      const existingDates = updated[Number(accId)] ?? {};
-      const newDates = data.arrivalAllowed[Number(accId)] ?? {};
-      updated[Number(accId)] = { ...existingDates, ...newDates };
+      const existingDates = updated[accId] ?? {};
+      const newDates = data.arrivalAllowed[accId] ?? {};
+      updated[accId] = { ...existingDates, ...newDates };
     }
     
     return {
@@ -188,34 +188,34 @@ export function updateSupplierDataStates(params: UpdateSupplierDataParams): void
 
   setMinDurationByAccommodation(prev => {
     const existing = prev[supplierId] ?? {};
-    const updated: Record<number, Record<string, Record<number, number | null>>> = {};
+    const updated: Record<string, Record<string, Record<number, number | null>>> = {};
     
     for (const accId in existing) {
-      updated[Number(accId)] = { ...existing[Number(accId)] };
+      updated[accId] = { ...existing[accId] };
       // S'assurer que chaque date a un objet Record<number, number | null>
-      for (const dateStr in updated[Number(accId)]) {
-        if (typeof updated[Number(accId)][dateStr] === 'number' || updated[Number(accId)][dateStr] === null) {
+      for (const dateStr in updated[accId]) {
+        if (typeof updated[accId][dateStr] === 'number' || updated[accId][dateStr] === null) {
           // Migration de l'ancien format vers le nouveau
-          const oldValue = updated[Number(accId)][dateStr] as number | null;
-          updated[Number(accId)][dateStr] = {} as Record<number, number | null>;
+          const oldValue = updated[accId][dateStr] as number | null;
+          updated[accId][dateStr] = {} as Record<number, number | null>;
           // On ne peut pas migrer sans connaître le selectedRateTypeId, donc on laisse vide
         }
       }
     }
     
     for (const accId in data.minDuration) {
-      if (!updated[Number(accId)]) {
-        updated[Number(accId)] = {};
+      if (!updated[accId]) {
+        updated[accId] = {};
       }
       // data.minDuration[accId] est maintenant Record<string, Record<number, number | null>>
-      const accDureeMin = data.minDuration[Number(accId)];
+      const accDureeMin = data.minDuration[accId];
       if (accDureeMin) {
         for (const dateStr in accDureeMin) {
-          if (!updated[Number(accId)][dateStr]) {
-            updated[Number(accId)][dateStr] = {};
+          if (!updated[accId][dateStr]) {
+            updated[accId][dateStr] = {};
           }
           // Copier tous les idTypeTarif pour cette date
-          updated[Number(accId)][dateStr] = { ...updated[Number(accId)][dateStr], ...accDureeMin[dateStr] };
+          updated[accId][dateStr] = { ...updated[accId][dateStr], ...accDureeMin[dateStr] };
         }
       }
     }

@@ -17,9 +17,9 @@ export interface AccommodationLinkManagerProps {
   /** Liste des hébergements disponibles */
   accommodations: Accommodation[];
   /** Set des IDs d'hébergements liés au type de tarif */
-  linkedAccommodationIds: Set<number>;
+  linkedAccommodationIds: Set<string>;
   /** Callback appelé lors de la modification des liaisons */
-  onLinksChange: (accommodationId: number, isLinked: boolean) => Promise<boolean>;
+  onLinksChange: (accommodationId: string, isLinked: boolean) => Promise<boolean>;
   /** Callback appelé pour sauvegarder les modifications */
   onSave: () => Promise<void>;
   /** Callback appelé pour annuler */
@@ -52,7 +52,7 @@ export function AccommodationLinkManager({
   /**
    * Bascule l'état de liaison d'un hébergement
    */
-  const handleToggleLink = React.useCallback((accommodationId: number) => {
+  const handleToggleLink = React.useCallback((accommodationId: string) => {
     setLocalLinks(prev => {
       const newSet = new Set(prev);
       if (newSet.has(accommodationId)) {

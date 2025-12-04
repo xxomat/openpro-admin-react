@@ -39,6 +39,6 @@ export async function loadRatesForAccommodation(
 }> {
   // Le paramètre discoveredRateTypes est conservé pour compatibilité mais n'est plus utilisé
   // car le traitement est maintenant effectué côté backend
-  return fetchRates(idFournisseur, idHebergement, debut, fin, signal);
+  return fetchRates(idHebergement, debut, fin, signal);
 }
 
